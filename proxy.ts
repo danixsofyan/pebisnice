@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import NextAuth from 'next-auth'
 import { authConfig } from './auth.config'
-import { applySecurityHeaders, generateNonce } from '@/lib/security/headers'
+import { applySecurityHeaders } from '@/lib/security/headers'
 import { checkRateLimit } from '@/lib/security/rate-limiter'
 
 const { auth } = NextAuth(authConfig)
@@ -37,14 +37,14 @@ export async function proxy(request: NextRequest) {
     response.headers.set('Retry-After', String(resetAt))
     response.headers.set('X-RateLimit-Limit', String(rateLimitMax))
     response.headers.set('X-RateLimit-Remaining', '0')
-    return applySecurityHeaders(response, generateNonce())
+    return applySecurityHeaders(response)
   }
 
   const isPublicApi = PUBLIC_API_ROUTES.some((r) => path.startsWith(r))
   if (isPublicApi) {
     const response = NextResponse.next()
     response.headers.set('X-RateLimit-Remaining', String(remaining))
-    return applySecurityHeaders(response, generateNonce())
+    return applySecurityHeaders(response)
   }
 
   const session = await auth()
@@ -58,26 +58,26 @@ export async function proxy(request: NextRequest) {
     url.pathname = '/login'
     url.searchParams.set('redirect', encodeURIComponent(path))
     const redirect = NextResponse.redirect(url)
-    return applySecurityHeaders(redirect, generateNonce())
+    return applySecurityHeaders(redirect)
   }
 
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     const redirect = NextResponse.redirect(url)
-    return applySecurityHeaders(redirect, generateNonce())
+    return applySecurityHeaders(redirect)
   }
 
   if (path === '/') {
     const url = request.nextUrl.clone()
     url.pathname = user ? '/dashboard' : '/login'
     const redirect = NextResponse.redirect(url)
-    return applySecurityHeaders(redirect, generateNonce())
+    return applySecurityHeaders(redirect)
   }
 
   const response = NextResponse.next()
   response.headers.set('X-RateLimit-Remaining', String(remaining))
-  return applySecurityHeaders(response, generateNonce())
+  return applySecurityHeaders(response)
 }
 
 export const config = {

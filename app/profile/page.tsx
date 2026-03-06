@@ -23,7 +23,6 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8">
-      {/* Page Header */}
       <div className="flex flex-col gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Edit Profil</h2>
         <p className="text-slate-500 dark:text-slate-400">
@@ -32,7 +31,6 @@ export default function ProfilePage() {
       </div>
 
       <div className="flex flex-col gap-8 md:flex-row">
-        {/* Sidebar Tabs */}
         <aside className="w-full md:w-64 shrink-0">
           <nav className="flex flex-row gap-2 overflow-x-auto pb-2 md:flex-col md:pb-0">
             {tabs.map((tab) => (
@@ -53,7 +51,6 @@ export default function ProfilePage() {
           </nav>
         </aside>
 
-        {/* Content Area */}
         <div className="flex-1 space-y-6">
           {activeTab === 'personal' && (
             <div className="space-y-6">

@@ -3,7 +3,6 @@ import { LoginForm } from '@/components/login-form'
 export default function LoginPage() {
   return (
     <div className="bg-background relative flex min-h-svh flex-col items-center justify-center overflow-hidden p-6 md:p-10">
-      {/* Lumina Background Effect */}
       <div className="fixed inset-0 z-0 h-full w-full" data-unicorn="ILgOO23w4wEyPQOKyLO4">
         <img
           src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/2b5079f4-4ddd-433b-a936-fc8f7dea9df0_3840w.webp"

@@ -64,7 +64,6 @@ export function DashboardHeader({ user }: { user?: User | undefined }) {
           <span className="sr-only">Notifications</span>
         </button>
 
-        {/* Theme Toggle */}
         {mounted ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -95,7 +94,6 @@ export function DashboardHeader({ user }: { user?: User | undefined }) {
           <div className="size-9" />
         )}
 
-        {/* User Menu */}
         {mounted ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
