@@ -73,7 +73,7 @@ export function SidebarNav() {
                     <item.icon className={cn("size-[18px] transition-colors shrink-0", isActive ? "text-primary" : "text-muted-foreground/80 group-hover:text-foreground")} />
                     <span className={cn(isActive ? "font-bold" : "font-medium", "group-data-[collapsible=icon]:hidden")}>{item.title}</span>
                     {isActive && (
-                      <div className="absolute -right-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-l-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)] group-data-[collapsible=icon]:hidden" />
+                          <div className="absolute -right-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-l-full bg-primary shadow-primary/40 group-data-[collapsible=icon]:hidden" />
                     )}
                   </Link>
                 </SidebarMenuButton>
@@ -102,7 +102,7 @@ export function SidebarNav() {
                 <Settings className={cn("size-[18px] transition-colors shrink-0", pathname === '/settings' ? "text-primary" : "text-muted-foreground/80 group-hover:text-foreground")} />
                 <span className={cn(pathname === '/settings' ? "font-bold" : "font-medium", "group-data-[collapsible=icon]:hidden")}>Pengaturan</span>
                 {pathname === '/settings' && (
-                  <div className="absolute -right-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-l-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)] group-data-[collapsible=icon]:hidden" />
+                      <div className="absolute -right-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-l-full bg-primary shadow-primary/40 group-data-[collapsible=icon]:hidden" />
                 )}
               </Link>
             </SidebarMenuButton>

@@ -5,7 +5,7 @@ import {
   ShieldCheck,
   Plus,
 } from 'lucide-react'
-import { EmployeeTable } from '../../components/dashboard/employee-table'
+import { EmployeeTable } from '@/components/dashboard/employee-table'
 
 export default function EmployeesPage() {
   return (

@@ -17,17 +17,20 @@ export async function proxy(request: NextRequest) {
     '127.0.0.1'
 
   const path = request.nextUrl.pathname
+  const isNextData = path.includes('/_next/data/') || request.headers.has('x-nextjs-data')
 
   const isApiRoute = path.startsWith('/api/')
   const rateLimitKey = isApiRoute ? `api:${ip}` : `web:${ip}`
   const rateLimitWindow = isApiRoute ? 60 : 120
   const rateLimitMax = isApiRoute ? 100 : 300
 
-  const { allowed, remaining, resetAt } = await checkRateLimit(
-    rateLimitKey,
-    rateLimitMax,
-    rateLimitWindow
-  )
+  const { allowed, remaining, resetAt } = isNextData 
+    ? { allowed: true, remaining: 100, resetAt: 0 }
+    : await checkRateLimit(
+        rateLimitKey,
+        rateLimitMax,
+        rateLimitWindow
+      )
 
   if (!allowed) {
     const response = NextResponse.json(
