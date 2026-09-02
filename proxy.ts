@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import NextAuth from 'next-auth'
 import { authConfig } from './auth.config'
-import { applySecurityHeaders } from '@/lib/security/headers'
+import { applySecurityHeaders, buildCsp, generateNonce } from '@/lib/security/headers'
 import { checkRateLimit } from '@/lib/security/rate-limiter'
 
 const { auth } = NextAuth(authConfig)
@@ -15,6 +15,15 @@ export async function proxy(request: NextRequest) {
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
     request.headers.get('x-real-ip') ??
     '127.0.0.1'
+
+  // Next.js only stamps its bootstrap/next-script tags with the nonce when it
+  // sees the CSP on the *request* headers, so build both from the same value.
+  const nonce = generateNonce()
+  const csp = buildCsp(nonce)
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('content-security-policy', csp)
+  requestHeaders.set('x-nonce', nonce)
+  const forward = { request: { headers: requestHeaders } }
 
   const path = request.nextUrl.pathname
   const isNextData = path.includes('/_next/data/') || request.headers.has('x-nextjs-data')
@@ -40,14 +49,14 @@ export async function proxy(request: NextRequest) {
     response.headers.set('Retry-After', String(resetAt))
     response.headers.set('X-RateLimit-Limit', String(rateLimitMax))
     response.headers.set('X-RateLimit-Remaining', '0')
-    return applySecurityHeaders(response)
+    return applySecurityHeaders(response, csp)
   }
 
   const isPublicApi = PUBLIC_API_ROUTES.some((r) => path.startsWith(r))
   if (isPublicApi) {
-    const response = NextResponse.next()
+    const response = NextResponse.next(forward)
     response.headers.set('X-RateLimit-Remaining', String(remaining))
-    return applySecurityHeaders(response)
+    return applySecurityHeaders(response, csp)
   }
 
   const session = await auth()
@@ -61,26 +70,26 @@ export async function proxy(request: NextRequest) {
     url.pathname = '/login'
     url.searchParams.set('redirect', encodeURIComponent(path))
     const redirect = NextResponse.redirect(url)
-    return applySecurityHeaders(redirect)
+    return applySecurityHeaders(redirect, csp)
   }
 
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     const redirect = NextResponse.redirect(url)
-    return applySecurityHeaders(redirect)
+    return applySecurityHeaders(redirect, csp)
   }
 
   if (path === '/') {
     const url = request.nextUrl.clone()
     url.pathname = user ? '/dashboard' : '/login'
     const redirect = NextResponse.redirect(url)
-    return applySecurityHeaders(redirect)
+    return applySecurityHeaders(redirect, csp)
   }
 
-  const response = NextResponse.next()
+  const response = NextResponse.next(forward)
   response.headers.set('X-RateLimit-Remaining', String(remaining))
-  return applySecurityHeaders(response)
+  return applySecurityHeaders(response, csp)
 }
 
 export const config = {

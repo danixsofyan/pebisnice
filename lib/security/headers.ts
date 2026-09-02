@@ -6,20 +6,23 @@ export function generateNonce(): string {
   return Buffer.from(array).toString('base64')
 }
 
-export function buildCsp(): string {
+export function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV === 'development'
 
   const directives = [
     `default-src 'self'`,
 
-    `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net ${isDev ? "'unsafe-eval'" : ''}`,
+    // 'strict-dynamic' lets the nonced Next.js bootstrap load its own chunks and
+    // next/script tags; browsers that honour it ignore host allowlists, so no CDN
+    // origin is listed here on purpose.
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
 
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
     `font-src 'self' https://fonts.gstatic.com`,
 
     `img-src 'self' data: blob: https://lh3.googleusercontent.com https://hoirqrkdgbmvpwutwuwj.supabase.co`,
 
-    `connect-src 'self' https://api.shopee.io https://open-api.tiktokglobalshop.com https://storage.googleapis.com ${isDev ? 'ws://localhost:3000' : ''}`,
+    `connect-src 'self'${isDev ? ' ws://localhost:*' : ''}`,
 
     `frame-src 'none'`,
     `frame-ancestors 'none'`,
@@ -36,9 +39,7 @@ export function buildCsp(): string {
   return directives.join('; ')
 }
 
-export function applySecurityHeaders(response: NextResponse): NextResponse {
-  const csp = buildCsp()
-
+export function applySecurityHeaders(response: NextResponse, csp: string): NextResponse {
   response.headers.set('Content-Security-Policy', csp)
 
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')
@@ -55,7 +56,7 @@ export function applySecurityHeaders(response: NextResponse): NextResponse {
   )
 
   response.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
-  response.headers.set('Cross-Origin-Resource-Policy', 'cross-origin')
+  response.headers.set('Cross-Origin-Resource-Policy', 'same-origin')
 
   response.headers.delete('X-Powered-By')
   response.headers.delete('Server')
