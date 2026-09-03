@@ -1,8 +1,8 @@
 # Pebisnice
 
-**Pebisnice** is a powerful marketplace profit management and business analytics application built for scale and efficiency. This application is designed to help sellers track their omzet, profit, inventory, and transactions across multiple platforms (e.g., Shopee, TikTok Shop) securely and intuitively.
+**Pebisnice** is an all-in-one profit management platform for Indonesian businesses. It unifies marketplace sales (Shopee, TikTok Shop, Tokopedia, Lazada) and offline point-of-sale across branches into a single profit-and-loss report, covering inventory, production, and operating expenses.
 
-![Pebisnice Dashboard](public/preview.png)
+See [`docs/PRD.md`](docs/PRD.md) for product scope, [`docs/PLAN.md`](docs/PLAN.md) for the technical plan, and [`docs/db-standards.md`](docs/db-standards.md) for database standards.
 
 ## Tech Stack
 
@@ -68,12 +68,13 @@ Ensure you have the following installed on your machine:
    Push the Drizzle ORM schema to your database.
 
    ```bash
-   pnpm dlx drizzle-kit push
+   pnpm db:push
    ```
 
-   *(Optional)* If you want to view your database using Drizzle Studio:
+   _(Optional)_ If you want to view your database using Drizzle Studio:
+
    ```bash
-   pnpm dlx drizzle-kit studio
+   pnpm db:studio
    ```
 
 5. **Start the Development Server:**
@@ -90,7 +91,7 @@ Ensure you have the following installed on your machine:
 pebisnice/
 ├── app/                  # Next.js App Router (pages, layouts, api, actions)
 ├── components/           # React Components (UI, layout elements)
-├── lib/                  # Application core 
+├── lib/                  # Application core
 │   ├── db/               # Drizzle ORM schemas and connections
 │   ├── security/         # Middleware headers, Rate Limiting, Sanitization
 │   ├── services/         # Business logic layer
