@@ -13,23 +13,27 @@ describe('hasRolePermission', () => {
     expect(hasRolePermission('admin', 'project:edit')).toBe(true)
   })
 
-  it('membatasi finance pada akses baca saja', () => {
+  it('memberi finance akses laporan dan biaya, tanpa mengubah stok', () => {
     expect(hasRolePermission('finance', 'project:view')).toBe(true)
     expect(hasRolePermission('finance', 'report:view')).toBe(true)
+    expect(hasRolePermission('finance', 'cost:view')).toBe(true)
+    expect(hasRolePermission('finance', 'expense:manage')).toBe(true)
     expect(hasRolePermission('finance', 'product:manage')).toBe(false)
+    expect(hasRolePermission('finance', 'inventory:adjust')).toBe(false)
     expect(hasRolePermission('finance', 'data:upload')).toBe(false)
   })
 
-  it('membatasi operator pada lihat project dan unggah data', () => {
+  it('mempertahankan permission operator warisan v1.0', () => {
     expect(hasRolePermission('operator', 'project:view')).toBe(true)
     expect(hasRolePermission('operator', 'data:upload')).toBe(true)
     expect(hasRolePermission('operator', 'report:view')).toBe(false)
     expect(hasRolePermission('operator', 'team:manage')).toBe(false)
+    expect(hasRolePermission('operator', 'cost:view')).toBe(false)
   })
 
   it('menolak peran yang tidak dikenal', () => {
     for (const permission of ALL_PERMISSIONS) {
-      expect(hasRolePermission('cashier', permission)).toBe(false)
+      expect(hasRolePermission('superadmin', permission)).toBe(false)
       expect(hasRolePermission('', permission)).toBe(false)
     }
   })
