@@ -1,3 +1,6 @@
+import { and, eq, isNull } from 'drizzle-orm'
+import { db } from '@/lib/db'
+import { projects } from '@/lib/db/schema'
 import { reportRepository, type PeriodFilter } from '@/lib/repositories/report.repository'
 import { withTenant } from '@/lib/db/tenant'
 import { calculateProfitLoss, type ProfitLossReport } from '@/lib/domain/finance/profit-loss'
@@ -5,7 +8,7 @@ import { toDecimalString } from '@/lib/domain/money'
 import { auditRepository } from '@/lib/repositories/audit.repository'
 import { checkPermission, requireBranchAccess, requirePermission } from '@/lib/rbac'
 import { COST_PERMISSION } from '@/lib/authz/permissions'
-import { ForbiddenError, ValidationError } from '@/lib/errors/app-error'
+import { ForbiddenError, NotFoundError, ValidationError } from '@/lib/errors/app-error'
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
@@ -49,6 +52,21 @@ function assertPeriod(request: ReportRequest): void {
   }
 }
 
+/**
+ * Zona waktu project menentukan batas hari laporan. Dibaca dari database
+ * setiap kali, bukan dari konstanta — tenant di zona lain harus benar.
+ */
+async function projectTimezone(projectId: string): Promise<string> {
+  const [project] = await db
+    .select({ timezone: projects.timezone })
+    .from(projects)
+    .where(and(eq(projects.id, projectId), isNull(projects.deletedAt)))
+    .limit(1)
+
+  if (!project) throw new NotFoundError('Project tidak ditemukan')
+  return project.timezone
+}
+
 function toView(report: ProfitLossReport): ProfitLossView {
   return {
     marketplaceRevenue: toDecimalString(report.marketplaceRevenue),
@@ -89,6 +107,7 @@ export class ReportService {
       startDate: request.startDate,
       endDate: request.endDate,
       branchId: request.branchId,
+      timezone: await projectTimezone(request.projectId),
     }
 
     const report = await withTenant(request.projectId, async (tx) => {
@@ -126,12 +145,15 @@ export class ReportService {
       await requireBranchAccess(request.projectId, context.userId, request.branchId)
     }
 
+    const timezone = await projectTimezone(request.projectId)
+
     const rows = await withTenant(request.projectId, (tx) =>
       reportRepository.dailySales(tx, {
         projectId: request.projectId,
         startDate: request.startDate,
         endDate: request.endDate,
         branchId: request.branchId,
+        timezone,
       })
     )
 
@@ -146,12 +168,15 @@ export class ReportService {
     assertPeriod(request)
     await requirePermission(request.projectId, context.userId, 'report:view')
 
+    const timezone = await projectTimezone(request.projectId)
+
     const rows = await withTenant(request.projectId, (tx) =>
       reportRepository.expensesByCategory(tx, {
         projectId: request.projectId,
         startDate: request.startDate,
         endDate: request.endDate,
         branchId: request.branchId,
+        timezone,
       })
     )
 

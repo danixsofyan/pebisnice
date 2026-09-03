@@ -9,6 +9,12 @@ export interface PeriodFilter {
   endDate: string
   /** NULL berarti seluruh cabang. */
   branchId: string | null
+  /**
+   * Zona waktu project, menentukan batas hari. Diambil dari kolom
+   * `projects.timezone`, tidak ditulis mati — tenant di zona berbeda harus
+   * mendapat batas hari yang benar.
+   */
+  timezone: string
 }
 
 export interface RevenueBreakdown {
@@ -32,7 +38,8 @@ export class ReportRepository {
    *
    * Transaksi yang di-void maupun yang di-soft-delete dikecualikan. Rentang
    * tanggal memakai `order_date` yang sudah TIMESTAMPTZ, dikonversi ke zona
-   * waktu project agar batas hari sesuai persepsi pengguna.
+   * waktu project agar batas hari sesuai persepsi pengguna. Zona waktunya
+   * dikirim sebagai bind parameter, bukan disisipkan ke string SQL.
    */
   async revenueBreakdown(tx: Transaction, filter: PeriodFilter): Promise<RevenueBreakdown> {
     const branchCondition = filter.branchId ? sql`AND t.branch_id = ${filter.branchId}` : sql``
@@ -50,7 +57,7 @@ export class ReportRepository {
           AND t.deleted_at IS NULL
           AND t.voided_at IS NULL
           AND t.status NOT IN ('cancelled', 'returned')
-          AND (t.order_date AT TIME ZONE 'Asia/Jakarta')::date
+          AND (t.order_date AT TIME ZONE ${filter.timezone})::date
               BETWEEN ${filter.startDate}::date AND ${filter.endDate}::date
           ${branchCondition}
       )
@@ -132,7 +139,7 @@ export class ReportRepository {
       pos_revenue: string
     }>(sql`
       SELECT
-        (t.order_date AT TIME ZONE 'Asia/Jakarta')::date::text AS day,
+        (t.order_date AT TIME ZONE ${filter.timezone})::date::text AS day,
         COALESCE(SUM(t.net_amount) FILTER (WHERE t.channel = 'marketplace'), 0)::text
           AS marketplace_revenue,
         COALESCE(SUM(t.net_amount) FILTER (WHERE t.channel = 'pos'), 0)::text
@@ -142,7 +149,7 @@ export class ReportRepository {
         AND t.deleted_at IS NULL
         AND t.voided_at IS NULL
         AND t.status NOT IN ('cancelled', 'returned')
-        AND (t.order_date AT TIME ZONE 'Asia/Jakarta')::date
+        AND (t.order_date AT TIME ZONE ${filter.timezone})::date
             BETWEEN ${filter.startDate}::date AND ${filter.endDate}::date
         ${branchCondition}
       GROUP BY 1
