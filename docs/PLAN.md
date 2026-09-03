@@ -84,7 +84,31 @@ expense_category  : rent | salary | utility | marketing | shipping | supply | ot
 `team_role` diperluas: `owner | admin | manager | finance | cashier | production` (peran `operator` lama dipetakan ke `cashier`).
 `movement_type` diperluas dengan `production_in` dan `production_out`.
 
-### 3.4 Tabel baru (5)
+### 3.4 Struktur kode
+
+Skema dipecah per domain di `lib/db/schema/` — tidak ada file monolitik:
+
+```
+lib/db/schema/
+  primitives.ts   money(), tz(), lifecycleColumns
+  columns.ts      actorColumns, tenantColumn
+  enums.ts        seluruh pgEnum
+  auth.ts         users, accounts, sessions, verificationTokens
+  projects.ts     projects
+  branches.ts     branches
+  team.ts         team_members
+  channels.ts     stores
+  catalog.ts      products, product_variants
+  sales.ts        transactions, transaction_fees, transaction_items
+  inventory.ts    inventory, inventory_movements
+  files.ts        file_uploads
+  audit.ts        audit_logs
+  index.ts        re-export
+```
+
+Logika bisnis mengikuti pemisahan yang sama: aturan murni di `lib/domain/`, akses data di `lib/repositories/`, orkestrasi di `lib/services/`. Domain tidak pernah mengimpor database, sehingga bisa dites tanpa Postgres.
+
+### 3.5 Tabel baru (5)
 
 | Tabel                  | Kolom kunci                                                                                                             | Catatan                   |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------- |
@@ -94,7 +118,7 @@ expense_category  : rent | salary | utility | marketing | shipping | supply | ot
 | `production_materials` | `production_log_id`, `product_variant_id`, `quantity`, `cost_amount`                                                    | Snapshot HPP bahan        |
 | `expenses`             | `project_id`, `branch_id`, `category`, `amount`, `expense_date DATE`, `note`                                            | OpEx untuk P&L            |
 
-### 3.5 Penyesuaian standar (`db-standards.md`)
+### 3.6 Penyesuaian standar (`db-standards.md`)
 
 Berlaku untuk seluruh tabel bisnis, lama maupun baru:
 
