@@ -20,8 +20,10 @@ export function buildCsp(nonce: string): string {
     // origin is listed here on purpose.
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
 
-    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
-    `font-src 'self' https://fonts.gstatic.com`,
+    // next/font meng-host font sendiri saat build, jadi tidak perlu
+    // mengizinkan origin Google Fonts.
+    `style-src 'self' 'unsafe-inline'`,
+    `font-src 'self'`,
 
     `img-src 'self' data: blob: https://lh3.googleusercontent.com${storageHost}`,
 
