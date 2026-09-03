@@ -69,13 +69,19 @@ export class TransactionRepository extends BaseRepository {
 
     const [data, [countResult]] = await Promise.all([
       this.db
-        .select()
+        .select({ transaction: transactions })
         .from(transactions)
+        .innerJoin(stores, eq(transactions.storeId, stores.id))
         .where(baseWhere)
         .orderBy(desc(transactions.orderDate))
         .limit(pageSize)
-        .offset(offset),
-      this.db.select({ count: count() }).from(transactions).where(baseWhere),
+        .offset(offset)
+        .then((rows) => rows.map((row) => row.transaction)),
+      this.db
+        .select({ count: count() })
+        .from(transactions)
+        .innerJoin(stores, eq(transactions.storeId, stores.id))
+        .where(baseWhere),
     ])
 
     return { data, total: countResult?.count ?? 0 }
