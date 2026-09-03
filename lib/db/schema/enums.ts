@@ -81,3 +81,14 @@ export const cashSessionStatusEnum = pgEnum('cash_session_status', ['open', 'clo
 
 /** `finished` = siap jual, `material` = bahan yang dipakai produksi. */
 export const productTypeEnum = pgEnum('product_type', ['finished', 'material'])
+
+export const expenseCategoryEnum = pgEnum('expense_category', [
+  'rent',
+  'salary',
+  'utility',
+  'marketing',
+  'shipping',
+  'supply',
+  'tax',
+  'other',
+])
