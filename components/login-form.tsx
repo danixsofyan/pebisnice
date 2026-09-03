@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Eye, EyeOff, Loader2, Activity } from 'lucide-react'
 import { signIn } from 'next-auth/react'
 import { cn } from '@/lib/utils'
@@ -14,8 +15,10 @@ import {
   FieldSeparator,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { loginBackgroundUrl } from '@/lib/storage'
 
 export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) {
+  const backgroundUrl = loginBackgroundUrl()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
@@ -26,14 +29,14 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <Card className="overflow-hidden p-0 border-border bg-background/50 backdrop-blur-md shadow-2xl">
+      <Card className="border-border bg-background/50 overflow-hidden p-0 shadow-2xl backdrop-blur-md">
         <CardContent className="grid p-0 md:grid-cols-2">
           <form className="p-6 md:p-8">
             <FieldGroup>
-            <div className="flex flex-col items-center gap-4 text-center mb-4">
+              <div className="mb-4 flex flex-col items-center gap-4 text-center">
                 <div className="flex items-center gap-2">
-                  <div className="bg-primary rounded-lg p-1.5 ring-1 ring-primary/20">
-                    <Activity className="size-5 text-white dark:text-background" />
+                  <div className="bg-primary ring-primary/20 rounded-lg p-1.5 ring-1">
+                    <Activity className="dark:text-background size-5 text-white" />
                   </div>
                   <span className="text-xl font-bold tracking-tight">Pebisnice</span>
                 </div>
@@ -74,7 +77,9 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
                 </div>
               </Field>
               <Field>
-                <Button className="cursor-pointer" type="submit">Login</Button>
+                <Button className="cursor-pointer" type="submit">
+                  Login
+                </Button>
               </Field>
               <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card dark:*:data-[slot=field-separator-content]:bg-transparent">
                 Or continue with
@@ -122,11 +127,15 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
             </FieldGroup>
           </form>
           <div className="bg-muted relative hidden md:block">
-            <img
-              src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/2b5079f4-4ddd-433b-a936-fc8f7dea9df0_3840w.webp"
-              alt="Image"
-              className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.4] dark:grayscale-0 mix-blend-luminosity opacity-60"
-            />
+            {backgroundUrl ? (
+              <Image
+                src={backgroundUrl}
+                alt=""
+                fill
+                sizes="(min-width: 768px) 50vw, 0px"
+                className="object-cover opacity-60 mix-blend-luminosity dark:brightness-[0.4] dark:grayscale-0"
+              />
+            ) : null}
           </div>
         </CardContent>
       </Card>
