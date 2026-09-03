@@ -8,6 +8,9 @@ export function generateNonce(): string {
 
 export function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV === 'development'
+  const storageHost = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_HOST
+    ? ` https://${process.env.NEXT_PUBLIC_SUPABASE_STORAGE_HOST}`
+    : ''
 
   const directives = [
     `default-src 'self'`,
@@ -20,7 +23,7 @@ export function buildCsp(nonce: string): string {
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
     `font-src 'self' https://fonts.gstatic.com`,
 
-    `img-src 'self' data: blob: https://lh3.googleusercontent.com https://hoirqrkdgbmvpwutwuwj.supabase.co`,
+    `img-src 'self' data: blob: https://lh3.googleusercontent.com${storageHost}`,
 
     `connect-src 'self'${isDev ? ' ws://localhost:*' : ''}`,
 
