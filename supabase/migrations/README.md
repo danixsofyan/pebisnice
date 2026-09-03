@@ -11,6 +11,9 @@
 | `0004_extend_team_roles.sql`                    | Menambah peran `manager`, `cashier`, `production` ke enum `team_role`                                                |
 | `0005_pos_channel_and_cash_sessions.sql`        | Tabel `cash_sessions`; `transactions` menampung channel `pos`; CHECK constraint bentuk baris; RLS tabel baru         |
 | `0006_production_logs.sql`                      | Tabel `production_logs` & `production_materials`; `products.type` (finished/material); RLS tabel baru                |
+| `0007_expenses.sql`                             | Tabel `expenses` (OpEx untuk P&L); RLS tabel baru                                                                    |
+
+Seluruh perubahan skema v2.0 berakhir di `0007`. Setelah ini migration bisa dijalankan sekali penuh sebelum UI dibangun.
 
 Migration kustom (`0003`) terdaftar manual di `meta/_journal.json` — file SQL saja tidak cukup, `drizzle-kit migrate` hanya menjalankan yang tercatat di journal.
 

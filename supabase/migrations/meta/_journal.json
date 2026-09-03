@@ -50,6 +50,13 @@
       "when": 1788476692629,
       "tag": "0006_production_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788477036154,
+      "tag": "0007_expenses",
+      "breakpoints": true
     }
   ]
 }
