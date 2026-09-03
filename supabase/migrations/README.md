@@ -1,5 +1,15 @@
 # Migration
 
+## Cara tercepat: `supabase/deploy.sql`
+
+Database produksi dibangun lewat `drizzle-kit push`, jadi `pnpm db:migrate` tidak bisa dipakai apa adanya (lihat penjelasan di bawah). Sebagai gantinya:
+
+```bash
+pnpm db:build-deploy      # menghasilkan supabase/deploy.sql dari seluruh migration
+```
+
+Lalu tempel isinya ke SQL editor Supabase. Berkas itu sudah memuat langkah baseline, seluruh migration `0001`–`0007`, dan query verifikasi. **Deploy kode aplikasi lebih dulu** — migration mengaktifkan RLS.
+
 ## Urutan
 
 | File                                            | Isi                                                                                                                  |
