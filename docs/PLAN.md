@@ -137,21 +137,33 @@ Direktori migration saat ini belum ada. Dibuat di `supabase/migrations/` sesuai 
 
 ## 4. RBAC
 
-Permission yang ditambahkan ke `lib/rbac.ts`:
+Tujuh peran, masing-masing dengan daftar permission eksplisit di `lib/authz/permissions.ts`:
 
-```
-cost:view          → gerbang HPP; hanya owner, admin, manager, finance
-pos:operate        → membuka sesi kasir dan membuat transaksi
-pos:void           → membatalkan transaksi (manager ke atas)
-cash_session:manage
-inventory:adjust
-production:manage
-expense:manage
-audit:view
-branch:manage
-```
+| Peran        | Lihat HPP | Ringkas                                               |
+| ------------ | --------- | ----------------------------------------------------- |
+| `owner`      | Ya        | Seluruh permission                                    |
+| `admin`      | Ya        | Semua kecuali `project:delete`                        |
+| `manager`    | Ya        | Operasional satu cabang: stok, produksi, POS, laporan |
+| `finance`    | Ya        | Laporan, P&L, pengeluaran; tidak mengubah stok        |
+| `cashier`    | **Tidak** | POS dan sesi kas saja                                 |
+| `production` | **Tidak** | Log produksi saja                                     |
+| `operator`   | **Tidak** | Peran warisan v1.0: unggah data marketplace           |
 
-`checkPermission()` diperluas dengan pengecekan cakupan cabang: bila `team_members.branch_id` tidak NULL, seluruh query wajib difilter ke cabang tersebut.
+`operator` sengaja **tidak** dipetakan ke `cashier` — pemetaan itu akan mencabut `data:upload` yang sudah dipakai pengguna v1.0.
+
+### Gating HPP
+
+`cost:view` adalah gerbang tunggalnya. Penegakannya berlapis:
+
+1. **Repository** menyediakan dua bentuk select. Bentuk tanpa biaya tidak menyertakan kolom `hpp` sama sekali — nilainya tidak pernah dibaca dari database.
+2. **Service** yang memutuskan bentuk mana yang dipakai, dari hasil `checkPermission()`. Bukan parameter yang bisa diatur pemanggil, sehingga halaman atau action yang lupa memfilter tidak bisa membocorkannya.
+3. **`stripCostFields()`** sebagai jaring pengaman terakhir bila ada jalur yang terlewat.
+
+Test mengunci daftar peran yang boleh melihat HPP, dan memverifikasi setiap kolom ber-HPP di skema tercakup `COST_FIELDS` — jadi kolom biaya baru tidak bisa lolos diam-diam.
+
+### Cakupan cabang
+
+`requireBranchAccess()` memastikan anggota dengan `team_members.branch_id` terisi hanya menyentuh cabangnya. `branch_id` NULL berarti seluruh cabang.
 
 ## 5. Aturan Kode
 
@@ -178,17 +190,17 @@ Vitest sudah berjalan sejak Tahap 1 (`tests/unit/`). Integration test dengan PGl
 
 ## 7. Tahapan Pengerjaan
 
-| Tahap                          | Isi                                                                                                                                         | Definition of Done                                                       |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **1. Fondasi**                 | Perbaiki 12 temuan audit v1.0; buat direktori migration; script `typecheck`/`test`/`db:*`; harness Vitest + PGlite; test pertama untuk RBAC | `pnpm typecheck` dan `pnpm test` hijau; migration awal ter-generate      |
-| **2. Standarisasi skema**      | TIMESTAMPTZ, NUMERIC(18,2), kolom wajib, trigger `updated_at`, audit & movements immutable, partial index, RLS                              | Migration jalan di Supabase; test isolasi tenant lulus di dua lapis      |
-| **2b. Role database terbatas** | Buat role non-superuser untuk aplikasi, pindahkan `DATABASE_URL` ke role tersebut                                                           | RLS terbukti aktif lewat test lintas tenant                              |
-| **3. Cabang & stok**           | Tabel `branches`; inventory per cabang; `applyStockMovement()`; halaman stok + penyesuaian + alasan                                         | Test `saldo = Σ movement` lulus; project lama punya cabang "Pusat"       |
-| **4. RBAC & gating HPP**       | Peran baru, cakupan cabang, permission `cost:view`, select `withCost`/`withoutCost`                                                         | Test "cashier tidak menerima field biaya" lulus                          |
-| **5. POS**                     | `cash_sessions`; layar kasir; `createPosTransaction()` atomik; struk PDF 58mm; riwayat + void                                               | Transaksi end-to-end mengurangi stok cabang dengan benar                 |
-| **6. Produksi**                | `production_logs` + `production_materials`; form; kalkulasi `unit_cost` server-side                                                         | Bahan berkurang, produk jadi bertambah, unit cost benar                  |
-| **7. Keuangan & laporan**      | `expenses`; penjualan harian; P&L gabungan; nilai stok; export CSV + PDF                                                                    | P&L bulan berjalan bisa dicetak dan angkanya dapat dipertanggungjawabkan |
-| **8. Dashboard & pengerasan**  | Ganti seluruh data mock dengan query nyata; Recharts; E2E Playwright; audit viewer                                                          | Tidak ada angka hardcoded tersisa di `app/(main)/`                       |
+| Tahap                          | Isi                                                                                                                                         | Definition of Done                                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **1. Fondasi**                 | Perbaiki 12 temuan audit v1.0; buat direktori migration; script `typecheck`/`test`/`db:*`; harness Vitest + PGlite; test pertama untuk RBAC | `pnpm typecheck` dan `pnpm test` hijau; migration awal ter-generate                           |
+| **2. Standarisasi skema**      | TIMESTAMPTZ, NUMERIC(18,2), kolom wajib, trigger `updated_at`, audit & movements immutable, partial index, RLS                              | Migration jalan di Supabase; test isolasi tenant lulus di dua lapis                           |
+| **2b. Role database terbatas** | Buat role non-superuser untuk aplikasi, pindahkan `DATABASE_URL` ke role tersebut                                                           | RLS terbukti aktif lewat test lintas tenant                                                   |
+| **3. Cabang & stok**           | Tabel `branches`; inventory per cabang; `applyStockMovement()`; halaman stok + penyesuaian + alasan                                         | Test `saldo = Σ movement` lulus; project lama punya cabang "Pusat"                            |
+| **4. RBAC & gating HPP**       | Peran baru, cakupan cabang, permission `cost:view`, select dengan/tanpa kolom biaya                                                         | ✅ Selesai — 13 test gating; kolom biaya tidak pernah di-select untuk peran tanpa `cost:view` |
+| **5. POS**                     | `cash_sessions`; layar kasir; `createPosTransaction()` atomik; struk PDF 58mm; riwayat + void                                               | Transaksi end-to-end mengurangi stok cabang dengan benar                                      |
+| **6. Produksi**                | `production_logs` + `production_materials`; form; kalkulasi `unit_cost` server-side                                                         | Bahan berkurang, produk jadi bertambah, unit cost benar                                       |
+| **7. Keuangan & laporan**      | `expenses`; penjualan harian; P&L gabungan; nilai stok; export CSV + PDF                                                                    | P&L bulan berjalan bisa dicetak dan angkanya dapat dipertanggungjawabkan                      |
+| **8. Dashboard & pengerasan**  | Ganti seluruh data mock dengan query nyata; Recharts; E2E Playwright; audit viewer                                                          | Tidak ada angka hardcoded tersisa di `app/(main)/`                                            |
 
 ## 8. Risiko
 
