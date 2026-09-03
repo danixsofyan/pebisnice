@@ -10,6 +10,7 @@
 | `0003_triggers_and_rls.sql`                     | Trigger `updated_at`, immutability audit & movements, policy RLS                                                     |
 | `0004_extend_team_roles.sql`                    | Menambah peran `manager`, `cashier`, `production` ke enum `team_role`                                                |
 | `0005_pos_channel_and_cash_sessions.sql`        | Tabel `cash_sessions`; `transactions` menampung channel `pos`; CHECK constraint bentuk baris; RLS tabel baru         |
+| `0006_production_logs.sql`                      | Tabel `production_logs` & `production_materials`; `products.type` (finished/material); RLS tabel baru                |
 
 Migration kustom (`0003`) terdaftar manual di `meta/_journal.json` — file SQL saja tidak cukup, `drizzle-kit migrate` hanya menjalankan yang tercatat di journal.
 

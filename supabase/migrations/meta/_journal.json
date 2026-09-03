@@ -43,6 +43,13 @@
       "when": 1788475628396,
       "tag": "0005_pos_channel_and_cash_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788476692629,
+      "tag": "0006_production_logs",
+      "breakpoints": true
     }
   ]
 }
