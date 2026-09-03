@@ -1,5 +1,6 @@
 import {
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -91,7 +92,10 @@ export const accounts = pgTable(
     id_token: text('id_token'),
     session_state: text('session_state'),
   },
-  (account) => [{ compoundKey: [account.provider, account.providerAccountId] }]
+  (account) => [
+    primaryKey({ columns: [account.provider, account.providerAccountId] }),
+    index('accounts_user_id_idx').on(account.userId),
+  ]
 )
 
 export const sessions = pgTable('sessions', {
@@ -109,7 +113,7 @@ export const verificationTokens = pgTable(
     token: text('token').notNull(),
     expires: timestamp('expires', { mode: 'date' }).notNull(),
   },
-  (vt) => [{ compoundKey: [vt.identifier, vt.token] }]
+  (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })]
 )
 
 export const projects = pgTable(
