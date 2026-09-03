@@ -39,6 +39,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'accounts',
       'auditLogs',
       'branches',
+      'cashSessions',
       'fileUploads',
       'inventory',
       'inventoryMovements',
@@ -124,6 +125,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
   it('menyematkan project_id di setiap tabel bisnis ter-scope tenant', () => {
     const tenantScoped = [
       'branches',
+      'cashSessions',
       'stores',
       'products',
       'productVariants',
