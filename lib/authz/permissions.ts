@@ -39,3 +39,12 @@ const ROLE_PERMISSIONS: Record<TeamRole, readonly Permission[]> = {
 export function hasRolePermission(role: string, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role as TeamRole]?.includes(permission) ?? false
 }
+
+/**
+ * Cakupan cabang seorang anggota tim. `null` berarti seluruh cabang —
+ * dipakai owner, admin, dan finance.
+ */
+export function isBranchAllowed(memberBranchId: string | null, targetBranchId: string): boolean {
+  if (memberBranchId === null) return true
+  return memberBranchId === targetBranchId
+}
