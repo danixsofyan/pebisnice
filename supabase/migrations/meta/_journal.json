@@ -36,6 +36,13 @@
       "when": 1788474677802,
       "tag": "0004_extend_team_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788475628396,
+      "tag": "0005_pos_channel_and_cash_sessions",
+      "breakpoints": true
     }
   ]
 }

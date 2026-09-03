@@ -9,10 +9,15 @@
 | `0002_branches_and_branch_scoped_inventory.sql` | Tabel `branches`; `inventory` & `inventory_movements` ter-scope cabang; `stores.branch_id`, `team_members.branch_id` |
 | `0003_triggers_and_rls.sql`                     | Trigger `updated_at`, immutability audit & movements, policy RLS                                                     |
 | `0004_extend_team_roles.sql`                    | Menambah peran `manager`, `cashier`, `production` ke enum `team_role`                                                |
+| `0005_pos_channel_and_cash_sessions.sql`        | Tabel `cash_sessions`; `transactions` menampung channel `pos`; CHECK constraint bentuk baris; RLS tabel baru         |
 
 Migration kustom (`0003`) terdaftar manual di `meta/_journal.json` — file SQL saja tidak cukup, `drizzle-kit migrate` hanya menjalankan yang tercatat di journal.
 
 RLS sengaja ditempatkan **setelah** `branches` dibuat agar tabel itu ikut mendapat policy.
+
+`0005` membuat `transactions.store_id` nullable — pelonggaran, aman untuk baris lama. Baris marketplace yang sudah ada otomatis memenuhi CHECK `chk_transactions_channel_shape` karena `channel` default `'marketplace'` dan `branch_id`/`cash_session_id`-nya NULL.
+
+Migration yang menambah tabel wajib ikut memasang trigger `updated_at` dan policy RLS untuk tabel itu — `0003` mendaftar tabel satu per satu, jadi tabel baru tidak otomatis tercakup. `0005` melakukannya untuk `cash_sessions`.
 
 `0004` hanya `ALTER TYPE ... ADD VALUE`. Aman dijalankan di dalam transaksi pada PostgreSQL 12+ selama nilai barunya tidak dipakai di transaksi yang sama — dan memang tidak. Peran lama `operator` sengaja dipertahankan, bukan diganti: barisnya masih dipakai dan menghapus nilai enum Postgres berisiko.
 
