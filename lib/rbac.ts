@@ -3,39 +3,10 @@ import { teamMembers, projects } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { ForbiddenError } from '@/lib/errors/app-error'
 
-export type Permission =
-  | 'project:view'
-  | 'project:edit'
-  | 'project:delete'
-  | 'store:manage'
-  | 'product:manage'
-  | 'report:view'
-  | 'team:manage'
-  | 'data:upload'
+import { hasRolePermission } from '@/lib/authz/permissions'
+import type { Permission } from '@/lib/authz/permissions'
 
-const ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  owner: [
-    'project:view',
-    'project:edit',
-    'project:delete',
-    'store:manage',
-    'product:manage',
-    'report:view',
-    'team:manage',
-    'data:upload',
-  ],
-  admin: [
-    'project:view',
-    'project:edit',
-    'store:manage',
-    'product:manage',
-    'report:view',
-    'team:manage',
-    'data:upload',
-  ],
-  finance: ['project:view', 'report:view'],
-  operator: ['project:view', 'data:upload'],
-}
+export * from '@/lib/authz/permissions'
 
 export async function checkPermission(
   projectId: string,
@@ -64,7 +35,7 @@ export async function checkPermission(
     .limit(1)
 
   if (!member) return false
-  return ROLE_PERMISSIONS[member.role]?.includes(permission) ?? false
+  return hasRolePermission(member.role, permission)
 }
 
 export async function requirePermission(
