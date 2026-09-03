@@ -1,5 +1,6 @@
 import { index, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
+import { branches } from './branches'
 import { actorColumns, tenantColumn } from './columns'
 import { calcMethodEnum, platformEnum, syncStatusEnum } from './enums'
 import { lifecycleColumns, tz } from './primitives'
@@ -10,6 +11,7 @@ export const stores = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ...tenantColumn,
+    branchId: uuid('branch_id').references(() => branches.id, { onDelete: 'restrict' }),
     platform: platformEnum('platform').notNull(),
     storeName: text('store_name').notNull(),
     platformStoreId: text('platform_store_id'),
@@ -26,6 +28,9 @@ export const stores = pgTable(
   (t) => [
     index('stores_project_id_idx')
       .on(t.projectId)
+      .where(sql`${t.deletedAt} is null`),
+    index('stores_branch_id_idx')
+      .on(t.branchId)
       .where(sql`${t.deletedAt} is null`),
     index('stores_created_by_idx').on(t.createdBy),
     index('stores_updated_by_idx').on(t.updatedBy),
