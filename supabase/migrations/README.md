@@ -8,10 +8,13 @@
 | `0001_ambiguous_iceman.sql`                     | Standarisasi ke `docs/db-standards.md`: TIMESTAMPTZ, NUMERIC(18,2), kolom siklus hidup, `project_id`, partial index  |
 | `0002_branches_and_branch_scoped_inventory.sql` | Tabel `branches`; `inventory` & `inventory_movements` ter-scope cabang; `stores.branch_id`, `team_members.branch_id` |
 | `0003_triggers_and_rls.sql`                     | Trigger `updated_at`, immutability audit & movements, policy RLS                                                     |
+| `0004_extend_team_roles.sql`                    | Menambah peran `manager`, `cashier`, `production` ke enum `team_role`                                                |
 
 Migration kustom (`0003`) terdaftar manual di `meta/_journal.json` — file SQL saja tidak cukup, `drizzle-kit migrate` hanya menjalankan yang tercatat di journal.
 
 RLS sengaja ditempatkan **setelah** `branches` dibuat agar tabel itu ikut mendapat policy.
+
+`0004` hanya `ALTER TYPE ... ADD VALUE`. Aman dijalankan di dalam transaksi pada PostgreSQL 12+ selama nilai barunya tidak dipakai di transaksi yang sama — dan memang tidak. Peran lama `operator` sengaja dipertahankan, bukan diganti: barisnya masih dipakai dan menghapus nilai enum Postgres berisiko.
 
 ## Database produksi belum punya riwayat migration
 

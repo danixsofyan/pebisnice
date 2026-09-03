@@ -29,6 +29,13 @@
       "when": 1788441442426,
       "tag": "0003_triggers_and_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788474677802,
+      "tag": "0004_extend_team_roles",
+      "breakpoints": true
     }
   ]
 }
