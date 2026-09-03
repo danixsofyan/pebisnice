@@ -199,7 +199,7 @@ Vitest sudah berjalan sejak Tahap 1 (`tests/unit/`). Integration test dengan PGl
 | **4. RBAC & gating HPP**       | Peran baru, cakupan cabang, permission `cost:view`, select dengan/tanpa kolom biaya                                                         | ✅ Selesai — 13 test gating; kolom biaya tidak pernah di-select untuk peran tanpa `cost:view` |
 | **5. POS**                     | `cash_sessions`; `createSale()` atomik; void dengan alasan; aritmetika uang bigint                                                          | ✅ Domain & service selesai — 37 test POS; layar kasir dan struk PDF menyusul di 5b           |
 | **6. Produksi**                | `production_logs` + `production_materials`; `planProduction()`; kalkulasi biaya server-side                                                 | ✅ Selesai — 10 test domain; bahan berkurang & produk jadi bertambah dalam satu transaksi     |
-| **7. Keuangan & laporan**      | `expenses`; penjualan harian; P&L gabungan; nilai stok; export CSV + PDF                                                                    | P&L bulan berjalan bisa dicetak dan angkanya dapat dipertanggungjawabkan                      |
+| **7. Keuangan & laporan**      | `expenses`; P&L gabungan; tren harian; rincian pengeluaran                                                                                  | ✅ Backend selesai — 9 test P&L; export CSV/PDF menyusul bersama UI                           |
 | **8. Dashboard & pengerasan**  | Ganti seluruh data mock dengan query nyata; Recharts; E2E Playwright; audit viewer                                                          | Tidak ada angka hardcoded tersisa di `app/(main)/`                                            |
 
 ## 8. Risiko
