@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
+  ShoppingCart,
   ReceiptText,
   Package,
   Wallet,
@@ -22,6 +23,11 @@ const mainNavItems = [
     title: 'Dashboard',
     url: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    title: 'Kasir',
+    url: '/pos',
+    icon: ShoppingCart,
   },
   {
     title: 'Transaksi',

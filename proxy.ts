@@ -6,7 +6,18 @@ import { checkRateLimit } from '@/lib/security/rate-limiter'
 
 const { auth } = NextAuth(authConfig)
 
-const PROTECTED_ROUTES = ['/dashboard', '/projects', '/settings', '/inventory', '/transactions', '/reports', '/employees']
+const PROTECTED_ROUTES = [
+  '/dashboard',
+  '/projects',
+  '/settings',
+  '/inventory',
+  '/transactions',
+  '/reports',
+  '/employees',
+  '/pos',
+  '/production',
+  '/expenses',
+]
 const AUTH_ROUTES = ['/login']
 const PUBLIC_API_ROUTES = ['/api/v1/webhooks', '/api/health']
 
@@ -33,13 +44,9 @@ export async function proxy(request: NextRequest) {
   const rateLimitWindow = isApiRoute ? 60 : 120
   const rateLimitMax = isApiRoute ? 100 : 300
 
-  const { allowed, remaining, resetAt } = isNextData 
+  const { allowed, remaining, resetAt } = isNextData
     ? { allowed: true, remaining: 100, resetAt: 0 }
-    : await checkRateLimit(
-        rateLimitKey,
-        rateLimitMax,
-        rateLimitWindow
-      )
+    : await checkRateLimit(rateLimitKey, rateLimitMax, rateLimitWindow)
 
   if (!allowed) {
     const response = NextResponse.json(
