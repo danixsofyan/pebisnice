@@ -2,11 +2,16 @@
 
 ## Urutan
 
-| File                        | Isi                                                                                                                 |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `0000_goofy_jimmy_woo.sql`  | Baseline seluruh tabel v1.0                                                                                         |
-| `0001_ambiguous_iceman.sql` | Standarisasi ke `docs/db-standards.md`: TIMESTAMPTZ, NUMERIC(18,2), kolom siklus hidup, `project_id`, partial index |
-| `0002_triggers_and_rls.sql` | Trigger `updated_at`, immutability audit & movements, policy RLS                                                    |
+| File                                            | Isi                                                                                                                  |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `0000_goofy_jimmy_woo.sql`                      | Baseline seluruh tabel v1.0                                                                                          |
+| `0001_ambiguous_iceman.sql`                     | Standarisasi ke `docs/db-standards.md`: TIMESTAMPTZ, NUMERIC(18,2), kolom siklus hidup, `project_id`, partial index  |
+| `0002_branches_and_branch_scoped_inventory.sql` | Tabel `branches`; `inventory` & `inventory_movements` ter-scope cabang; `stores.branch_id`, `team_members.branch_id` |
+| `0003_triggers_and_rls.sql`                     | Trigger `updated_at`, immutability audit & movements, policy RLS                                                     |
+
+Migration kustom (`0003`) terdaftar manual di `meta/_journal.json` — file SQL saja tidak cukup, `drizzle-kit migrate` hanya menjalankan yang tercatat di journal.
+
+RLS sengaja ditempatkan **setelah** `branches` dibuat agar tabel itu ikut mendapat policy.
 
 ## Database produksi belum punya riwayat migration
 
@@ -40,6 +45,17 @@ Sebelum migrasi pertama, `0000` harus ditandai sudah diterapkan (baseline). Dua 
 `0001` mengubah kolom waktu ke `TIMESTAMPTZ` dengan `USING kolom AT TIME ZONE 'UTC'`. Ini benar bila nilai lama ditulis oleh JavaScript `Date` lewat postgres.js — dan memang begitu. Jika ada data yang pernah dimasukkan manual dengan waktu lokal Jakarta, nilainya akan bergeser 7 jam. Periksa satu-dua baris `transactions.order_date` setelah migrasi.
 
 `quantity_after` di `inventory_movements` direkonstruksi sebagai saldo berjalan `SUM(qty) OVER (PARTITION BY product_variant_id ORDER BY created_at, id)`. Ini mengasumsikan `qty` adalah delta bertanda. Bila tabel masih kosong, tidak ada yang perlu diperiksa.
+
+## Yang perlu diperiksa setelah `0002`
+
+Setiap project non-arsip otomatis mendapat cabang **Pusat** (`code = 'PUSAT'`), dan seluruh baris `inventory`, `inventory_movements`, serta `stores` yang sudah ada diarahkan ke sana. Verifikasi tidak ada yang tertinggal:
+
+```sql
+SELECT COUNT(*) FROM inventory WHERE branch_id IS NULL;
+SELECT COUNT(*) FROM inventory_movements WHERE branch_id IS NULL;
+```
+
+Keduanya harus 0. Bila tidak, ada project yang sudah di-soft-delete tapi masih punya stok — putuskan cabangnya secara manual sebelum melanjutkan ke `0003`.
 
 ## RLS baru aktif dengan role terbatas
 

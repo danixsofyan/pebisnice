@@ -23,7 +23,7 @@ DECLARE
     target TEXT;
 BEGIN
     FOREACH target IN ARRAY ARRAY[
-        'users', 'projects', 'stores', 'products', 'product_variants',
+        'users', 'projects', 'branches', 'stores', 'products', 'product_variants',
         'transactions', 'inventory', 'team_members', 'file_uploads'
     ] LOOP
         EXECUTE format('DROP TRIGGER IF EXISTS trg_%s_updated_at ON %I', target, target);
@@ -77,7 +77,7 @@ DECLARE
     target TEXT;
 BEGIN
     FOREACH target IN ARRAY ARRAY[
-        'stores', 'products', 'product_variants', 'transactions',
+        'branches', 'stores', 'products', 'product_variants', 'transactions',
         'transaction_fees', 'transaction_items', 'inventory',
         'inventory_movements', 'team_members', 'file_uploads'
     ] LOOP
