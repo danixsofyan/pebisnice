@@ -3,9 +3,9 @@ import {
   type TransactionFilter,
   type NewTransaction,
 } from '@/lib/repositories/transaction.repository'
-import { db } from '@/lib/db'
 import { stores } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { withTenant } from '@/lib/db/tenant'
+import { eq, and, isNull } from 'drizzle-orm'
 import { NotFoundError } from '@/lib/errors/app-error'
 import { auditRepository } from '@/lib/repositories/audit.repository'
 import { requirePermission } from '@/lib/rbac'
@@ -16,15 +16,21 @@ export class TransactionService {
     return transactionRepository.findByProjectWithAuth(filter)
   }
 
-  async syncTransactionsForStore(storeId: string, transactions: NewTransaction[]) {
-    const storeExists = await db
-      .select({ id: stores.id })
-      .from(stores)
-      .where(eq(stores.id, storeId))
-      .limit(1)
+  async syncTransactionsForStore(
+    projectId: string,
+    storeId: string,
+    transactions: NewTransaction[]
+  ) {
+    const storeExists = await withTenant(projectId, (tx) =>
+      tx
+        .select({ id: stores.id })
+        .from(stores)
+        .where(and(eq(stores.id, storeId), isNull(stores.deletedAt)))
+        .limit(1)
+    )
     if (storeExists.length === 0) throw new NotFoundError('Store tidak ditemukan')
 
-    const result = await transactionRepository.upsertMany(transactions)
+    const result = await transactionRepository.upsertMany(projectId, transactions)
     logger.info(
       { storeId, inserted: result.inserted, skipped: result.skipped },
       'Transactions synced'

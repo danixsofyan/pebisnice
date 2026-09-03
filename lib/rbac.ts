@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
+import { withTenant } from '@/lib/db/tenant'
 import { teamMembers, projects } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { ForbiddenError } from '@/lib/errors/app-error'
 
 import { hasRolePermission } from '@/lib/authz/permissions'
@@ -16,23 +17,26 @@ export async function checkPermission(
   const [project] = await db
     .select({ userId: projects.userId })
     .from(projects)
-    .where(eq(projects.id, projectId))
+    .where(and(eq(projects.id, projectId), isNull(projects.deletedAt)))
     .limit(1)
 
   if (!project) return false
   if (project.userId === userId) return true
 
-  const [member] = await db
-    .select({ role: teamMembers.role })
-    .from(teamMembers)
-    .where(
-      and(
-        eq(teamMembers.projectId, projectId),
-        eq(teamMembers.userId, userId),
-        eq(teamMembers.status, 'active')
+  const [member] = await withTenant(projectId, (tx) =>
+    tx
+      .select({ role: teamMembers.role })
+      .from(teamMembers)
+      .where(
+        and(
+          eq(teamMembers.projectId, projectId),
+          eq(teamMembers.userId, userId),
+          eq(teamMembers.status, 'active'),
+          isNull(teamMembers.deletedAt)
+        )
       )
-    )
-    .limit(1)
+      .limit(1)
+  )
 
   if (!member) return false
   return hasRolePermission(member.role, permission)

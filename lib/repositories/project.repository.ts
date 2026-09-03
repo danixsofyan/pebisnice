@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from 'drizzle-orm'
+import { eq, and, desc, sql, isNull } from 'drizzle-orm'
 import { projects } from '@/lib/db/schema'
 import { BaseRepository } from './base.repository'
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
@@ -12,7 +12,9 @@ export class ProjectRepository extends BaseRepository {
     return this.db
       .select()
       .from(projects)
-      .where(and(eq(projects.userId, userId), eq(projects.isArchived, false)))
+      .where(
+        and(eq(projects.userId, userId), eq(projects.isArchived, false), isNull(projects.deletedAt))
+      )
       .orderBy(desc(projects.createdAt))
   }
 
@@ -21,6 +23,7 @@ export class ProjectRepository extends BaseRepository {
       SELECT p.* FROM projects p
       WHERE p.id = ${id}
         AND p.is_archived = false
+        AND p.deleted_at IS NULL
         AND (
           p.user_id = ${userId}
           OR EXISTS (
@@ -28,6 +31,7 @@ export class ProjectRepository extends BaseRepository {
             WHERE tm.project_id = p.id
               AND tm.user_id = ${userId}
               AND tm.status = 'active'
+              AND tm.deleted_at IS NULL
           )
         )
       LIMIT 1
@@ -45,7 +49,7 @@ export class ProjectRepository extends BaseRepository {
     const [updated] = await this.db
       .update(projects)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(projects.id, id), eq(projects.isArchived, false)))
+      .where(and(eq(projects.id, id), eq(projects.isArchived, false), isNull(projects.deletedAt)))
       .returning()
     return updated ?? null
   }
@@ -54,7 +58,7 @@ export class ProjectRepository extends BaseRepository {
     const result = await this.db
       .update(projects)
       .set({ isArchived: true, updatedAt: new Date() })
-      .where(and(eq(projects.id, id), eq(projects.isArchived, false)))
+      .where(and(eq(projects.id, id), eq(projects.isArchived, false), isNull(projects.deletedAt)))
       .returning({ id: projects.id })
     return result.length > 0
   }
