@@ -34,8 +34,26 @@ const IMMUTABLE_TABLES = ['auditLogs', 'inventoryMovements']
 const CHILD_TABLES = ['transactionFees', 'transactionItems']
 
 describe('kepatuhan skema terhadap db-standards.md', () => {
-  it('menemukan seluruh tabel', () => {
-    expect(TABLES.length).toBe(16)
+  it('menemukan seluruh tabel yang diharapkan', () => {
+    expect(TABLES.map(([name]) => name).sort()).toEqual([
+      'accounts',
+      'auditLogs',
+      'branches',
+      'fileUploads',
+      'inventory',
+      'inventoryMovements',
+      'productVariants',
+      'products',
+      'projects',
+      'sessions',
+      'stores',
+      'teamMembers',
+      'transactionFees',
+      'transactionItems',
+      'transactions',
+      'users',
+      'verificationTokens',
+    ])
   })
 
   it('memakai NUMERIC(18,2) untuk setiap kolom uang (§2)', () => {
@@ -96,8 +114,16 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
     }
   })
 
+  it('menyematkan branch_id di tabel yang ter-scope cabang', () => {
+    for (const tableName of ['inventory', 'inventoryMovements']) {
+      const names = columnsOf(tableByName(tableName)).map((c) => c.name)
+      expect(names, `${tableName} butuh branch_id`).toContain('branch_id')
+    }
+  })
+
   it('menyematkan project_id di setiap tabel bisnis ter-scope tenant', () => {
     const tenantScoped = [
+      'branches',
       'stores',
       'products',
       'productVariants',
