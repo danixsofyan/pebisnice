@@ -78,3 +78,6 @@ export const paymentMethodEnum = pgEnum('payment_method', [
 ])
 
 export const cashSessionStatusEnum = pgEnum('cash_session_status', ['open', 'closed'])
+
+/** `finished` = siap jual, `material` = bahan yang dipakai produksi. */
+export const productTypeEnum = pgEnum('product_type', ['finished', 'material'])

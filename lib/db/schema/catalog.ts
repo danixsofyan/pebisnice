@@ -1,7 +1,7 @@
 import { boolean, index, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { actorColumns, tenantColumn } from './columns'
-import { platformEnum } from './enums'
+import { platformEnum, productTypeEnum } from './enums'
 import { lifecycleColumns, money, tz } from './primitives'
 
 export const products = pgTable(
@@ -9,6 +9,7 @@ export const products = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ...tenantColumn,
+    type: productTypeEnum('type').default('finished').notNull(),
     platformProductId: text('platform_product_id'),
     platform: platformEnum('platform'),
     sku: text('sku'),
@@ -20,6 +21,9 @@ export const products = pgTable(
   (t) => [
     index('products_project_id_idx')
       .on(t.projectId)
+      .where(sql`${t.deletedAt} is null`),
+    index('products_type_idx')
+      .on(t.projectId, t.type)
       .where(sql`${t.deletedAt} is null`),
     index('products_created_by_idx').on(t.createdBy),
     index('products_updated_by_idx').on(t.updatedBy),
