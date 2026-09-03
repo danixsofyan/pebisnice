@@ -12,7 +12,18 @@ export const orderStatusEnum = pgEnum('order_status', [
 
 export const calcMethodEnum = pgEnum('calc_method', ['income_based', 'order_based'])
 
-export const teamRoleEnum = pgEnum('team_role', ['owner', 'admin', 'finance', 'operator'])
+// `operator` dipertahankan sebagai peran warisan v1.0 (pengunggah data).
+// Menghapus nilai enum Postgres mahal dan berisiko, sementara barisnya masih
+// dipakai — jadi dibiarkan hidup berdampingan dengan peran baru.
+export const teamRoleEnum = pgEnum('team_role', [
+  'owner',
+  'admin',
+  'manager',
+  'finance',
+  'cashier',
+  'production',
+  'operator',
+])
 
 export const teamStatusEnum = pgEnum('team_status', ['active', 'invited', 'disabled'])
 
