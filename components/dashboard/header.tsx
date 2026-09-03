@@ -1,9 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
-import { Search, Bell, Moon, Sun, ChevronDown, LogOut, User as UserIcon, Settings as SettingsIcon } from 'lucide-react'
+import {
+  Search,
+  Bell,
+  Moon,
+  Sun,
+  ChevronDown,
+  LogOut,
+  User as UserIcon,
+  Settings as SettingsIcon,
+} from 'lucide-react'
 import { useTheme } from 'next-themes'
 import {
   DropdownMenu,
@@ -17,32 +25,29 @@ import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import { User } from 'next-auth'
 import Link from 'next/link'
+import { useMounted } from '@/hooks/use-mounted'
 
 export function DashboardHeader({ user }: { user?: User | undefined }) {
   const { setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const mounted = useMounted()
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-8">
+    <header className="border-border bg-background/80 flex h-16 shrink-0 items-center justify-between border-b px-4 backdrop-blur-md md:px-8">
       <div className="flex flex-1 items-center gap-2 overflow-hidden md:gap-4">
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden items-center gap-2 md:flex">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg">
             <span className="font-bold">P</span>
           </div>
           <span className="text-sm font-bold tracking-tight">Pebisnice</span>
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
-          <button className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-1.5 text-sm font-medium">
+          <button className="border-border bg-muted flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium">
             <span>Main Store</span>
             <ChevronDown className="size-4 opacity-50" />
           </button>
@@ -51,9 +56,9 @@ export function DashboardHeader({ user }: { user?: User | undefined }) {
 
       <div className="flex flex-shrink-0 items-center gap-2 md:gap-4">
         <div className="relative hidden md:block">
-          <Search className="absolute top-1/2 left-3 size-5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 size-5 -translate-y-1/2" />
           <input
-            className="focus:ring-primary w-64 rounded-lg border-none bg-muted py-2 pr-4 pl-10 text-sm transition-shadow outline-none focus:ring-2"
+            className="focus:ring-primary bg-muted w-64 rounded-lg border-none py-2 pr-4 pl-10 text-sm transition-shadow outline-none focus:ring-2"
             placeholder="Search analytics..."
             type="text"
           />
@@ -114,8 +119,10 @@ export function DashboardHeader({ user }: { user?: User | undefined }) {
                   )}
                 </div>
                 <div className="hidden flex-col items-start px-1 md:flex">
-                  <span className="text-xs font-bold leading-none">{user?.name || 'Admin'}</span>
-                  <span className="text-[10px] leading-none text-slate-500 dark:text-slate-400 mt-1">Owner</span>
+                  <span className="text-xs leading-none font-bold">{user?.name || 'Admin'}</span>
+                  <span className="mt-1 text-[10px] leading-none text-slate-500 dark:text-slate-400">
+                    Owner
+                  </span>
                 </div>
                 <ChevronDown className="hidden size-3.5 text-slate-400 md:block" />
               </button>
@@ -123,7 +130,9 @@ export function DashboardHeader({ user }: { user?: User | undefined }) {
             <DropdownMenuContent align="end" className="w-56" sideOffset={8}>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1 py-1">
-                  <p className="text-sm font-semibold leading-none">{user?.name || 'Admin Pebisnice'}</p>
+                  <p className="text-sm leading-none font-semibold">
+                    {user?.name || 'Admin Pebisnice'}
+                  </p>
                   <p className="text-xs leading-none text-slate-500 dark:text-slate-400">
                     {user?.email || 'admin@pebisnice.com'}
                   </p>
@@ -143,7 +152,7 @@ export function DashboardHeader({ user }: { user?: User | undefined }) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700 dark:text-red-400 dark:focus:bg-red-950/50"
                 onClick={() => signOut({ callbackUrl: '/login' })}
               >
@@ -153,7 +162,7 @@ export function DashboardHeader({ user }: { user?: User | undefined }) {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <div className="size-8 w-24 rounded-lg bg-muted animate-pulse" />
+          <div className="bg-muted size-8 w-24 animate-pulse rounded-lg" />
         )}
       </div>
     </header>

@@ -3,11 +3,20 @@
 import { useEffect } from 'react'
 import Script from 'next/script'
 
+interface UnicornStudioApi {
+  isInitialized?: boolean
+  init: () => void
+}
+
+function getUnicornStudio(): UnicornStudioApi | undefined {
+  return (window as Window & { UnicornStudio?: UnicornStudioApi }).UnicornStudio
+}
+
 export function UnicornLoader() {
   useEffect(() => {
-    const win = window as any
-    if (win.UnicornStudio?.isInitialized) {
-      win.UnicornStudio.init()
+    const unicornStudio = getUnicornStudio()
+    if (unicornStudio?.isInitialized) {
+      unicornStudio.init()
     }
   }, [])
 
@@ -15,13 +24,11 @@ export function UnicornLoader() {
     <Script
       src="https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v1.4.29/dist/unicornStudio.umd.js"
       onLoad={() => {
-        const win = window as any
-        if (win.UnicornStudio && !win.UnicornStudio.isInitialized) {
-          win.UnicornStudio.init()
-          win.UnicornStudio.isInitialized = true
-        } else if (win.UnicornStudio) {
-          win.UnicornStudio.init()
-        }
+        const unicornStudio = getUnicornStudio()
+        if (!unicornStudio) return
+
+        unicornStudio.init()
+        unicornStudio.isInitialized = true
       }}
       strategy="afterInteractive"
     />
