@@ -1,6 +1,4 @@
-import createDOMPurify from 'isomorphic-dompurify'
-
-const DOMPurify = createDOMPurify()
+import DOMPurify from 'isomorphic-dompurify'
 
 const PLAIN_TEXT_CONFIG = {
   ALLOWED_TAGS: [],
