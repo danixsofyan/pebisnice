@@ -31,7 +31,7 @@ const AUTH_TABLES = ['users', 'accounts', 'sessions', 'verificationTokens']
 const IMMUTABLE_TABLES = ['auditLogs', 'inventoryMovements']
 
 // Baris anak yang ikut terhapus bersama induknya lewat ON DELETE CASCADE.
-const CHILD_TABLES = ['transactionFees', 'transactionItems']
+const CHILD_TABLES = ['transactionFees', 'transactionItems', 'productionMaterials']
 
 describe('kepatuhan skema terhadap db-standards.md', () => {
   it('menemukan seluruh tabel yang diharapkan', () => {
@@ -44,6 +44,8 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'inventory',
       'inventoryMovements',
       'productVariants',
+      'productionLogs',
+      'productionMaterials',
       'products',
       'projects',
       'sessions',
@@ -134,6 +136,8 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'transactionItems',
       'inventory',
       'inventoryMovements',
+      'productionLogs',
+      'productionMaterials',
       'teamMembers',
       'fileUploads',
     ]
