@@ -65,3 +65,16 @@ export const auditActionEnum = pgEnum('audit_action', [
   'sync',
   'invite',
 ])
+
+/** Sumber penjualan. `marketplace` disinkron API/import, `pos` dari kasir. */
+export const salesChannelEnum = pgEnum('sales_channel', ['marketplace', 'pos'])
+
+export const paymentMethodEnum = pgEnum('payment_method', [
+  'cash',
+  'transfer',
+  'qris',
+  'card',
+  'other',
+])
+
+export const cashSessionStatusEnum = pgEnum('cash_session_status', ['open', 'closed'])

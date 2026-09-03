@@ -1,19 +1,33 @@
 import { index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
+import { users } from './auth'
+import { branches } from './branches'
+import { cashSessions } from './cash-sessions'
 import { productVariants } from './catalog'
 import { stores } from './channels'
 import { actorColumns, tenantColumn } from './columns'
-import { feeTypeEnum, orderStatusEnum } from './enums'
+import { feeTypeEnum, orderStatusEnum, paymentMethodEnum, salesChannelEnum } from './enums'
 import { lifecycleColumns, money, tz } from './primitives'
 
+/**
+ * Satu tabel untuk dua channel penjualan.
+ *
+ * `marketplace` mengisi `store_id`; `pos` mengisi `branch_id` dan
+ * `cash_session_id`. CHECK constraint di migration menegakkan pasangan yang
+ * benar supaya baris setengah jadi tidak mungkin tersimpan.
+ */
 export const transactions = pgTable(
   'transactions',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ...tenantColumn,
-    storeId: uuid('store_id')
-      .references(() => stores.id, { onDelete: 'cascade' })
-      .notNull(),
+    channel: salesChannelEnum('channel').default('marketplace').notNull(),
+    storeId: uuid('store_id').references(() => stores.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id').references(() => branches.id, { onDelete: 'restrict' }),
+    cashSessionId: uuid('cash_session_id').references(() => cashSessions.id, {
+      onDelete: 'restrict',
+    }),
+    paymentMethod: paymentMethodEnum('payment_method'),
     orderId: text('order_id').notNull(),
     orderDate: tz('order_date').notNull(),
     settlementDate: tz('settlement_date'),
@@ -22,6 +36,11 @@ export const transactions = pgTable(
     discountAmount: money('discount_amount').default('0').notNull(),
     netAmount: money('net_amount').notNull(),
     totalFees: money('total_fees').default('0').notNull(),
+    paidAmount: money('paid_amount'),
+    changeAmount: money('change_amount'),
+    voidedAt: tz('voided_at'),
+    voidedBy: text('voided_by').references(() => users.id, { onDelete: 'set null' }),
+    voidReason: text('void_reason'),
     rawData: jsonb('raw_data'),
     ...actorColumns,
     ...lifecycleColumns,
@@ -35,11 +54,22 @@ export const transactions = pgTable(
       .where(sql`${t.deletedAt} is null`),
     index('tx_order_date_idx').on(t.orderDate.desc()),
     index('tx_settlement_date_idx').on(t.settlementDate.desc()),
+    index('tx_channel_idx')
+      .on(t.projectId, t.channel)
+      .where(sql`${t.deletedAt} is null`),
+    index('tx_branch_id_idx')
+      .on(t.branchId)
+      .where(sql`${t.deletedAt} is null`),
+    index('tx_cash_session_id_idx').on(t.cashSessionId),
+    index('tx_voided_by_idx').on(t.voidedBy),
     index('tx_created_by_idx').on(t.createdBy),
     index('tx_updated_by_idx').on(t.updatedBy),
     uniqueIndex('tx_store_order_unique')
       .on(t.storeId, t.orderId)
-      .where(sql`${t.deletedAt} is null`),
+      .where(sql`${t.deletedAt} is null and ${t.storeId} is not null`),
+    uniqueIndex('tx_project_order_unique')
+      .on(t.projectId, t.orderId)
+      .where(sql`${t.deletedAt} is null and ${t.channel} = 'pos'`),
   ]
 )
 
