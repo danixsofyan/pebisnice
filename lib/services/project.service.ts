@@ -6,17 +6,9 @@ import { sanitizeText } from '@/lib/security/sanitizer'
 import { logger } from '@/lib/logging/logger'
 import { revalidatePath } from 'next/cache'
 
-export interface CreateProjectInput {
-  name: string
-  description?: string
-  defaultCalcMethod: 'income_based' | 'order_based'
-}
+import type { CreateProjectInput, UpdateProjectInput } from '@/lib/domain/validators/project.schema'
 
-export interface UpdateProjectInput {
-  name?: string
-  description?: string
-  defaultCalcMethod?: 'income_based' | 'order_based'
-}
+export type { CreateProjectInput, UpdateProjectInput }
 
 export class ProjectService {
   async getAll(userId: string) {
@@ -73,7 +65,7 @@ export class ProjectService {
     if (input.description !== undefined) sanitized.description = sanitizeText(input.description)
     if (input.defaultCalcMethod !== undefined) sanitized.defaultCalcMethod = input.defaultCalcMethod
 
-    const updated = await projectRepository.update(projectId, userId, sanitized)
+    const updated = await projectRepository.update(projectId, sanitized)
     if (!updated) throw new NotFoundError('Project tidak ditemukan')
 
     await auditRepository.log({
@@ -98,7 +90,7 @@ export class ProjectService {
     if (project.userId !== userId)
       throw new ForbiddenError('Hanya owner yang dapat mengarsipkan project')
 
-    const success = await projectRepository.archive(projectId, userId)
+    const success = await projectRepository.archive(projectId)
     if (!success) throw new AppError('Gagal mengarsipkan project')
 
     await auditRepository.log({

@@ -5,6 +5,7 @@ import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
 
 export type Project = InferSelectModel<typeof projects>
 export type NewProject = InferInsertModel<typeof projects>
+export type ProjectUpdate = { [K in keyof NewProject]?: NewProject[K] | undefined }
 
 export class ProjectRepository extends BaseRepository {
   async findAllByUser(userId: string): Promise<Project[]> {
@@ -40,21 +41,22 @@ export class ProjectRepository extends BaseRepository {
     return project!
   }
 
-  async update(id: string, userId: string, data: Partial<NewProject>): Promise<Project | null> {
+  async update(id: string, data: ProjectUpdate): Promise<Project | null> {
     const [updated] = await this.db
       .update(projects)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(projects.id, id), eq(projects.userId, userId)))
+      .where(and(eq(projects.id, id), eq(projects.isArchived, false)))
       .returning()
     return updated ?? null
   }
 
-  async archive(id: string, userId: string): Promise<boolean> {
+  async archive(id: string): Promise<boolean> {
     const result = await this.db
       .update(projects)
       .set({ isArchived: true, updatedAt: new Date() })
-      .where(and(eq(projects.id, id), eq(projects.userId, userId)))
-    return (result as unknown as { rowCount: number }).rowCount > 0
+      .where(and(eq(projects.id, id), eq(projects.isArchived, false)))
+      .returning({ id: projects.id })
+    return result.length > 0
   }
 }
 

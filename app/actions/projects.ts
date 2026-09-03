@@ -25,7 +25,7 @@ export async function createProjectAction(formData: FormData) {
     const ip = headersList.get('x-forwarded-for')?.split(',')[0] || 'unknown'
     const userAgent = headersList.get('user-agent') || 'unknown'
 
-    const project = await projectService.create(user.id, parseResult.data as any, { ip, userAgent })
+    const project = await projectService.create(user.id, parseResult.data, { ip, userAgent })
 
     return { success: true as const, data: project }
   } catch (error) {
@@ -52,7 +52,7 @@ export async function updateProjectAction(projectId: string, formData: FormData)
     const ip = headersList.get('x-forwarded-for')?.split(',')[0] || 'unknown'
     const userAgent = headersList.get('user-agent') || 'unknown'
 
-    const project = await projectService.update(projectId, user.id, parseResult.data as any, {
+    const project = await projectService.update(projectId, user.id, parseResult.data, {
       ip,
       userAgent,
     })
