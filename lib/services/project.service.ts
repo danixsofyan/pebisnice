@@ -33,7 +33,7 @@ export class ProjectService {
       defaultCalcMethod: input.defaultCalcMethod,
     }
 
-    const project = await projectRepository.create(sanitized)
+    const project = await projectRepository.createWithDefaultBranch(sanitized)
 
     await auditRepository.log({
       action: 'create',

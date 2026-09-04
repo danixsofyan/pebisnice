@@ -1,5 +1,5 @@
 import { eq, and, desc, sql, isNull } from 'drizzle-orm'
-import { projects } from '@/lib/db/schema'
+import { branches, projects } from '@/lib/db/schema'
 import { BaseRepository } from './base.repository'
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
 
@@ -40,9 +40,29 @@ export class ProjectRepository extends BaseRepository {
     return (result as unknown as { rows: Project[] }).rows[0] ?? null
   }
 
-  async create(data: NewProject): Promise<Project> {
-    const [project] = await this.db.insert(projects).values(data).returning()
-    return project!
+  /**
+   * Membuat project beserta cabang pertamanya dalam satu transaksi.
+   *
+   * Setiap project wajib punya minimal satu cabang — stok, POS, dan produksi
+   * semuanya ter-scope cabang. Tanpa ini, project baru akan lahir dalam
+   * kondisi tidak bisa dipakai. Project lama mendapat cabang "Pusat" lewat
+   * migration 0002; ini padanannya untuk project baru.
+   */
+  async createWithDefaultBranch(data: NewProject): Promise<Project> {
+    return this.db.transaction(async (tx) => {
+      const [project] = await tx.insert(projects).values(data).returning()
+      const created = project!
+
+      await tx.insert(branches).values({
+        projectId: created.id,
+        name: 'Pusat',
+        code: 'PUSAT',
+        createdBy: data.userId,
+        updatedBy: data.userId,
+      })
+
+      return created
+    })
   }
 
   async update(id: string, data: ProjectUpdate): Promise<Project | null> {
