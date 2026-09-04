@@ -5,27 +5,70 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createProductAction, uploadProductImageAction } from '@/app/actions/catalog'
+import {
+  createProductAction,
+  discardUnsavedImageAction,
+  updateProductAction,
+  uploadProductImageAction,
+} from '@/app/actions/catalog'
 import { IMAGE_ACCEPT } from '@/lib/domain/media/image'
+import { fileProxyUrl } from '@/lib/storage'
+
+export interface EditableProduct {
+  productId: string
+  name: string
+  type: 'finished' | 'material'
+  sku: string | null
+  variantName: string | null
+  /** String desimal, atau null bila peran tak boleh melihat HPP. */
+  hpp: string | null
+  imageKey: string | null
+}
+
+interface ProductFormProps {
+  branchId: string
+  canViewCost: boolean
+  /** Bila diisi, form berjalan dalam mode edit. */
+  product?: EditableProduct
+  /** Mode edit: dipanggil saat selesai atau batal, agar induk menutup form. */
+  onClose?: () => void
+}
 
 /**
- * Form tambah produk. Field HPP hanya ditampilkan untuk peran yang berhak —
- * dan bahkan bila dikirim paksa, service tetap mengabaikannya.
+ * Form tambah/ubah produk.
+ *
+ * Field HPP hanya tampil untuk peran berhak — dan bila dikirim paksa pun,
+ * service tetap mengabaikannya. Foto diunggah saat dipilih; kunci yang belum
+ * jadi disimpan dibuang saat pengguna mengganti pilihan atau membatalkan, agar
+ * tidak menjadi berkas yatim.
  */
-export function ProductForm({ branchId, canViewCost }: { branchId: string; canViewCost: boolean }) {
+export function ProductForm({ branchId, canViewCost, product, onClose }: ProductFormProps) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [type, setType] = useState<'finished' | 'material'>('finished')
-  const [sku, setSku] = useState('')
-  const [variantName, setVariantName] = useState('')
-  const [hpp, setHpp] = useState('')
+  const isEdit = Boolean(product)
+  const savedKey = product?.imageKey ?? null
+
+  const [open, setOpen] = useState(isEdit)
+  const [name, setName] = useState(product?.name ?? '')
+  const [type, setType] = useState<'finished' | 'material'>(product?.type ?? 'finished')
+  const [sku, setSku] = useState(product?.sku ?? '')
+  const [variantName, setVariantName] = useState(product?.variantName ?? '')
+  const [hpp, setHpp] = useState(product?.hpp ?? '')
   const [initialStock, setInitialStock] = useState('')
-  const [imageKey, setImageKey] = useState<string | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
+
+  const [imageKey, setImageKey] = useState<string | null>(savedKey)
+  const [unsavedKey, setUnsavedKey] = useState<string | null>(null)
+  const [preview, setPreview] = useState<string | null>(savedKey ? fileProxyUrl(savedKey) : null)
   const [isUploading, setUploading] = useState(false)
+
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  function replacePreview(next: string | null) {
+    setPreview((previous) => {
+      if (previous?.startsWith('blob:')) URL.revokeObjectURL(previous)
+      return next
+    })
+  }
 
   async function handleFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -34,6 +77,9 @@ export function ProductForm({ branchId, canViewCost }: { branchId: string; canVi
     setError(null)
     setUploading(true)
     try {
+      // Buang unggahan sebelumnya yang belum tersimpan sebelum menaruh yang baru.
+      if (unsavedKey) await discardUnsavedImageAction(unsavedKey)
+
       const data = new FormData()
       data.set('file', file)
       const result = await uploadProductImageAction(data)
@@ -44,31 +90,46 @@ export function ProductForm({ branchId, canViewCost }: { branchId: string; canVi
       }
 
       setImageKey(result.data.imageKey)
-      // Pratinjau dari berkas lokal supaya tidak perlu bolak-balik ke server.
-      setPreview((previous) => {
-        if (previous) URL.revokeObjectURL(previous)
-        return URL.createObjectURL(file)
-      })
+      setUnsavedKey(result.data.imageKey)
+      replacePreview(URL.createObjectURL(file))
     } finally {
       setUploading(false)
     }
   }
 
-  function clearImage() {
+  async function removeImage() {
+    if (unsavedKey) await discardUnsavedImageAction(unsavedKey)
+    setUnsavedKey(null)
     setImageKey(null)
-    setPreview((previous) => {
-      if (previous) URL.revokeObjectURL(previous)
-      return null
-    })
+    replacePreview(null)
   }
 
-  function resetForm() {
+  async function discardPending() {
+    // Kunci yang diunggah sesi ini dan belum jadi foto tersimpan.
+    if (unsavedKey && unsavedKey !== savedKey) {
+      await discardUnsavedImageAction(unsavedKey)
+    }
+  }
+
+  function resetCreateForm() {
     setName('')
     setSku('')
     setVariantName('')
     setHpp('')
     setInitialStock('')
-    clearImage()
+    setImageKey(null)
+    setUnsavedKey(null)
+    replacePreview(null)
+  }
+
+  async function cancel() {
+    await discardPending()
+    if (isEdit) {
+      onClose?.()
+    } else {
+      resetCreateForm()
+      setOpen(false)
+    }
   }
 
   function submit(event: React.FormEvent) {
@@ -76,24 +137,41 @@ export function ProductForm({ branchId, canViewCost }: { branchId: string; canVi
     setError(null)
 
     startTransition(async () => {
-      const result = await createProductAction({
-        branchId,
-        name,
-        type,
-        sku: sku.trim() || undefined,
-        variantName: variantName.trim() || undefined,
-        hpp: Number(hpp || 0).toFixed(2),
-        initialStock: Number(initialStock || 0),
-        imageKey: imageKey ?? undefined,
-      })
+      const result = isEdit
+        ? await updateProductAction({
+            productId: product!.productId,
+            name,
+            type,
+            sku: sku.trim() || undefined,
+            variantName: variantName.trim() || undefined,
+            hpp: Number(hpp || 0).toFixed(2),
+            imageKey,
+          })
+        : await createProductAction({
+            branchId,
+            name,
+            type,
+            sku: sku.trim() || undefined,
+            variantName: variantName.trim() || undefined,
+            hpp: Number(hpp || 0).toFixed(2),
+            initialStock: Number(initialStock || 0),
+            imageKey: imageKey ?? undefined,
+          })
 
       if (!result.success) {
         setError(result.error)
         return
       }
 
-      resetForm()
-      setOpen(false)
+      // Tersimpan: kunci ini bukan lagi yatim.
+      setUnsavedKey(null)
+
+      if (isEdit) {
+        onClose?.()
+      } else {
+        resetCreateForm()
+        setOpen(false)
+      }
       router.refresh()
     })
   }
@@ -157,23 +235,25 @@ export function ProductForm({ branchId, canViewCost }: { branchId: string; canVi
           </div>
         ) : null}
 
-        <div className="space-y-2">
-          <Label htmlFor="p-stock">Stok awal</Label>
-          <Input
-            id="p-stock"
-            value={initialStock}
-            onChange={(e) => setInitialStock(e.target.value)}
-            inputMode="numeric"
-            placeholder="0"
-          />
-        </div>
+        {!isEdit ? (
+          <div className="space-y-2">
+            <Label htmlFor="p-stock">Stok awal</Label>
+            <Input
+              id="p-stock"
+              value={initialStock}
+              onChange={(e) => setInitialStock(e.target.value)}
+              inputMode="numeric"
+              placeholder="0"
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="p-image">Foto (opsional)</Label>
         <div className="flex items-center gap-3">
           {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element -- pratinjau blob lokal, bukan aset yang perlu next/image
+            // eslint-disable-next-line @next/next/no-img-element -- pratinjau blob lokal / proxy dinamis, bukan aset next/image
             <img
               src={preview}
               alt="Pratinjau foto produk"
@@ -198,7 +278,7 @@ export function ProductForm({ branchId, canViewCost }: { branchId: string; canVi
             ) : imageKey ? (
               <button
                 type="button"
-                onClick={clearImage}
+                onClick={removeImage}
                 className="text-muted-foreground hover:text-destructive text-xs underline"
               >
                 Hapus foto
@@ -220,7 +300,7 @@ export function ProductForm({ branchId, canViewCost }: { branchId: string; canVi
         <Button type="submit" disabled={isPending || isUploading || name.trim().length === 0}>
           {isPending ? 'Menyimpan…' : 'Simpan'}
         </Button>
-        <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+        <Button type="button" variant="outline" onClick={cancel} disabled={isPending}>
           Batal
         </Button>
       </div>

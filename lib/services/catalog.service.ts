@@ -10,9 +10,9 @@ import { COST_PERMISSION } from '@/lib/authz/permissions'
 import { sanitizeText } from '@/lib/security/sanitizer'
 import { logger } from '@/lib/logging/logger'
 import { inspectImage } from '@/lib/domain/media/image'
-import { putObject } from '@/lib/storage/object-store'
-import { buildObjectKey } from '@/lib/storage/object-key'
-import { ValidationError } from '@/lib/errors/app-error'
+import { deleteObject, putObject } from '@/lib/storage/object-store'
+import { buildObjectKey, objectKeyBelongsToProject } from '@/lib/storage/object-key'
+import { NotFoundError, ValidationError } from '@/lib/errors/app-error'
 
 export type ProductType = 'finished' | 'material'
 
@@ -27,6 +27,19 @@ export interface CreateProductRequest {
   hpp: Money
   initialStock: number
   /** Kunci objek foto yang sudah diunggah lebih dulu. */
+  imageKey: string | null
+}
+
+export interface UpdateProductRequest {
+  projectId: string
+  productId: string
+  name: string
+  type: ProductType
+  sku: string | null
+  variantName: string | null
+  /** HPP baru. Hanya diterapkan bila pemanggil punya `cost:view`. */
+  hpp: Money
+  /** Kunci foto: sama seperti sebelumnya, kunci baru, atau null untuk menghapus. */
   imageKey: string | null
 }
 
@@ -153,6 +166,118 @@ export class CatalogService {
     logger.info({ projectId, key }, 'product image uploaded')
 
     return { key }
+  }
+
+  /**
+   * Menghapus foto yang sudah terunggah tetapi produknya belum tersimpan —
+   * dipanggil saat pengguna mengganti pilihan atau membatalkan form.
+   *
+   * Menolak dua hal demi keamanan: kunci milik project lain, dan kunci yang
+   * ternyata masih dirujuk sebuah produk (agar tidak menghapus foto tersimpan).
+   */
+  async discardUnsavedImage(projectId: string, userId: string, key: string): Promise<void> {
+    await requirePermission(projectId, userId, 'product:manage')
+
+    if (!objectKeyBelongsToProject(key, projectId)) {
+      throw new ValidationError('Kunci berkas tidak sah')
+    }
+
+    const referenced = await withTenant(projectId, (tx) =>
+      tx
+        .select({ id: products.id })
+        .from(products)
+        .where(and(eq(products.projectId, projectId), eq(products.imageKey, key)))
+        .limit(1)
+    )
+    if (referenced.length > 0) {
+      // Sudah dipakai produk — bukan yatim, jangan disentuh.
+      return
+    }
+
+    await deleteObject(key)
+  }
+
+  /**
+   * Memperbarui produk beserta variannya.
+   *
+   * Foto lama dihapus segera bila diganti atau dikosongkan — kuncinya diketahui,
+   * jadi tak perlu menunggu cron. HPP hanya disentuh oleh peran ber-`cost:view`;
+   * bila tidak, kolomnya dibiarkan apa adanya.
+   */
+  async updateProduct(request: UpdateProductRequest, context: CatalogContext): Promise<void> {
+    await requirePermission(request.projectId, context.userId, 'product:manage')
+    const canViewCost = await checkPermission(request.projectId, context.userId, COST_PERMISSION)
+
+    const existing = await withTenant(request.projectId, (tx) =>
+      tx
+        .select({ id: products.id, imageKey: products.imageKey })
+        .from(products)
+        .where(
+          and(
+            eq(products.id, request.productId),
+            eq(products.projectId, request.projectId),
+            isNull(products.deletedAt)
+          )
+        )
+        .limit(1)
+    )
+
+    const current = existing[0]
+    if (!current) throw new NotFoundError('Produk tidak ditemukan')
+
+    await withTenant(request.projectId, async (tx) => {
+      await tx
+        .update(products)
+        .set({
+          name: sanitizeText(request.name),
+          type: request.type,
+          sku: request.sku ? sanitizeText(request.sku) : null,
+          imageKey: request.imageKey,
+          updatedBy: context.userId,
+        })
+        .where(and(eq(products.id, request.productId), eq(products.projectId, request.projectId)))
+
+      await tx
+        .update(productVariants)
+        .set({
+          variantName: request.variantName ? sanitizeText(request.variantName) : null,
+          skuVariant: request.sku ? sanitizeText(request.sku) : null,
+          ...(canViewCost ? { hpp: toDecimalString(request.hpp) } : {}),
+          updatedBy: context.userId,
+        })
+        .where(
+          and(
+            eq(productVariants.productId, request.productId),
+            eq(productVariants.projectId, request.projectId)
+          )
+        )
+    })
+
+    // Di luar transaksi: gagal menghapus objek tidak boleh menggagalkan
+    // penyimpanan; paling buruk objek jadi yatim dan disapu cron.
+    if (current.imageKey && current.imageKey !== request.imageKey) {
+      try {
+        await deleteObject(current.imageKey)
+      } catch (error) {
+        logger.warn(
+          { projectId: request.projectId, key: current.imageKey, err: String(error) },
+          'gagal menghapus foto lama, dibiarkan untuk cron'
+        )
+      }
+    }
+
+    await auditRepository.log({
+      action: 'update',
+      resource: 'product',
+      resourceId: request.productId,
+      userId: context.userId,
+      projectId: request.projectId,
+      ipAddress: context.ip,
+      userAgent: context.userAgent,
+      metadata: { name: request.name },
+    })
+
+    logger.info({ projectId: request.projectId, productId: request.productId }, 'Product updated')
   }
 
   /**

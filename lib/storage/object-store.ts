@@ -2,6 +2,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3'
@@ -148,6 +149,48 @@ export async function objectExists(key: string): Promise<boolean> {
 export async function deleteObject(key: string): Promise<void> {
   const config = readConfig()
   await client(config).send(new DeleteObjectCommand({ Bucket: config.bucket, Key: key }))
+}
+
+export interface ListedObject {
+  key: string
+  lastModified: Date | null
+  size: number
+}
+
+/**
+ * Menelusuri seluruh objek (opsional dengan prefiks), menangani paginasi.
+ *
+ * Dipakai pembersih berkas yatim. Sengaja mengembalikan semua, bukan halaman
+ * demi halaman, karena pemanggil perlu membandingkannya dengan seluruh kunci
+ * yang masih dirujuk sekaligus.
+ */
+export async function listObjects(prefix?: string): Promise<ListedObject[]> {
+  const config = readConfig()
+  const objects: ListedObject[] = []
+  let continuationToken: string | undefined
+
+  do {
+    const result = await client(config).send(
+      new ListObjectsV2Command({
+        Bucket: config.bucket,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      })
+    )
+
+    for (const item of result.Contents ?? []) {
+      if (!item.Key) continue
+      objects.push({
+        key: item.Key,
+        lastModified: item.LastModified ?? null,
+        size: item.Size ?? 0,
+      })
+    }
+
+    continuationToken = result.IsTruncated ? result.NextContinuationToken : undefined
+  } while (continuationToken)
+
+  return objects
 }
 
 function isNotFound(error: unknown): boolean {

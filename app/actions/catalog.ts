@@ -68,6 +68,72 @@ export async function createProductAction(raw: unknown) {
  * action. Mengembalikan kunci objek; form menyimpannya lalu menyertakannya saat
  * membuat produk.
  */
+const updateProductSchema = z.object({
+  productId: z.string().uuid('Produk tidak valid'),
+  name: z.string().trim().min(1, 'Nama produk wajib diisi').max(150),
+  type: z.enum(['finished', 'material']),
+  sku: z.string().trim().max(60).optional(),
+  variantName: z.string().trim().max(100).optional(),
+  hpp: z.string().regex(/^\d+(\.\d{1,2})?$/, 'HPP harus angka'),
+  imageKey: z.string().trim().max(200).nullable().optional(),
+})
+
+export async function updateProductAction(raw: unknown) {
+  return withRequestScope('updateProductAction', async () => {
+    try {
+      const context = await getSessionContext()
+      tagRequestActor(context.userId, context.projectId)
+
+      const parsed = updateProductSchema.safeParse(raw)
+      if (!parsed.success) {
+        throw new ValidationError('Validasi gagal', parsed.error.flatten().fieldErrors)
+      }
+
+      const headersList = await headers()
+      await catalogService.updateProduct(
+        {
+          projectId: context.projectId,
+          productId: parsed.data.productId,
+          name: parsed.data.name,
+          type: parsed.data.type,
+          sku: parsed.data.sku ?? null,
+          variantName: parsed.data.variantName ?? null,
+          hpp: fromDecimalString(parsed.data.hpp),
+          imageKey: parsed.data.imageKey ?? null,
+        },
+        {
+          userId: context.userId,
+          ip: headersList.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown',
+          userAgent: headersList.get('user-agent') ?? 'unknown',
+        }
+      )
+
+      revalidatePath('/products')
+      revalidatePath('/pos')
+
+      return { success: true as const }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
+/** Membuang foto yang terunggah tetapi produknya batal disimpan. */
+export async function discardUnsavedImageAction(imageKey: string) {
+  return withRequestScope('discardUnsavedImageAction', async () => {
+    try {
+      const context = await getSessionContext()
+      tagRequestActor(context.userId, context.projectId)
+
+      await catalogService.discardUnsavedImage(context.projectId, context.userId, imageKey)
+
+      return { success: true as const }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
 export async function uploadProductImageAction(formData: FormData) {
   return withRequestScope('uploadProductImageAction', async () => {
     try {

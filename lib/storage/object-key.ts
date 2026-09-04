@@ -56,6 +56,16 @@ export function objectKeyFromSegments(segments: string[], projectId: string): st
   return segments.join('/')
 }
 
+/**
+ * Apakah sebuah kunci utuh berada dalam ruang milik satu project. Dipakai
+ * sebelum menghapus objek atas permintaan pengguna, agar tak seorang pun bisa
+ * menghapus berkas project lain dengan menebak kuncinya.
+ */
+export function objectKeyBelongsToProject(key: string, projectId: string): boolean {
+  if (key.includes('..') || key.includes('\\')) return false
+  return key.startsWith(`${projectId}/`)
+}
+
 /** URL yang dipakai klien: relatif, satu origin dengan aplikasi. */
 export function fileProxyUrl(key: string): string {
   return `/api/v1/files/${key.split('/').map(encodeURIComponent).join('/')}`

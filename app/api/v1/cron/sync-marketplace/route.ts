@@ -6,25 +6,7 @@ import { transactionService } from '@/lib/services/transaction.service'
 import { withTenant } from '@/lib/db/tenant'
 import type { NewTransaction } from '@/lib/repositories/transaction.repository'
 import { logger } from '@/lib/logging/logger'
-import crypto from 'crypto'
-
-function isAuthorizedCronRequest(request: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET
-  if (!secret) {
-    logger.error('CRON_SECRET is not set, refusing cron request')
-    return false
-  }
-
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader) return false
-
-  // timingSafeEqual melempar RangeError bila panjang buffer berbeda, jadi kedua
-  // sisi di-hash dulu agar perbandingan selalu berukuran sama.
-  const received = crypto.createHash('sha256').update(authHeader).digest()
-  const expected = crypto.createHash('sha256').update(`Bearer ${secret}`).digest()
-
-  return crypto.timingSafeEqual(received, expected)
-}
+import { isAuthorizedCronRequest } from '@/lib/security/cron-auth'
 
 const SYNC_INTERVAL_MS = 5 * 60 * 60 * 1000
 

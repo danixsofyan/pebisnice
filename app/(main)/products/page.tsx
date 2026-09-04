@@ -1,9 +1,8 @@
 import { getAccessibleBranches, getSessionContext } from '@/lib/auth/session-context'
 import { catalogService } from '@/lib/services/catalog.service'
 import { hasRolePermission } from '@/lib/authz/permissions'
-import { formatRupiahFromDecimal } from '@/lib/formatters'
-import { fileProxyUrl } from '@/lib/storage'
 import { ProductForm } from '@/components/catalog/product-form'
+import { ProductsTable } from '@/components/catalog/products-table'
 
 export default async function ProductsPage() {
   const context = await getSessionContext()
@@ -41,57 +40,12 @@ export default async function ProductsPage() {
           Belum ada produk. Tambahkan produk jadi agar bisa dijual di kasir.
         </p>
       ) : (
-        <div className="border-border overflow-x-auto rounded-xl border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left">
-              <tr>
-                <th className="w-14 px-4 py-3 font-medium">Foto</th>
-                <th className="px-4 py-3 font-medium">Nama</th>
-                <th className="px-4 py-3 font-medium">Tipe</th>
-                <th className="px-4 py-3 font-medium">SKU</th>
-                <th className="px-4 py-3 text-right font-medium">Stok</th>
-                {context.canViewCost ? (
-                  <th className="px-4 py-3 text-right font-medium">HPP</th>
-                ) : null}
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.variantId} className="border-border border-t">
-                  <td className="px-4 py-3">
-                    {item.imageKey ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- disajikan proxy dinamis satu-origin, bukan aset next/image
-                      <img
-                        src={fileProxyUrl(item.imageKey)}
-                        alt={item.name}
-                        className="border-border h-10 w-10 rounded-md border object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="bg-muted h-10 w-10 rounded-md" />
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {item.name}
-                    {item.variantName ? (
-                      <span className="text-muted-foreground"> · {item.variantName}</span>
-                    ) : null}
-                  </td>
-                  <td className="text-muted-foreground px-4 py-3">
-                    {item.type === 'finished' ? 'Produk jadi' : 'Bahan'}
-                  </td>
-                  <td className="text-muted-foreground px-4 py-3">{item.sku ?? '—'}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{item.stockQty}</td>
-                  {context.canViewCost ? (
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {item.hpp ? formatRupiahFromDecimal(item.hpp) : '—'}
-                    </td>
-                  ) : null}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ProductsTable
+          items={items}
+          branchId={branch.id}
+          canViewCost={context.canViewCost}
+          canManage={canManage}
+        />
       )}
     </div>
   )
