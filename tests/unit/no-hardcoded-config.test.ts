@@ -39,6 +39,17 @@ function findOffenders(pattern: RegExp): string[] {
   return SOURCE_FILES.filter((file) => pattern.test(readFileSync(file, 'utf8'))).map(relative)
 }
 
+/** Membuang komentar, supaya contoh di dokumentasi tidak terbaca sebagai kode. */
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+}
+
+function findOffendersInCode(pattern: RegExp): string[] {
+  return SOURCE_FILES.filter((file) => pattern.test(stripComments(readFileSync(file, 'utf8')))).map(
+    relative
+  )
+}
+
 describe('tidak ada konfigurasi yang ditulis mati', () => {
   it('menemukan berkas sumber untuk dipindai', () => {
     expect(SOURCE_FILES.length).toBeGreaterThan(40)
@@ -70,7 +81,13 @@ describe('tidak ada konfigurasi yang ditulis mati', () => {
   it('membangun URL storage dari environment, bukan konstanta', () => {
     const storage = readFileSync(join(ROOT, 'lib/storage.ts'), 'utf8')
 
-    expect(storage).toContain('NEXT_PUBLIC_SUPABASE_STORAGE_HOST')
+    expect(storage).toContain('NEXT_PUBLIC_STORAGE_BASE_URL')
+  })
+
+  it('tidak mengunci bentuk jalur milik satu penyedia storage', () => {
+    // `/storage/v1/object/public` adalah bentuk milik Supabase. Menyusunnya di
+    // kode berarti pindah penyedia harus menyunting kode, bukan konfigurasi.
+    expect(findOffendersInCode(/storage\/v1\/object/)).toEqual([])
   })
 
   it('mendokumentasikan setiap process.env yang dipakai di .env.example', () => {

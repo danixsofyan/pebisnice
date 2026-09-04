@@ -98,58 +98,69 @@ const CHECKS: Check[] = [
     validate: requireEntropy(32),
   },
   {
-    name: 'NEXT_PUBLIC_SUPABASE_STORAGE_HOST',
+    name: 'NEXT_PUBLIC_STORAGE_BASE_URL',
     required: false,
-    note: 'hanya perlu bila ada fitur unggah gambar',
-    validate: (value) =>
-      /^[a-z0-9-]+\.supabase\.co$/.test(value) ? null : 'format harus <ref>.supabase.co',
+    note: 'base URL utuh, tanpa garis miring di akhir',
+    validate: (value) => {
+      if (!/^https:\/\//.test(value)) return 'harus URL https://'
+      if (looksLikePlaceholder(value)) return 'masih berisi teks placeholder'
+      try {
+        new URL(value)
+      } catch {
+        return 'bukan URL yang sah'
+      }
+      return null
+    },
   },
   { name: 'LOG_LEVEL', required: false, note: 'bawaan: info' },
   {
-    name: 'SUPABASE_S3_ENDPOINT',
+    name: 'STORAGE_ENDPOINT',
     required: false,
-    note: 'https://<ref>.storage.supabase.co/storage/v1/s3',
-    validate: (value) =>
-      /^https:\/\/[a-z0-9-]+\.storage\.supabase\.co\/storage\/v1\/s3$/.test(value)
-        ? null
-        : 'format harus https://<ref>.storage.supabase.co/storage/v1/s3',
+    note: 'URL endpoint S3-compatible milik penyedia mana pun',
+    validate: (value) => {
+      if (!/^https:\/\//.test(value)) return 'harus URL https://'
+      if (looksLikePlaceholder(value)) return 'masih berisi teks placeholder'
+      return null
+    },
   },
   {
-    name: 'SUPABASE_S3_REGION',
+    name: 'STORAGE_REGION',
     required: false,
-    note: 'mis. ap-southeast-1',
+    // Cloudflare R2 memakai nilai literal `auto`, jadi bentuk region AWS tidak
+    // boleh dipaksakan di sini.
+    note: 'mis. ap-southeast-1, atau auto untuk Cloudflare R2',
     validate: (value) =>
-      /^[a-z]{2}-[a-z]+-\d$/.test(value) ? null : 'format region AWS tidak lazim',
+      /^[a-z0-9-]+$/.test(value) ? null : 'hanya huruf kecil, angka, dan tanda hubung',
   },
   {
-    name: 'SUPABASE_S3_ACCESS_KEY_ID',
+    name: 'STORAGE_ACCESS_KEY_ID',
     required: false,
-    note: 'dari Supabase Settings -> Storage -> S3 Connection',
+    note: 'dari panel penyedia storage, bagian S3 credentials',
     validate: requireEntropy(20),
   },
   {
-    name: 'SUPABASE_S3_SECRET_ACCESS_KEY',
+    name: 'STORAGE_SECRET_ACCESS_KEY',
     required: false,
     note: 'SERVER-ONLY, jangan diberi awalan NEXT_PUBLIC_',
     validate: requireEntropy(40),
   },
   {
-    name: 'SUPABASE_STORAGE_BUCKET',
+    name: 'STORAGE_BUCKET',
     required: false,
-    note: 'buat dulu bucket-nya di Supabase Storage',
+    note: 'buat dulu bucket-nya di penyedia storage',
   },
 ]
 
 /** Variabel yang harus terisi bersama-sama, atau kosong semuanya. */
 const GROUPS: Array<{ label: string; members: string[] }> = [
   {
-    label: 'Supabase S3',
+    label: 'Storage',
     members: [
-      'SUPABASE_S3_ENDPOINT',
-      'SUPABASE_S3_REGION',
-      'SUPABASE_S3_ACCESS_KEY_ID',
-      'SUPABASE_S3_SECRET_ACCESS_KEY',
-      'SUPABASE_STORAGE_BUCKET',
+      'STORAGE_ENDPOINT',
+      'STORAGE_REGION',
+      'STORAGE_ACCESS_KEY_ID',
+      'STORAGE_SECRET_ACCESS_KEY',
+      'STORAGE_BUCKET',
     ],
   },
 ]

@@ -1,4 +1,5 @@
 import type { NextResponse } from 'next/server'
+import { storageHostname } from '@/lib/storage'
 
 export function generateNonce(): string {
   const array = new Uint8Array(16)
@@ -8,9 +9,8 @@ export function generateNonce(): string {
 
 export function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV === 'development'
-  const storageHost = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_HOST
-    ? ` https://${process.env.NEXT_PUBLIC_SUPABASE_STORAGE_HOST}`
-    : ''
+  const host = storageHostname()
+  const storageHost = host ? ` https://${host}` : ''
 
   const directives = [
     `default-src 'self'`,
