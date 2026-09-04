@@ -1,6 +1,7 @@
 import { and, eq, isNull, or, sql } from 'drizzle-orm'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
+import { withTenant } from '@/lib/db/tenant'
 import { branches, projects, teamMembers } from '@/lib/db/schema'
 import { canRoleViewCost, type TeamRole } from '@/lib/authz/permissions'
 import { AuthError } from '@/lib/errors/app-error'
@@ -91,11 +92,13 @@ export async function getSessionContext(): Promise<SessionContext> {
 
 // Branches a user may access. A member bound to one branch sees only theirs.
 export async function getAccessibleBranches(context: SessionContext) {
-  const all = await db
-    .select({ id: branches.id, name: branches.name, code: branches.code })
-    .from(branches)
-    .where(and(eq(branches.projectId, context.projectId), isNull(branches.deletedAt)))
-    .orderBy(branches.name)
+  const all = await withTenant(context.projectId, (tx) =>
+    tx
+      .select({ id: branches.id, name: branches.name, code: branches.code })
+      .from(branches)
+      .where(and(eq(branches.projectId, context.projectId), isNull(branches.deletedAt)))
+      .orderBy(branches.name)
+  )
 
   if (context.branchId === null) return all
   return all.filter((branch) => branch.id === context.branchId)

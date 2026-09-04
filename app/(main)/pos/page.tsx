@@ -1,5 +1,5 @@
 import { and, eq, isNull } from 'drizzle-orm'
-import { db } from '@/lib/db'
+import { withTenant } from '@/lib/db/tenant'
 import { cashSessions } from '@/lib/db/schema'
 import { getAccessibleBranches, getSessionContext } from '@/lib/auth/session-context'
 import { posCatalogRepository } from '@/lib/repositories/pos-catalog.repository'
@@ -35,17 +35,19 @@ export default async function PosPage() {
     )
   }
 
-  const [openSession] = await db
-    .select({ id: cashSessions.id, openingBalance: cashSessions.openingBalance })
-    .from(cashSessions)
-    .where(
-      and(
-        eq(cashSessions.branchId, branch.id),
-        eq(cashSessions.status, 'open'),
-        isNull(cashSessions.deletedAt)
+  const [openSession] = await withTenant(context.projectId, (tx) =>
+    tx
+      .select({ id: cashSessions.id, openingBalance: cashSessions.openingBalance })
+      .from(cashSessions)
+      .where(
+        and(
+          eq(cashSessions.branchId, branch.id),
+          eq(cashSessions.status, 'open'),
+          isNull(cashSessions.deletedAt)
+        )
       )
-    )
-    .limit(1)
+      .limit(1)
+  )
 
   if (!openSession) {
     return <CashSessionPanel branchId={branch.id} branchName={branch.name} openSession={null} />
