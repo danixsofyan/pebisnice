@@ -1,11 +1,5 @@
 import { KpiCard } from '@/components/dashboard/kpi-card'
-import {
-  ShoppingCart,
-  Wallet,
-  ReceiptText,
-  Calendar,
-  Filter,
-} from 'lucide-react'
+import { ShoppingCart, Wallet, ReceiptText, Calendar, Filter } from 'lucide-react'
 import { TransactionTable } from '@/components/dashboard/transaction-table'
 
 export default function TransactionsPage() {
@@ -18,7 +12,7 @@ export default function TransactionsPage() {
           change={12.5}
           format="number"
           className="border-primary/20 bg-primary/10"
-          icon={<ShoppingCart className="size-5 text-primary" />}
+          icon={<ShoppingCart className="text-primary size-5" />}
           iconClassName="bg-primary/20"
           description="Pesanan"
         />
@@ -43,30 +37,30 @@ export default function TransactionsPage() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-          <button className="whitespace-nowrap bg-primary text-primary-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold shadow-sm">
+        <div className="scrollbar-hide flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+          <button className="bg-primary text-primary-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold whitespace-nowrap shadow-sm">
             Semua
           </button>
-          <button className="whitespace-nowrap hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 transition-colors border border-slate-200 dark:border-slate-800">
+          <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-bold whitespace-nowrap text-slate-600 transition-colors hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
             Shopee
           </button>
-          <button className="whitespace-nowrap hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 transition-colors border border-slate-200 dark:border-slate-800">
+          <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-bold whitespace-nowrap text-slate-600 transition-colors hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
             TikTok Shop
           </button>
-          <button className="whitespace-nowrap hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 transition-colors border border-slate-200 dark:border-slate-800">
+          <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-bold whitespace-nowrap text-slate-600 transition-colors hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
             Tokopedia
           </button>
-          <button className="whitespace-nowrap hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 transition-colors border border-slate-200 dark:border-slate-800">
+          <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-bold whitespace-nowrap text-slate-600 transition-colors hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
             Lazada
           </button>
         </div>
 
-        <div className="grid grid-cols-2 md:flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
-          <div className="dark:bg-slate-800 dark:border-slate-800 flex items-center justify-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-[11px] md:text-sm font-bold border border-slate-200">
+        <div className="mt-2 grid w-full grid-cols-2 items-center gap-3 md:mt-0 md:flex md:w-auto">
+          <div className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-[11px] font-bold md:text-sm dark:border-slate-800 dark:bg-slate-800">
             <Calendar className="size-3.5 md:size-4" />
             <span className="whitespace-nowrap">01 Okt - 31 Okt 2023</span>
           </div>
-          <button className="hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-[11px] md:text-sm font-bold text-slate-900 transition-all">
+          <button className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-[11px] font-bold text-slate-900 transition-all hover:bg-slate-200 md:text-sm dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
             <Filter className="size-3.5 md:size-4" />
             Filter
           </button>

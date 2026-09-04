@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation'
-import { findSessionContext } from '@/lib/auth/session-context'
+import { resolveSessionState } from '@/lib/auth/session-context'
 import { CreateProjectForm } from '@/components/onboarding/create-project-form'
 
 export default async function OnboardingPage() {
-  const context = await findSessionContext()
-  if (context) redirect('/dashboard')
+  const state = await resolveSessionState()
+
+  if (state.status === 'unauthenticated') redirect('/login')
+  if (state.status === 'ready') redirect('/dashboard')
 
   return (
     <div className="bg-background flex min-h-svh items-center justify-center p-6">

@@ -110,10 +110,10 @@ export default function DashboardPage() {
             <button className="bg-primary text-primary-foreground rounded px-3 py-1.5 text-xs font-bold shadow-sm transition-colors hover:opacity-90">
               Harian
             </button>
-            <button className="rounded bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors">
+            <button className="rounded bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
               Mingguan
             </button>
-            <button className="rounded bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors">
+            <button className="rounded bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
               Bulanan
             </button>
           </div>

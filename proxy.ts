@@ -14,9 +14,12 @@ const PROTECTED_ROUTES = [
   '/transactions',
   '/reports',
   '/employees',
+  '/profile',
   '/pos',
   '/production',
   '/expenses',
+  '/onboarding',
+  '/products',
 ]
 const AUTH_ROUTES = ['/login']
 const PUBLIC_API_ROUTES = ['/api/v1/webhooks', '/api/health']

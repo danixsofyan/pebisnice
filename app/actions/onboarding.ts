@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { z } from 'zod'
 import { projectService } from '@/lib/services/project.service'
-import { findSessionContext } from '@/lib/auth/session-context'
+import { resolveSessionState } from '@/lib/auth/session-context'
 import { getUserFromSession } from '@/lib/auth-utils'
 import { handleActionError, ValidationError } from '@/lib/errors/app-error'
 
@@ -29,8 +29,8 @@ export async function createFirstProjectAction(raw: unknown) {
   try {
     const user = await getUserFromSession()
 
-    const existing = await findSessionContext()
-    if (existing) {
+    const state = await resolveSessionState()
+    if (state.status === 'ready') {
       throw new ValidationError('Anda sudah memiliki project', {
         name: ['Project sudah ada'],
       })

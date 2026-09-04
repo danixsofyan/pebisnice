@@ -48,9 +48,7 @@ export default async function PosPage() {
     .limit(1)
 
   if (!openSession) {
-    return (
-      <CashSessionPanel branchId={branch.id} branchName={branch.name} openSession={null} />
-    )
+    return <CashSessionPanel branchId={branch.id} branchName={branch.name} openSession={null} />
   }
 
   const items = await posCatalogRepository.search(context.projectId, branch.id, '')

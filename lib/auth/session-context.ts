@@ -1,7 +1,7 @@
 import { and, eq, isNull, or, sql } from 'drizzle-orm'
+import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { branches, projects, teamMembers } from '@/lib/db/schema'
-import { getUserFromSession } from '@/lib/auth-utils'
 import { canRoleViewCost, type TeamRole } from '@/lib/authz/permissions'
 import { AuthError } from '@/lib/errors/app-error'
 
@@ -16,20 +16,24 @@ export interface SessionContext {
 }
 
 /**
- * Menentukan project dan peran aktif pengguna.
+ * Tiga keadaan yang mungkin dialami pengunjung.
  *
- * Pemilik project mendapat peran `owner`; selain itu perannya diambil dari
- * keanggotaan tim. Dipanggil di setiap server action supaya tidak ada halaman
- * yang perlu mengoper `projectId` dari client — nilai dari client tidak bisa
- * dipercaya untuk menentukan tenant.
+ * Sengaja berupa union, bukan `SessionContext | null`: bentuk nullable membuat
+ * "belum login" dan "belum punya project" tidak bisa dibedakan, dan pemanggil
+ * jadi mengarahkan ke tempat yang salah — atau seperti sebelumnya, melempar
+ * error dan berujung layar 500.
  */
-/**
- * Seperti `getSessionContext()` tetapi mengembalikan `null` bila pengguna
- * belum tergabung di project manapun — dipakai halaman yang harus
- * mengarahkan ke onboarding alih-alih melempar error.
- */
-export async function findSessionContext(): Promise<SessionContext | null> {
-  const user = await getUserFromSession()
+export type SessionState =
+  | { status: 'unauthenticated' }
+  | { status: 'no-project'; userId: string }
+  | { status: 'ready'; context: SessionContext }
+
+/** Tidak pernah melempar. Halaman yang memutuskan ke mana mengarahkan. */
+export async function resolveSessionState(): Promise<SessionState> {
+  const session = await auth()
+  const user = session?.user
+
+  if (!user?.id) return { status: 'unauthenticated' }
 
   const rows = await db
     .select({
@@ -60,26 +64,40 @@ export async function findSessionContext(): Promise<SessionContext | null> {
     .limit(1)
 
   const row = rows[0]
-  if (!row) return null
+  if (!row) return { status: 'no-project', userId: user.id }
 
   const isOwner = row.ownerId === user.id
   const role: TeamRole = isOwner ? 'owner' : ((row.memberRole ?? 'cashier') as TeamRole)
 
   return {
-    userId: user.id,
-    projectId: row.projectId,
-    projectName: row.projectName,
-    role,
-    branchId: isOwner ? null : row.memberBranchId,
-    canViewCost: canRoleViewCost(role),
+    status: 'ready',
+    context: {
+      userId: user.id,
+      projectId: row.projectId,
+      projectName: row.projectName,
+      role,
+      branchId: isOwner ? null : row.memberBranchId,
+      canViewCost: canRoleViewCost(role),
+    },
   }
 }
 
-/** Menuntut project aktif. Melempar bila belum ada. */
+/**
+ * Menuntut project aktif. Dipakai server action, di mana melempar memang
+ * perilaku yang benar — `handleActionError` mengubahnya jadi pesan yang rapi.
+ * Halaman sebaiknya memakai `resolveSessionState()`.
+ */
 export async function getSessionContext(): Promise<SessionContext> {
-  const context = await findSessionContext()
-  if (!context) throw new AuthError('Anda belum tergabung dalam project manapun.')
-  return context
+  const state = await resolveSessionState()
+
+  if (state.status === 'unauthenticated') {
+    throw new AuthError()
+  }
+  if (state.status === 'no-project') {
+    throw new AuthError('Anda belum tergabung dalam project manapun.')
+  }
+
+  return state.context
 }
 
 /**

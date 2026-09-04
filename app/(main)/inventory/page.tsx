@@ -1,12 +1,5 @@
 import { KpiCard } from '@/components/dashboard/kpi-card'
-import {
-  Package,
-  Wallet,
-  AlertTriangle,
-  Plus,
-  RefreshCw,
-  ClipboardList,
-} from 'lucide-react'
+import { Package, Wallet, AlertTriangle, Plus, RefreshCw, ClipboardList } from 'lucide-react'
 import { InventoryTable } from '@/components/dashboard/inventory-table'
 
 export default function InventoryPage() {
@@ -19,7 +12,7 @@ export default function InventoryPage() {
           change={5}
           format="number"
           className="border-primary/20 bg-primary/10"
-          icon={<Package className="size-5 text-primary" />}
+          icon={<Package className="text-primary size-5" />}
           iconClassName="bg-primary/20"
           description="SKU"
         />
@@ -44,18 +37,18 @@ export default function InventoryPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:flex md:items-center md:justify-between gap-4">
+      <div className="grid grid-cols-1 gap-4 md:flex md:items-center md:justify-between">
         <div className="grid grid-cols-2 gap-3 md:flex">
-          <button className="bg-primary hover:bg-primary/90 text-primary-foreground flex flex-col items-center justify-center gap-1 rounded-lg px-3 py-3 text-xs font-bold transition-all shadow-lg shadow-primary/20 md:flex-row md:px-5 md:py-2.5 md:text-sm">
+          <button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 flex flex-col items-center justify-center gap-1 rounded-lg px-3 py-3 text-xs font-bold shadow-lg transition-all md:flex-row md:px-5 md:py-2.5 md:text-sm">
             <Plus className="size-4 md:size-5" />
             <span className="text-center">Tambah Produk</span>
           </button>
-          <button className="bg-slate-800 hover:bg-slate-700 text-white flex flex-col items-center justify-center gap-1 rounded-lg px-3 py-3 text-xs font-bold transition-all dark:bg-slate-700 dark:hover:bg-slate-600 md:flex-row md:px-5 md:py-2.5 md:text-sm">
+          <button className="flex flex-col items-center justify-center gap-1 rounded-lg bg-slate-800 px-3 py-3 text-xs font-bold text-white transition-all hover:bg-slate-700 md:flex-row md:px-5 md:py-2.5 md:text-sm dark:bg-slate-700 dark:hover:bg-slate-600">
             <RefreshCw className="size-4" />
             <span className="text-center">Sync Market</span>
           </button>
         </div>
-        <button className="hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-5 py-3 text-sm font-bold text-slate-900 transition-all md:py-2.5">
+        <button className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-5 py-3 text-sm font-bold text-slate-900 transition-all hover:bg-slate-200 md:py-2.5 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
           <ClipboardList className="size-5" />
           Stock Opname
         </button>
