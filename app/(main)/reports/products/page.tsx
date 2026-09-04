@@ -97,6 +97,12 @@ export default async function SalesByProductPage({
         <button className="bg-primary text-primary-foreground h-9 rounded-md px-4 text-sm">
           Terapkan
         </button>
+        <a
+          href={`/api/v1/export/sales-by-product?start=${start}&end=${end}${branchId ? `&branch=${branchId}` : ''}`}
+          className="border-input hover:bg-muted/40 inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+        >
+          Export CSV
+        </a>
       </form>
 
       {rows.length === 0 ? (

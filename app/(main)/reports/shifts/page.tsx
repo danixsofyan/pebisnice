@@ -50,11 +50,21 @@ export default async function ShiftReportPage({
     ...(branchId ? { branchId } : {}),
   })
 
+  const exportHref = branchId ? `/api/v1/export/shifts?branch=${branchId}` : '/api/v1/export/shifts'
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold">Laporan Shift Kasir</h1>
-        <p className="text-muted-foreground text-sm">Riwayat buka-tutup sesi kas &amp; selisih</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold">Laporan Shift Kasir</h1>
+          <p className="text-muted-foreground text-sm">Riwayat buka-tutup sesi kas &amp; selisih</p>
+        </div>
+        <a
+          href={exportHref}
+          className="border-input hover:bg-muted/40 inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+        >
+          Export CSV
+        </a>
       </div>
 
       <ReportsTabs />

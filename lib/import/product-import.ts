@@ -22,15 +22,19 @@ type Header = (typeof HEADERS)[number]
 
 // Validate a parsed CSV into product rows. The header row names the columns
 // (any order); each data row is validated independently so one bad row doesn't
-// sink the rest, and its 1-based line number is reported.
-export function parseProductRows(table: string[][]): ProductImportResult {
+// sink the rest. When `lines` is given it reports the true source line, otherwise
+// the 1-based table index.
+export function parseProductRows(table: string[][], lines?: number[]): ProductImportResult {
   if (table.length === 0) return { rows: [], errors: [{ line: 0, message: 'Berkas kosong' }] }
 
   const header = table[0]!.map((h) => h.trim().toLowerCase())
   const index = {} as Record<Header, number>
   for (const key of HEADERS) index[key] = header.indexOf(key)
   if (index.name === -1) {
-    return { rows: [], errors: [{ line: 1, message: 'Kolom "name" wajib ada di header' }] }
+    return {
+      rows: [],
+      errors: [{ line: lines?.[0] ?? 1, message: 'Kolom "name" wajib ada di header' }],
+    }
   }
 
   const rows: ParsedProductRow[] = []
@@ -38,7 +42,7 @@ export function parseProductRows(table: string[][]): ProductImportResult {
 
   for (let i = 1; i < table.length; i++) {
     const cells = table[i]!
-    const line = i + 1
+    const line = lines?.[i] ?? i + 1
     const get = (key: Header) => (index[key] >= 0 ? (cells[index[key]] ?? '').trim() : '')
 
     const name = get('name')

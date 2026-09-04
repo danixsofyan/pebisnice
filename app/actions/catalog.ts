@@ -8,7 +8,7 @@ import { getSessionContext } from '@/lib/auth/session-context'
 import { fromDecimalString } from '@/lib/domain/money'
 import { tagRequestActor, withRequestScope } from '@/lib/observability/with-request-scope'
 import { handleActionError, ValidationError } from '@/lib/errors/app-error'
-import { parseCsv } from '@/lib/import/csv-parse'
+import { parseCsvRecords } from '@/lib/import/csv-parse'
 import { parseProductRows } from '@/lib/import/product-import'
 
 const MAX_IMPORT_BYTES = 2 * 1024 * 1024
@@ -175,7 +175,11 @@ export async function importProductsAction(formData: FormData) {
       }
 
       const text = await file.text()
-      const { rows, errors } = parseProductRows(parseCsv(text))
+      const records = parseCsvRecords(text)
+      const { rows, errors } = parseProductRows(
+        records.map((r) => r.cells),
+        records.map((r) => r.line)
+      )
       if (rows.length === 0) {
         throw new ValidationError(errors[0]?.message ?? 'Tidak ada baris yang bisa diimpor')
       }

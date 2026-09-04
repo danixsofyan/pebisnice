@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseCsv } from '@/lib/import/csv-parse'
+import { parseCsv, parseCsvRecords } from '@/lib/import/csv-parse'
 
 describe('parseCsv', () => {
   it('parses simple rows', () => {
@@ -28,6 +28,14 @@ describe('parseCsv', () => {
     expect(parseCsv('a,b\r1,2')).toEqual([
       ['a', 'b'],
       ['1', '2'],
+    ])
+  })
+  it('reports the true source line, skipping blank lines', () => {
+    // header (1), blank (2), data (3)
+    const records = parseCsvRecords('a\n\nb')
+    expect(records).toEqual([
+      { cells: ['a'], line: 1 },
+      { cells: ['b'], line: 3 },
     ])
   })
 })

@@ -65,56 +65,65 @@ export interface ProductListItem {
 }
 
 export class CatalogService {
-  // Create a product with one variant and its initial stock, in a single transaction: a product without a variant can't sell, and a variant without a stock row breaks POS balance locking.
+  // Insert a product with one variant and its initial stock in a single transaction: a product without a variant can't sell, and a variant without a stock row breaks POS balance locking. Callers own permission checks and audit; canViewCost is resolved once by the caller.
+  private async insertProductTx(
+    tx: Parameters<Parameters<typeof withTenant>[1]>[0],
+    request: CreateProductRequest,
+    canViewCost: boolean,
+    userId: string
+  ) {
+    const [product] = await tx
+      .insert(products)
+      .values({
+        projectId: request.projectId,
+        name: sanitizeText(request.name),
+        type: request.type,
+        sku: request.sku ? sanitizeText(request.sku) : null,
+        imageKey: request.imageKey,
+        createdBy: userId,
+        updatedBy: userId,
+      })
+      .returning()
+
+    const [variant] = await tx
+      .insert(productVariants)
+      .values({
+        projectId: request.projectId,
+        productId: product!.id,
+        variantName: request.variantName ? sanitizeText(request.variantName) : null,
+        skuVariant: request.sku ? sanitizeText(request.sku) : null,
+        hpp: canViewCost ? toDecimalString(request.hpp) : '0',
+        createdBy: userId,
+        updatedBy: userId,
+      })
+      .returning()
+
+    const location = {
+      projectId: request.projectId,
+      branchId: request.branchId,
+      productVariantId: variant!.id,
+    }
+
+    await inventoryRepository.lockBalance(tx, location)
+
+    if (request.initialStock > 0) {
+      const plan = planStockMovement({ type: 'initial', qty: request.initialStock }, 0)
+      await inventoryRepository.setBalance(tx, location, plan.quantityAfter, userId)
+      await inventoryRepository.appendMovement(tx, location, plan, userId)
+    }
+
+    return { product: product!, variant: variant! }
+  }
+
   async createProduct(request: CreateProductRequest, context: CatalogContext) {
     await requirePermission(request.projectId, context.userId, 'product:manage')
     await requireBranchAccess(request.projectId, context.userId, request.branchId)
 
     const canViewCost = await checkPermission(request.projectId, context.userId, COST_PERMISSION)
 
-    const created = await withTenant(request.projectId, async (tx) => {
-      const [product] = await tx
-        .insert(products)
-        .values({
-          projectId: request.projectId,
-          name: sanitizeText(request.name),
-          type: request.type,
-          sku: request.sku ? sanitizeText(request.sku) : null,
-          imageKey: request.imageKey,
-          createdBy: context.userId,
-          updatedBy: context.userId,
-        })
-        .returning()
-
-      const [variant] = await tx
-        .insert(productVariants)
-        .values({
-          projectId: request.projectId,
-          productId: product!.id,
-          variantName: request.variantName ? sanitizeText(request.variantName) : null,
-          skuVariant: request.sku ? sanitizeText(request.sku) : null,
-          hpp: canViewCost ? toDecimalString(request.hpp) : '0',
-          createdBy: context.userId,
-          updatedBy: context.userId,
-        })
-        .returning()
-
-      const location = {
-        projectId: request.projectId,
-        branchId: request.branchId,
-        productVariantId: variant!.id,
-      }
-
-      await inventoryRepository.lockBalance(tx, location)
-
-      if (request.initialStock > 0) {
-        const plan = planStockMovement({ type: 'initial', qty: request.initialStock }, 0)
-        await inventoryRepository.setBalance(tx, location, plan.quantityAfter, context.userId)
-        await inventoryRepository.appendMovement(tx, location, plan, context.userId)
-      }
-
-      return { product: product!, variant: variant! }
-    })
+    const created = await withTenant(request.projectId, (tx) =>
+      this.insertProductTx(tx, request, canViewCost, context.userId)
+    )
 
     await auditRepository.log({
       action: 'create',
@@ -309,33 +318,45 @@ export class CatalogService {
     }))
   }
 
-  // Import many products from parsed CSV rows. Permission and branch are checked
-  // once; each row is created independently so one failure doesn't abort the rest.
+  // Import many products from parsed CSV rows. Permission, branch, and cost access
+  // are resolved once for the whole batch; each row is inserted in its own
+  // transaction so one failure doesn't abort the rest, and each keeps its own audit entry.
   async bulkImport(
     request: { projectId: string; branchId: string; rows: ParsedProductRow[] },
     context: CatalogContext
   ): Promise<{ created: number; failed: Array<{ name: string; error: string }> }> {
     await requirePermission(request.projectId, context.userId, 'product:manage')
     await requireBranchAccess(request.projectId, context.userId, request.branchId)
+    const canViewCost = await checkPermission(request.projectId, context.userId, COST_PERMISSION)
 
     let created = 0
     const failed: Array<{ name: string; error: string }> = []
     for (const row of request.rows) {
+      const productRequest: CreateProductRequest = {
+        projectId: request.projectId,
+        branchId: request.branchId,
+        name: row.name,
+        type: row.type,
+        sku: row.sku,
+        variantName: row.variantName,
+        hpp: fromDecimalString(row.hpp),
+        initialStock: row.initialStock,
+        imageKey: null,
+      }
       try {
-        await this.createProduct(
-          {
-            projectId: request.projectId,
-            branchId: request.branchId,
-            name: row.name,
-            type: row.type,
-            sku: row.sku,
-            variantName: row.variantName,
-            hpp: fromDecimalString(row.hpp),
-            initialStock: row.initialStock,
-            imageKey: null,
-          },
-          context
+        const result = await withTenant(request.projectId, (tx) =>
+          this.insertProductTx(tx, productRequest, canViewCost, context.userId)
         )
+        await auditRepository.log({
+          action: 'create',
+          resource: 'product',
+          resourceId: result.product.id,
+          userId: context.userId,
+          projectId: request.projectId,
+          ipAddress: context.ip,
+          userAgent: context.userAgent,
+          metadata: { name: result.product.name, type: row.type, source: 'import' },
+        })
         created++
       } catch (error) {
         failed.push({
