@@ -7,6 +7,7 @@ import { withTenant } from '@/lib/db/tenant'
 import type { NewTransaction } from '@/lib/repositories/transaction.repository'
 import { logger } from '@/lib/logging/logger'
 import { isAuthorizedCronRequest } from '@/lib/security/cron-auth'
+import { shopeeConnector } from '@/lib/integrations/shopee/connector'
 
 const SYNC_INTERVAL_MS = 5 * 60 * 60 * 1000
 
@@ -16,7 +17,7 @@ type Store = typeof stores.$inferSelect
 const MARKETPLACE_CONNECTORS = new Map<
   Store['platform'],
   (store: Store) => Promise<NewTransaction[]>
->()
+>([['shopee', shopeeConnector]])
 
 // stores is RLS-protected, so it can't be scanned across projects in one query; the cron walks projects one by one with the tenant set.
 async function findStoresDueForSync(): Promise<Store[]> {
