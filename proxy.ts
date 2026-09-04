@@ -22,6 +22,7 @@ const PROTECTED_ROUTES = [
   '/expenses',
   '/finance',
   '/customers',
+  '/transfers',
   '/onboarding',
   '/billing',
   '/admin',

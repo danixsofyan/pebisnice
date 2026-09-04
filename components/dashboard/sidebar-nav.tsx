@@ -14,6 +14,7 @@ import {
   Users,
   Landmark,
   Contact,
+  ArrowLeftRight,
   Settings,
 } from 'lucide-react'
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar'
@@ -49,6 +50,11 @@ const mainNavItems = [
     title: 'Inventaris',
     url: '/inventory',
     icon: Package,
+  },
+  {
+    title: 'Transfer Stok',
+    url: '/transfers',
+    icon: ArrowLeftRight,
   },
   {
     title: 'Produksi',

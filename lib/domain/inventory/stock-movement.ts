@@ -1,6 +1,14 @@
 import { ValidationError } from '@/lib/errors/app-error'
 
-export type MovementType = 'sale' | 'return' | 'cancellation' | 'adjustment' | 'opname' | 'initial'
+export type MovementType =
+  | 'sale'
+  | 'return'
+  | 'cancellation'
+  | 'adjustment'
+  | 'opname'
+  | 'initial'
+  | 'transfer_out'
+  | 'transfer_in'
 
 // Stock movement command; shaped per kind so the type forces correct input: sale needs a positive qty, adjustment a signed delta, opname a counted qty.
 export type StockMovementCommand =
@@ -10,6 +18,8 @@ export type StockMovementCommand =
   | { type: 'adjustment'; delta: number; reason: string }
   | { type: 'opname'; countedQty: number; reason: string }
   | { type: 'initial'; qty: number }
+  | { type: 'transfer_out'; qty: number; referenceId?: string }
+  | { type: 'transfer_in'; qty: number; referenceId?: string }
 
 export interface PlannedStockMovement {
   movementType: MovementType
@@ -57,8 +67,13 @@ function resolveDelta(command: StockMovementCommand, currentQty: number): number
 
     case 'return':
     case 'cancellation':
+    case 'transfer_in':
       assertPositiveInteger(command.qty, 'qty')
       return command.qty
+
+    case 'transfer_out':
+      assertPositiveInteger(command.qty, 'qty')
+      return -command.qty
 
     case 'adjustment':
       assertReason(command.reason)
@@ -86,7 +101,13 @@ function resolveNote(command: StockMovementCommand): string | null {
 }
 
 function resolveReferenceId(command: StockMovementCommand): string | null {
-  if (command.type === 'sale' || command.type === 'return' || command.type === 'cancellation') {
+  if (
+    command.type === 'sale' ||
+    command.type === 'return' ||
+    command.type === 'cancellation' ||
+    command.type === 'transfer_out' ||
+    command.type === 'transfer_in'
+  ) {
     return command.referenceId ?? null
   }
   return null

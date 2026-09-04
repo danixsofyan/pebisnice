@@ -36,6 +36,7 @@ const CHILD_TABLES = [
   'transactionItems',
   'productionMaterials',
   'saleReturnItems',
+  'stockTransferItems',
 ]
 
 describe('kepatuhan skema terhadap db-standards.md', () => {
@@ -61,6 +62,8 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'saleReturnItems',
       'saleReturns',
       'sessions',
+      'stockTransferItems',
+      'stockTransfers',
       'stores',
       'subscriptionPayments',
       'subscriptions',
@@ -160,6 +163,8 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'financialMutations',
       'saleReturns',
       'saleReturnItems',
+      'stockTransfers',
+      'stockTransferItems',
     ]
 
     for (const tableName of tenantScoped) {

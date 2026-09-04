@@ -39,6 +39,8 @@ export const movementTypeEnum = pgEnum('movement_type', [
   'adjustment',
   'opname',
   'initial',
+  'transfer_out',
+  'transfer_in',
 ])
 
 export const feeTypeEnum = pgEnum('fee_type', [
@@ -114,6 +116,8 @@ export const expenseCategoryEnum = pgEnum('expense_category', [
 
 // Money in ('in' = credit/masuk) or out ('out' = debit/keluar) on a bank statement.
 export const mutationDirectionEnum = pgEnum('mutation_direction', ['in', 'out'])
+
+// movement_type also gains transfer_out/transfer_in via migration 0017 (ALTER TYPE ADD VALUE).
 
 // How a mutation entered the system: statement import, an aggregator webhook, or hand-entered.
 export const mutationSourceEnum = pgEnum('mutation_source', ['import', 'moota', 'manual'])
