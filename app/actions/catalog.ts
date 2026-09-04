@@ -17,6 +17,7 @@ const createProductSchema = z.object({
   variantName: z.string().trim().max(100).optional(),
   hpp: z.string().regex(/^\d+(\.\d{1,2})?$/, 'HPP harus angka'),
   initialStock: z.number().int().min(0, 'Stok awal tidak boleh negatif'),
+  imageKey: z.string().trim().max(200).optional(),
 })
 
 export async function createProductAction(raw: unknown) {
@@ -41,6 +42,7 @@ export async function createProductAction(raw: unknown) {
           variantName: parsed.data.variantName ?? null,
           hpp: fromDecimalString(parsed.data.hpp),
           initialStock: parsed.data.initialStock,
+          imageKey: parsed.data.imageKey ?? null,
         },
         {
           userId: context.userId,
@@ -53,6 +55,38 @@ export async function createProductAction(raw: unknown) {
       revalidatePath('/pos')
 
       return { success: true as const, data: { productId: result.product.id } }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
+/**
+ * Mengunggah foto produk lebih dulu, terpisah dari penyimpanan produk.
+ *
+ * Menerima `FormData` karena berkas biner tidak bisa lewat argumen JSON server
+ * action. Mengembalikan kunci objek; form menyimpannya lalu menyertakannya saat
+ * membuat produk.
+ */
+export async function uploadProductImageAction(formData: FormData) {
+  return withRequestScope('uploadProductImageAction', async () => {
+    try {
+      const context = await getSessionContext()
+      tagRequestActor(context.userId, context.projectId)
+
+      const file = formData.get('file')
+      if (!(file instanceof File)) {
+        throw new ValidationError('Berkas tidak ditemukan')
+      }
+
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      const { key } = await catalogService.uploadProductImage(
+        context.projectId,
+        context.userId,
+        bytes
+      )
+
+      return { success: true as const, data: { imageKey: key } }
     } catch (error) {
       return handleActionError(error)
     }

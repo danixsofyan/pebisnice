@@ -2,6 +2,7 @@ import { getAccessibleBranches, getSessionContext } from '@/lib/auth/session-con
 import { catalogService } from '@/lib/services/catalog.service'
 import { hasRolePermission } from '@/lib/authz/permissions'
 import { formatRupiahFromDecimal } from '@/lib/formatters'
+import { fileProxyUrl } from '@/lib/storage'
 import { ProductForm } from '@/components/catalog/product-form'
 
 export default async function ProductsPage() {
@@ -44,6 +45,7 @@ export default async function ProductsPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left">
               <tr>
+                <th className="w-14 px-4 py-3 font-medium">Foto</th>
                 <th className="px-4 py-3 font-medium">Nama</th>
                 <th className="px-4 py-3 font-medium">Tipe</th>
                 <th className="px-4 py-3 font-medium">SKU</th>
@@ -56,6 +58,19 @@ export default async function ProductsPage() {
             <tbody>
               {items.map((item) => (
                 <tr key={item.variantId} className="border-border border-t">
+                  <td className="px-4 py-3">
+                    {item.imageKey ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- disajikan proxy dinamis satu-origin, bukan aset next/image
+                      <img
+                        src={fileProxyUrl(item.imageKey)}
+                        alt={item.name}
+                        className="border-border h-10 w-10 rounded-md border object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="bg-muted h-10 w-10 rounded-md" />
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {item.name}
                     {item.variantName ? (

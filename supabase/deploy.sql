@@ -713,6 +713,11 @@ CREATE POLICY policy_expenses_tenant ON expenses
   WITH CHECK (project_id = current_setting('app.current_project_id', true)::uuid);
 
 -- -------------------------------------------------------------
+-- 0008_product_image_key
+-- -------------------------------------------------------------
+ALTER TABLE "products" ADD COLUMN "image_key" text;
+
+-- -------------------------------------------------------------
 -- Catat seluruh migration sebagai sudah diterapkan, supaya
 -- `pnpm db:migrate` berikutnya hanya menjalankan yang baru.
 -- -------------------------------------------------------------
@@ -734,7 +739,8 @@ FROM (VALUES
   ('dcb5105d5d3ac93c6cc1f55b8fe17a1f6c3b0c61f7d3da42c0074dd8cd87b29e', 1788474677802),
   ('24d0d59b06eff9e35b28d58879cede494129a6ed0b7c23964821b613c75e3b6b', 1788475628396),
   ('57305f684173f8f26362083ddd251b3a37c117a90fe3a481feea00a0b7ba713a', 1788476692629),
-  ('b39d8622e7ffcc89fffc363ab128ff15681d58fff745da1c294005c7ce55e468', 1788477036154)
+  ('b39d8622e7ffcc89fffc363ab128ff15681d58fff745da1c294005c7ce55e468', 1788477036154),
+  ('3200d85a937e634f60307c6e8f2e8eef3e7e8320c75af5bf60547de4892ace60', 1788508982075)
 ) AS v(hash, created_at)
 WHERE NOT EXISTS (
   SELECT 1 FROM "drizzle"."__drizzle_migrations" m WHERE m.hash = v.hash

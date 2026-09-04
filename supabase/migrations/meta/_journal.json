@@ -57,6 +57,13 @@
       "when": 1788477036154,
       "tag": "0007_expenses",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788508982075,
+      "tag": "0008_product_image_key",
+      "breakpoints": true
     }
   ]
 }

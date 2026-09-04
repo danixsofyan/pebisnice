@@ -9,6 +9,10 @@ import { checkPermission, requireBranchAccess, requirePermission } from '@/lib/r
 import { COST_PERMISSION } from '@/lib/authz/permissions'
 import { sanitizeText } from '@/lib/security/sanitizer'
 import { logger } from '@/lib/logging/logger'
+import { inspectImage } from '@/lib/domain/media/image'
+import { putObject } from '@/lib/storage/object-store'
+import { buildObjectKey } from '@/lib/storage/object-key'
+import { ValidationError } from '@/lib/errors/app-error'
 
 export type ProductType = 'finished' | 'material'
 
@@ -22,6 +26,8 @@ export interface CreateProductRequest {
   /** HPP awal. Hanya diterapkan bila pemanggil punya `cost:view`. */
   hpp: Money
   initialStock: number
+  /** Kunci objek foto yang sudah diunggah lebih dulu. */
+  imageKey: string | null
 }
 
 export interface CatalogContext {
@@ -40,6 +46,8 @@ export interface ProductListItem {
   stockQty: number
   /** Hanya terisi untuk peran dengan `cost:view`. */
   hpp: string | null
+  /** Kunci objek foto, atau null. Diubah jadi URL proxy di lapisan tampilan. */
+  imageKey: string | null
 }
 
 export class CatalogService {
@@ -63,6 +71,7 @@ export class CatalogService {
           name: sanitizeText(request.name),
           type: request.type,
           sku: request.sku ? sanitizeText(request.sku) : null,
+          imageKey: request.imageKey,
           createdBy: context.userId,
           updatedBy: context.userId,
         })
@@ -115,6 +124,38 @@ export class CatalogService {
   }
 
   /**
+   * Menyimpan foto produk ke bucket privat dan mengembalikan kunci objeknya.
+   *
+   * Terpisah dari `createProduct` supaya bisa dipakai ulang saat mengganti foto
+   * dan supaya form bisa mengunggah lebih dulu lalu menyertakan kunci saat
+   * menyimpan. Jenis berkas diperiksa dari byte, bukan dari yang diklaim klien.
+   */
+  async uploadProductImage(
+    projectId: string,
+    userId: string,
+    bytes: Uint8Array
+  ): Promise<{ key: string }> {
+    await requirePermission(projectId, userId, 'product:manage')
+
+    const check = inspectImage(bytes)
+    if (!check.ok) {
+      throw new ValidationError(check.reason)
+    }
+
+    const key = buildObjectKey({
+      projectId,
+      resource: 'products',
+      id: crypto.randomUUID(),
+      ext: check.kind.ext,
+    })
+
+    await putObject(key, Buffer.from(bytes), { contentType: check.kind.mime })
+    logger.info({ projectId, key }, 'product image uploaded')
+
+    return { key }
+  }
+
+  /**
    * Daftar produk beserta stok cabang. Kolom HPP hanya ikut untuk peran yang
    * berhak — pola yang sama dengan `productRepository`.
    */
@@ -134,6 +175,7 @@ export class CatalogService {
           variantName: productVariants.variantName,
           stockQty: inventory.stockQty,
           hpp: productVariants.hpp,
+          imageKey: products.imageKey,
         })
         .from(productVariants)
         .innerJoin(products, eq(productVariants.productId, products.id))
@@ -164,6 +206,7 @@ export class CatalogService {
       variantName: row.variantName,
       stockQty: row.stockQty ?? 0,
       hpp: canViewCost ? row.hpp : null,
+      imageKey: row.imageKey,
     }))
   }
 }

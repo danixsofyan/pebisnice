@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createProductAction } from '@/app/actions/catalog'
+import { createProductAction, uploadProductImageAction } from '@/app/actions/catalog'
+import { IMAGE_ACCEPT } from '@/lib/domain/media/image'
 
 /**
  * Form tambah produk. Field HPP hanya ditampilkan untuk peran yang berhak —
@@ -20,8 +21,55 @@ export function ProductForm({ branchId, canViewCost }: { branchId: string; canVi
   const [variantName, setVariantName] = useState('')
   const [hpp, setHpp] = useState('')
   const [initialStock, setInitialStock] = useState('')
+  const [imageKey, setImageKey] = useState<string | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [isUploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  async function handleFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setError(null)
+    setUploading(true)
+    try {
+      const data = new FormData()
+      data.set('file', file)
+      const result = await uploadProductImageAction(data)
+
+      if (!result.success) {
+        setError(result.error)
+        return
+      }
+
+      setImageKey(result.data.imageKey)
+      // Pratinjau dari berkas lokal supaya tidak perlu bolak-balik ke server.
+      setPreview((previous) => {
+        if (previous) URL.revokeObjectURL(previous)
+        return URL.createObjectURL(file)
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function clearImage() {
+    setImageKey(null)
+    setPreview((previous) => {
+      if (previous) URL.revokeObjectURL(previous)
+      return null
+    })
+  }
+
+  function resetForm() {
+    setName('')
+    setSku('')
+    setVariantName('')
+    setHpp('')
+    setInitialStock('')
+    clearImage()
+  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -36,6 +84,7 @@ export function ProductForm({ branchId, canViewCost }: { branchId: string; canVi
         variantName: variantName.trim() || undefined,
         hpp: Number(hpp || 0).toFixed(2),
         initialStock: Number(initialStock || 0),
+        imageKey: imageKey ?? undefined,
       })
 
       if (!result.success) {
@@ -43,11 +92,7 @@ export function ProductForm({ branchId, canViewCost }: { branchId: string; canVi
         return
       }
 
-      setName('')
-      setSku('')
-      setVariantName('')
-      setHpp('')
-      setInitialStock('')
+      resetForm()
       setOpen(false)
       router.refresh()
     })
@@ -124,6 +169,47 @@ export function ProductForm({ branchId, canViewCost }: { branchId: string; canVi
         </div>
       </div>
 
+      <div className="space-y-2">
+        <Label htmlFor="p-image">Foto (opsional)</Label>
+        <div className="flex items-center gap-3">
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element -- pratinjau blob lokal, bukan aset yang perlu next/image
+            <img
+              src={preview}
+              alt="Pratinjau foto produk"
+              className="border-border h-16 w-16 rounded-md border object-cover"
+            />
+          ) : (
+            <div className="border-border text-muted-foreground flex h-16 w-16 items-center justify-center rounded-md border border-dashed text-xs">
+              16:9
+            </div>
+          )}
+          <div className="space-y-1">
+            <Input
+              id="p-image"
+              type="file"
+              accept={IMAGE_ACCEPT}
+              onChange={handleFile}
+              disabled={isUploading}
+              className="text-sm"
+            />
+            {isUploading ? (
+              <p className="text-muted-foreground text-xs">Mengunggah…</p>
+            ) : imageKey ? (
+              <button
+                type="button"
+                onClick={clearImage}
+                className="text-muted-foreground hover:text-destructive text-xs underline"
+              >
+                Hapus foto
+              </button>
+            ) : (
+              <p className="text-muted-foreground text-xs">JPG, PNG, atau WebP · maks 2 MB</p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {error ? (
         <p role="alert" className="text-destructive text-sm">
           {error}
@@ -131,7 +217,7 @@ export function ProductForm({ branchId, canViewCost }: { branchId: string; canVi
       ) : null}
 
       <div className="flex gap-2">
-        <Button type="submit" disabled={isPending || name.trim().length === 0}>
+        <Button type="submit" disabled={isPending || isUploading || name.trim().length === 0}>
           {isPending ? 'Menyimpan…' : 'Simpan'}
         </Button>
         <Button type="button" variant="outline" onClick={() => setOpen(false)}>
