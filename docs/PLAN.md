@@ -5,6 +5,24 @@ Menyatukan penjualan marketplace (v1.0) dengan cabang fisik, POS, produksi, dan 
 
 ---
 
+## 0. Batas Versi yang Disengaja
+
+Tiga dependensi **sengaja tidak** dinaikkan ke versi terbaru karena ekosistemnya
+belum siap. Diverifikasi langsung, bukan diasumsikan:
+
+| Paket         | Dipakai | Terbaru | Penghalang                                                          |
+| ------------- | ------- | ------- | ------------------------------------------------------------------- |
+| `typescript`  | 5.9.3   | 7.0.2   | `typescript-eslint@8.69` (terbaru) peer-nya `<6.1.0` — menolak TS 7 |
+| `eslint`      | 9.39.5  | 10.9.1  | `eslint-plugin-react@7.37.5` memakai API yang dihapus di ESLint 10  |
+| `@types/node` | 22.20.1 | 26.4.1  | Disamakan dengan runtime Node 22 di Vercel, bukan versi terbaru     |
+
+`tsc --noEmit` sendiri **lulus** dengan TypeScript 7 — yang gagal hanya
+linting. Menukar lint demi TS 7 bukan pilihan yang baik: lint justru menangkap
+`setState`-dalam-effect di `hooks/use-mobile.ts` saat pembaruan ini.
+
+Periksa ulang berkala; naikkan begitu `typescript-eslint` mendukung TS 7 dan
+`eslint-plugin-react` mendukung ESLint 10.
+
 ## 1. Keputusan yang Sudah Dikunci
 
 | Keputusan         | Pilihan                                          | Alasan                                                                                                      |
