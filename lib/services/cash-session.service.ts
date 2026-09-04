@@ -14,11 +14,7 @@ export interface CashSessionContext {
 }
 
 export class CashSessionService {
-  /**
-   * Membuka shift. Satu cabang hanya boleh punya satu sesi terbuka; pengecekan
-   * di sini ramah pengguna, sementara partial unique index di database yang
-   * menutup celah balapan antara dua kasir.
-   */
+  // Open a shift. A branch may have only one open session; this check is user-friendly while the partial unique index closes the race between two cashiers.
   async open(
     projectId: string,
     branchId: string,
@@ -60,10 +56,7 @@ export class CashSessionService {
     return session
   }
 
-  /**
-   * Menutup shift. Penjualan tunai dijumlahkan dari database, bukan dari
-   * angka yang dikirim client — kasir hanya menyetor hasil hitung fisik.
-   */
+  // Close a shift. Cash sales are summed from the database, not from the client; the cashier only submits the physical count.
   async close(
     projectId: string,
     branchId: string,

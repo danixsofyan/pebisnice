@@ -23,10 +23,10 @@ export interface CreateProductRequest {
   type: ProductType
   sku: string | null
   variantName: string | null
-  /** HPP awal. Hanya diterapkan bila pemanggil punya `cost:view`. */
+  /** Initial HPP; applied only if the caller has cost:view. */
   hpp: Money
   initialStock: number
-  /** Kunci objek foto yang sudah diunggah lebih dulu. */
+  /** Object key of a previously uploaded photo. */
   imageKey: string | null
 }
 
@@ -37,9 +37,9 @@ export interface UpdateProductRequest {
   type: ProductType
   sku: string | null
   variantName: string | null
-  /** HPP baru. Hanya diterapkan bila pemanggil punya `cost:view`. */
+  /** New HPP; applied only if the caller has cost:view. */
   hpp: Money
-  /** Kunci foto: sama seperti sebelumnya, kunci baru, atau null untuk menghapus. */
+  /** Photo key: unchanged, a new key, or null to remove. */
   imageKey: string | null
 }
 
@@ -57,19 +57,14 @@ export interface ProductListItem {
   sku: string | null
   variantName: string | null
   stockQty: number
-  /** Hanya terisi untuk peran dengan `cost:view`. */
+  /** Set only for roles with cost:view. */
   hpp: string | null
-  /** Kunci objek foto, atau null. Diubah jadi URL proxy di lapisan tampilan. */
+  /** Photo object key, or null; turned into a proxy URL in the view layer. */
   imageKey: string | null
 }
 
 export class CatalogService {
-  /**
-   * Membuat produk beserta satu varian dan stok awalnya.
-   *
-   * Semuanya dalam satu transaksi: produk tanpa varian tidak bisa dijual, dan
-   * varian tanpa baris stok akan membuat POS gagal saat mengunci saldo.
-   */
+  // Create a product with one variant and its initial stock, in a single transaction: a product without a variant can't sell, and a variant without a stock row breaks POS balance locking.
   async createProduct(request: CreateProductRequest, context: CatalogContext) {
     await requirePermission(request.projectId, context.userId, 'product:manage')
     await requireBranchAccess(request.projectId, context.userId, request.branchId)
@@ -136,13 +131,7 @@ export class CatalogService {
     return created
   }
 
-  /**
-   * Menyimpan foto produk ke bucket privat dan mengembalikan kunci objeknya.
-   *
-   * Terpisah dari `createProduct` supaya bisa dipakai ulang saat mengganti foto
-   * dan supaya form bisa mengunggah lebih dulu lalu menyertakan kunci saat
-   * menyimpan. Jenis berkas diperiksa dari byte, bukan dari yang diklaim klien.
-   */
+  // Store a product photo in the private bucket and return its key. Separate from createProduct so it's reusable when replacing a photo and the form can upload first, then reference the key. Type is checked from bytes, not the client claim.
   async uploadProductImage(
     projectId: string,
     userId: string,
@@ -168,13 +157,7 @@ export class CatalogService {
     return { key }
   }
 
-  /**
-   * Menghapus foto yang sudah terunggah tetapi produknya belum tersimpan —
-   * dipanggil saat pengguna mengganti pilihan atau membatalkan form.
-   *
-   * Menolak dua hal demi keamanan: kunci milik project lain, dan kunci yang
-   * ternyata masih dirujuk sebuah produk (agar tidak menghapus foto tersimpan).
-   */
+  // Remove an uploaded-but-unsaved photo, called when the user replaces the pick or cancels. Refuses cross-project keys and keys still referenced by a product.
   async discardUnsavedImage(projectId: string, userId: string, key: string): Promise<void> {
     await requirePermission(projectId, userId, 'product:manage')
 
@@ -190,20 +173,14 @@ export class CatalogService {
         .limit(1)
     )
     if (referenced.length > 0) {
-      // Sudah dipakai produk — bukan yatim, jangan disentuh.
+      // Referenced by a product, not an orphan; leave it.
       return
     }
 
     await deleteObject(key)
   }
 
-  /**
-   * Memperbarui produk beserta variannya.
-   *
-   * Foto lama dihapus segera bila diganti atau dikosongkan — kuncinya diketahui,
-   * jadi tak perlu menunggu cron. HPP hanya disentuh oleh peran ber-`cost:view`;
-   * bila tidak, kolomnya dibiarkan apa adanya.
-   */
+  // Update a product and its variant. A replaced or removed photo is deleted at once since its key is known; HPP is touched only by cost:view roles.
   async updateProduct(request: UpdateProductRequest, context: CatalogContext): Promise<void> {
     await requirePermission(request.projectId, context.userId, 'product:manage')
     const canViewCost = await checkPermission(request.projectId, context.userId, COST_PERMISSION)
@@ -253,8 +230,7 @@ export class CatalogService {
         )
     })
 
-    // Di luar transaksi: gagal menghapus objek tidak boleh menggagalkan
-    // penyimpanan; paling buruk objek jadi yatim dan disapu cron.
+    // Outside the transaction: a failed object delete must not fail the save; at worst it becomes an orphan for the cron.
     if (current.imageKey && current.imageKey !== request.imageKey) {
       try {
         await deleteObject(current.imageKey)
@@ -280,10 +256,7 @@ export class CatalogService {
     logger.info({ projectId: request.projectId, productId: request.productId }, 'Product updated')
   }
 
-  /**
-   * Daftar produk beserta stok cabang. Kolom HPP hanya ikut untuk peran yang
-   * berhak — pola yang sama dengan `productRepository`.
-   */
+  // Product list with branch stock; the HPP column is included only for entitled roles, mirroring productRepository.
   async list(projectId: string, branchId: string, userId: string): Promise<ProductListItem[]> {
     await requirePermission(projectId, userId, 'project:view')
 

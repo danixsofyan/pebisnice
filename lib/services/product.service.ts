@@ -5,14 +5,7 @@ import { ForbiddenError } from '@/lib/errors/app-error'
 import type { VariantView, VariantWithCost } from '@/lib/domain/catalog/variant-view'
 
 export class ProductService {
-  /**
-   * Daftar varian, dengan atau tanpa HPP.
-   *
-   * Keputusan menyertakan biaya diambil di sini dari hasil pengecekan
-   * permission — bukan parameter yang bisa diatur pemanggil. Ini yang membuat
-   * kebocoran HPP tidak bisa terjadi lewat halaman atau action yang lupa
-   * memfilter.
-   */
+  // Variant list, with or without HPP. The include-cost decision is made here from a permission check, not a caller parameter, so cost can't leak via a page or action that forgot to filter.
   async listVariants(projectId: string, productId: string, userId: string): Promise<VariantView[]> {
     await requirePermission(projectId, userId, 'project:view')
 
@@ -21,10 +14,7 @@ export class ProductService {
     return productRepository.findVariantsByProduct(projectId, productId, canViewCost)
   }
 
-  /**
-   * Membaca HPP secara eksplisit. Menolak keras bila pemanggil tidak berhak,
-   * bukan mengembalikan nilai kosong — supaya kesalahan terlihat, tidak diam.
-   */
+  // Read HPP explicitly. Hard-refuses if the caller isn't entitled, rather than returning empty, so mistakes surface instead of going silent.
   async getVariantCost(
     projectId: string,
     variantId: string,

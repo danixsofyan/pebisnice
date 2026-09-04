@@ -1,16 +1,6 @@
 import type { ListedObject } from '@/lib/storage/object-store'
 
-/**
- * Aturan memilih berkas foto produk yatim — objek yang tak lagi dirujuk baris
- * produk mana pun.
- *
- * Dipisah dari IO supaya bisa diuji tanpa menyentuh bucket atau database.
- * Dua penjaga penting:
- *
- *   - hanya menyasar kunci berpola foto produk, tak pernah objek lain,
- *   - hanya yang lebih tua dari ambang usia, supaya foto yang baru diunggah dan
- *     masih menunggu form disimpan tidak ikut terhapus.
- */
+// Selects orphaned product images (objects no product row references). Kept IO-free for testing; only product-image keys, and only past the age threshold so in-flight uploads survive.
 
 const PRODUCT_IMAGE_KEY = /^[0-9a-f-]{36}\/products\/[^/]+$/i
 
@@ -32,11 +22,11 @@ export function selectOrphans(input: OrphanScanInput): string[] {
     input.objects
       .filter((object) => isProductImageKey(object.key))
       .filter((object) => !input.referencedKeys.has(object.key))
-      // Tanpa tanggal, usia tak bisa dipastikan — biarkan, jangan hapus.
+      // No date means unknown age; leave it.
       .filter((object) => object.lastModified !== null && object.lastModified.getTime() < threshold)
       .map((object) => object.key)
   )
 }
 
-/** Ambang usia bawaan: 24 jam. Cukup lama agar upload in-flight aman. */
+/** Default age threshold: 24h, long enough for in-flight uploads. */
 export const ORPHAN_MIN_AGE_MS = 24 * 60 * 60 * 1000

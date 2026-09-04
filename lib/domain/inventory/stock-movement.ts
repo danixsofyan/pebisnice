@@ -2,11 +2,7 @@ import { ValidationError } from '@/lib/errors/app-error'
 
 export type MovementType = 'sale' | 'return' | 'cancellation' | 'adjustment' | 'opname' | 'initial'
 
-/**
- * Perintah mutasi stok. Bentuknya sengaja berbeda per jenis supaya tipe yang
- * memaksa pemanggil mengirim data yang benar: `sale` butuh besaran positif,
- * `adjustment` butuh delta bertanda, `opname` butuh hasil hitung fisik.
- */
+// Stock movement command; shaped per kind so the type forces correct input: sale needs a positive qty, adjustment a signed delta, opname a counted qty.
 export type StockMovementCommand =
   | { type: 'sale'; qty: number; referenceId?: string }
   | { type: 'return'; qty: number; referenceId?: string }
@@ -96,10 +92,7 @@ function resolveReferenceId(command: StockMovementCommand): string | null {
   return null
 }
 
-/**
- * Menghitung dampak sebuah perintah terhadap saldo stok tanpa menyentuh
- * database. Melempar bila hasilnya membuat stok negatif.
- */
+// Compute a command's effect on the balance without touching the database; throws if it would go negative.
 export function planStockMovement(
   command: StockMovementCommand,
   currentQty: number
@@ -120,10 +113,7 @@ export function planStockMovement(
   }
 }
 
-/**
- * Merekonsiliasi saldo terhadap ledger-nya. Dipakai test dan laporan opname
- * untuk membuktikan `inventory.stock_qty` = Σ `inventory_movements.qty`.
- */
+// Reconcile a balance against its ledger; used by tests and opname to prove stock_qty = sum(movements.qty).
 export function reconcileBalance(movements: Array<{ qty: number }>): number {
   return movements.reduce((total, movement) => total + movement.qty, 0)
 }

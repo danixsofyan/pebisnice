@@ -5,13 +5,7 @@ interface MidtransNotification {
   fraud_status?: string
 }
 
-/**
- * Memetakan status Midtrans ke status pembayaran internal.
- *
- * `capture` dan `settlement` dianggap lunas — kecuali fraud_status `challenge`,
- * yang belum boleh memberi akses sampai ditinjau. Pemetaan ini murni agar bisa
- * diuji tanpa memanggil Midtrans.
- */
+// Map Midtrans status to our payment status; capture/settlement count as paid unless fraud_status is 'challenge'. Pure, testable.
 export function mapMidtransStatus(notification: MidtransNotification): PaymentStatus {
   const status = notification.transaction_status
   const fraud = notification.fraud_status
@@ -28,7 +22,7 @@ export function mapMidtransStatus(notification: MidtransNotification): PaymentSt
   return 'pending'
 }
 
-/** Hanya status lunas yang boleh mengaktifkan langganan. */
+// Only a paid status may activate a subscription.
 export function grantsAccess(status: PaymentStatus): boolean {
   return status === 'paid'
 }

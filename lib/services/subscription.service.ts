@@ -14,7 +14,7 @@ export interface SubscriptionWithPlan {
 }
 
 export class SubscriptionService {
-  /** Paket yang bisa dipilih pelanggan, terurut. */
+  /** Plans a customer can choose, ordered. */
   async listActivePlans(): Promise<PlanRow[]> {
     return db
       .select()
@@ -32,7 +32,7 @@ export class SubscriptionService {
     return rows[0] ?? null
   }
 
-  /** Langganan pengguna berikut paketnya, atau null bila belum pernah berlangganan. */
+  /** The user's subscription with its plan, or null if never subscribed. */
   async getForUser(userId: string): Promise<SubscriptionWithPlan | null> {
     const rows = await db
       .select({ subscription: subscriptions, plan: plans })
@@ -43,11 +43,7 @@ export class SubscriptionService {
     return rows[0] ?? null
   }
 
-  /**
-   * Memulai masa coba. Menolak bila pengguna sudah punya langganan — trial
-   * hanya untuk yang benar-benar baru, dan dicek di server agar tak bisa
-   * dilewati dari klien.
-   */
+  // Start a trial. Rejects if the user already has a subscription; trial is for genuinely new users, checked server-side so the client can't bypass it.
   async startTrial(userId: string, now: Date = new Date()): Promise<SubscriptionWithPlan> {
     const existing = await this.getForUser(userId)
     if (existing) {
@@ -82,11 +78,7 @@ export class SubscriptionService {
     return { subscription: subscription!, plan }
   }
 
-  /**
-   * Mengaktifkan paket berbayar setelah pembayaran lunas. Dipanggil webhook
-   * Midtrans. Idempoten pada tingkat langganan: memperbarui baris yang ada atau
-   * membuat baru, memperpanjang dari akhir periode bila masih aktif.
-   */
+  // Activate a paid plan after payment settles. Called by the Midtrans webhook. Idempotent at the subscription level: updates the existing row or creates one, extending from the current end while still active.
   async activatePaidPlan(
     userId: string,
     planId: string,

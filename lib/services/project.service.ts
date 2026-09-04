@@ -24,10 +24,7 @@ export class ProjectService {
     return project
   }
 
-  /**
-   * Detail project untuk halaman pengaturan. Berbasis permission (bukan hanya
-   * pemilik), sehingga admin non-owner pun bisa membacanya.
-   */
+  // Project detail for settings; permission-based (not owner-only) so a non-owner admin can read it.
   async getSettings(projectId: string, userId: string) {
     await requirePermission(projectId, userId, 'project:view')
     const [row] = await db

@@ -19,7 +19,7 @@ export interface MaterialUsageRequest {
 export interface RecordProductionRequest {
   projectId: string
   branchId: string
-  /** Varian produk jadi yang dihasilkan. */
+  /** The finished variant produced. */
   productVariantId: string
   quantity: number
   productionDate: string
@@ -34,16 +34,7 @@ export interface ProductionContext {
 }
 
 export class ProductionService {
-  /**
-   * Mencatat satu proses produksi.
-   *
-   * Satu transaksi database: stok bahan berkurang, stok produk jadi bertambah,
-   * log dan snapshot biaya tersimpan. Bila salah satu bahan tidak mencukupi,
-   * seluruh produksi batal.
-   *
-   * Peran `production` tidak punya `cost:view`, jadi seluruh angka rupiah
-   * dihitung di server dan tidak dikembalikan kepadanya.
-   */
+  // Record one production run in a single transaction: material stock down, finished stock up, log and cost snapshot saved; if any material is short the whole run aborts. The production role lacks cost:view, so money is computed server-side and not returned to it.
   async recordProduction(request: RecordProductionRequest, context: ProductionContext) {
     await requirePermission(request.projectId, context.userId, 'production:manage')
     await requireBranchAccess(request.projectId, context.userId, request.branchId)
@@ -159,7 +150,7 @@ export class ProductionService {
       'Production recorded'
     )
 
-    // Angka biaya hanya dikembalikan kepada peran yang berhak melihatnya.
+    // Cost figures are returned only to roles entitled to see them.
     if (!canViewCost) {
       return { log: { id: result.log.id, quantity: result.log.quantity } }
     }

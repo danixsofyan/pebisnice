@@ -8,7 +8,7 @@ import type { TeamRole } from '@/lib/authz/permissions'
 import { ValidationError, NotFoundError } from '@/lib/errors/app-error'
 import { logger } from '@/lib/logging/logger'
 
-/** Peran yang boleh diberikan lewat UI — 'owner' & 'operator' (warisan) dikecualikan. */
+/** Roles assignable via the UI; 'owner' and legacy 'operator' are excluded. */
 export const ASSIGNABLE_ROLES: TeamRole[] = ['admin', 'manager', 'finance', 'cashier', 'production']
 
 export type MemberStatus = 'active' | 'invited' | 'disabled'
@@ -50,11 +50,7 @@ export class TeamService {
     )
   }
 
-  /**
-   * Menambah anggota lewat email. Bila akunnya sudah ada, langsung tertaut dan
-   * aktif; bila belum, jadi undangan yang tertaut otomatis saat mereka login
-   * pertama kali (lihat `linkPendingInvites`).
-   */
+  // Add a member by email. If the account exists it links and activates at once; otherwise a pending invite that auto-links on their first sign-in (see linkPendingInvites).
   async addMember(request: AddMemberRequest, context: TeamContext) {
     await requirePermission(request.projectId, context.userId, 'team:manage')
     if (request.branchId) {
@@ -184,11 +180,7 @@ export class TeamService {
     logger.info({ projectId, memberId }, 'team member removed')
   }
 
-  /**
-   * Menautkan undangan yang menunggu ke akun yang baru login berdasarkan email.
-   * Dipanggil dari event sign-in, sehingga undangan-lewat-email otomatis aktif
-   * begitu orangnya masuk pertama kali.
-   */
+  // Link pending invites to a just-signed-in account by email. Called from the sign-in event so email invites activate on first login.
   async linkPendingInvites(userId: string, email: string): Promise<void> {
     await db
       .update(teamMembers)

@@ -9,14 +9,7 @@ import { NotFoundError, ValidationError } from '@/lib/errors/app-error'
 import { logger } from '@/lib/logging/logger'
 
 export type ExpenseCategory =
-  | 'rent'
-  | 'salary'
-  | 'utility'
-  | 'marketing'
-  | 'shipping'
-  | 'supply'
-  | 'tax'
-  | 'other'
+  'rent' | 'salary' | 'utility' | 'marketing' | 'shipping' | 'supply' | 'tax' | 'other'
 
 export interface RecordExpenseRequest {
   projectId: string
@@ -100,7 +93,7 @@ export class ExpenseService {
     )
   }
 
-  /** Soft delete — barisnya tetap ada untuk jejak audit. */
+  /** Soft delete; the row stays for the audit trail. */
   async remove(projectId: string, expenseId: string, context: ExpenseContext): Promise<void> {
     await requirePermission(projectId, context.userId, 'expense:manage')
 

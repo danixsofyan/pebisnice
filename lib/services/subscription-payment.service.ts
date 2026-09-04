@@ -39,11 +39,7 @@ interface RawNotification {
 }
 
 export class SubscriptionPaymentService {
-  /**
-   * Membuat transaksi Snap untuk paket berbayar dan mengembalikan URL redirect.
-   * Baris pembayaran disimpan hanya setelah Snap memberi token, sehingga tidak
-   * ada baris pending yatim bila Midtrans menolak.
-   */
+  // Create a Snap transaction for a paid plan and return the redirect URL. The payment row is saved only after Snap returns a token, so a rejected charge leaves no orphan pending row.
   async createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
     const plan = await subscriptionService.getPlan(input.planId)
     if (!plan) throw new ValidationError('Paket tidak ditemukan')
@@ -78,14 +74,7 @@ export class SubscriptionPaymentService {
     return { orderId, redirectUrl: snap.redirectUrl }
   }
 
-  /**
-   * Memproses notifikasi Midtrans. Sumber kebenaran status pembayaran.
-   *
-   * Tanda tangan diverifikasi lebih dulu; jumlah dicocokkan dengan yang kami
-   * simpan agar notifikasi yang jumlahnya diubah ditolak. Transisi ke "lunas"
-   * dibuat atomik lewat update bersyarat, sehingga notifikasi ganda tidak
-   * mengaktifkan langganan dua kali.
-   */
+  // Process a Midtrans notification, the source of truth for payment status. Signature is verified first; the amount is matched against ours so a tampered amount is rejected. The transition to paid is atomic via a conditional update, so duplicate notifications can't activate twice.
   async handleNotification(payload: RawNotification): Promise<NotificationOutcome> {
     const serverKey = process.env.MIDTRANS_SERVER_KEY
     if (!serverKey) throw new Error('MIDTRANS_SERVER_KEY belum diisi')
@@ -129,7 +118,7 @@ export class SubscriptionPaymentService {
     }
 
     if (status === 'paid') {
-      // Menang transisi hanya bila sebelumnya belum lunas — jaga idempotensi.
+      // Win the transition only if not already paid, keeping it idempotent.
       const won = await db
         .update(subscriptionPayments)
         .set({ ...common, status: 'paid', paidAt: new Date() })
@@ -149,7 +138,7 @@ export class SubscriptionPaymentService {
       return { ok: true, status }
     }
 
-    // Status bukan-lunas tidak boleh menimpa pembayaran yang sudah lunas.
+    // A non-paid status must not overwrite a payment already marked paid.
     await db
       .update(subscriptionPayments)
       .set({ ...common, status })
@@ -159,7 +148,7 @@ export class SubscriptionPaymentService {
     return { ok: true, status }
   }
 
-  /** Ada pembayaran yang masih menunggu konfirmasi untuk pengguna ini? */
+  /** Any payment still awaiting confirmation for this user? */
   async hasPendingPayment(userId: string): Promise<boolean> {
     const rows = await db
       .select({ id: subscriptionPayments.id })

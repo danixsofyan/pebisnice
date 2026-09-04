@@ -8,7 +8,7 @@ export interface CartLineInput {
   sku: string | null
   qty: number
   unitPrice: Money
-  /** Snapshot HPP saat transaksi. Dihitung server, tidak pernah dari client. */
+  /** Transaction-time HPP snapshot; computed server-side, never from the client. */
   hppAtTime: Money
 }
 
@@ -18,9 +18,7 @@ export interface PricedCartLine extends CartLineInput {
 }
 
 export type CartDiscount =
-  | { type: 'none' }
-  | { type: 'nominal'; amount: Money }
-  | { type: 'percent'; basisPoints: number }
+  { type: 'none' } | { type: 'nominal'; amount: Money } | { type: 'percent'; basisPoints: number }
 
 export interface PricedCart {
   lines: PricedCartLine[]
@@ -80,12 +78,7 @@ function resolveDiscount(subtotal: Money, discount: CartDiscount): Money {
   }
 }
 
-/**
- * Menghitung seluruh angka satu transaksi POS dari keranjang.
- *
- * Murni: tidak menyentuh database, tidak membaca waktu, tidak acak. Inilah
- * satu-satunya tempat angka uang transaksi kasir dihitung.
- */
+// Compute every number of one POS transaction from the cart. Pure: no database, clock, or randomness; the only place cashier money is computed.
 export function priceCart(lines: readonly CartLineInput[], discount: CartDiscount): PricedCart {
   assertNotEmpty(lines)
   lines.forEach(assertLine)
@@ -111,10 +104,7 @@ export function priceCart(lines: readonly CartLineInput[], discount: CartDiscoun
   }
 }
 
-/**
- * Kembalian. Melempar bila uang yang dibayarkan kurang — kasir tidak boleh
- * menyimpan transaksi yang belum lunas.
- */
+// Change due; throws if paid is short, since an unpaid sale must not be saved.
 export function calculateChange(total: Money, paidAmount: Money): Money {
   if (paidAmount < ZERO) {
     throw new ValidationError('Jumlah bayar tidak boleh negatif', {

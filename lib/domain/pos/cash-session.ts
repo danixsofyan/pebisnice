@@ -2,18 +2,18 @@ import { ValidationError } from '@/lib/errors/app-error'
 import { ZERO, sumMoney, type Money } from '@/lib/domain/money'
 
 export interface CashSessionClosing {
-  /** Modal awal saat shift dibuka. */
+  /** Opening float when the shift starts. */
   openingBalance: Money
-  /** Penjualan tunai selama shift — hanya metode `cash`. */
+  /** Cash sales during the shift; cash method only. */
   cashSales: Money
-  /** Uang fisik yang dihitung kasir saat tutup shift. */
+  /** Physical cash counted at close. */
   countedBalance: Money
 }
 
 export interface CashSessionResult {
   expectedBalance: Money
   countedBalance: Money
-  /** Positif = lebih, negatif = kurang. */
+  /** Positive = over, negative = short. */
   difference: Money
   isBalanced: boolean
 }
@@ -32,11 +32,7 @@ export function calculateExpectedBalance(openingBalance: Money, cashSales: Money
   return openingBalance + cashSales
 }
 
-/**
- * Menutup shift kasir. Selisih dilaporkan apa adanya — tidak pernah
- * dibulatkan atau disembunyikan, karena justru selisih itulah sinyal yang
- * dicari owner.
- */
+// Close a cashier shift. The difference is reported as-is, never rounded or hidden, since that difference is the signal owners look for.
 export function closeCashSession(input: CashSessionClosing): CashSessionResult {
   if (input.countedBalance < ZERO) {
     throw new ValidationError('Uang hasil hitung tidak boleh negatif', {
@@ -55,7 +51,7 @@ export function closeCashSession(input: CashSessionClosing): CashSessionResult {
   }
 }
 
-/** Menjumlahkan hanya transaksi tunai — transfer dan QRIS tidak masuk laci. */
+// Sums cash transactions only; transfer and QRIS never hit the drawer.
 export function sumCashSales(
   transactions: ReadonlyArray<{ paymentMethod: string; total: Money }>
 ): Money {

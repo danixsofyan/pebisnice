@@ -25,7 +25,7 @@ export interface ReportContext {
   userAgent: string
 }
 
-/** Bentuk P&L siap tampil, seluruh angka sudah jadi string desimal. */
+/** Display-ready P&L; every number is already a decimal string. */
 export interface ProfitLossView {
   marketplaceRevenue: string
   posRevenue: string
@@ -52,10 +52,7 @@ function assertPeriod(request: ReportRequest): void {
   }
 }
 
-/**
- * Zona waktu project menentukan batas hari laporan. Dibaca dari database
- * setiap kali, bukan dari konstanta — tenant di zona lain harus benar.
- */
+// The project timezone sets report day boundaries; read from the database each time, not a constant, so tenants in other zones are correct.
 async function projectTimezone(projectId: string): Promise<string> {
   const [project] = await db
     .select({ timezone: projects.timezone })
@@ -83,12 +80,7 @@ function toView(report: ProfitLossReport): ProfitLossView {
 }
 
 export class ReportService {
-  /**
-   * Laba-rugi gabungan marketplace dan offline.
-   *
-   * Menuntut `cost:view` karena COGS adalah angka biaya — kasir dan produksi
-   * tidak boleh menyimpulkan HPP dari laporan ini.
-   */
+  // Combined marketplace + offline P&L. Requires cost:view because COGS is a cost figure the cashier and production roles must not infer.
   async profitLoss(request: ReportRequest, context: ReportContext): Promise<ProfitLossView> {
     assertPeriod(request)
     await requirePermission(request.projectId, context.userId, 'report:view')
@@ -136,7 +128,7 @@ export class ReportService {
     return toView(report)
   }
 
-  /** Tren harian per channel. Tidak memuat biaya, jadi cukup `report:view`. */
+  /** Daily trend per channel. No cost data, so report:view is enough. */
   async dailySales(request: ReportRequest, context: ReportContext) {
     assertPeriod(request)
     await requirePermission(request.projectId, context.userId, 'report:view')

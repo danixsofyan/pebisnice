@@ -15,7 +15,7 @@ import { logger } from '@/lib/logging/logger'
 export interface PosLineRequest {
   productVariantId: string
   qty: number
-  /** Harga jual satuan. HPP tidak pernah datang dari client. */
+  /** Unit sale price; HPP never comes from the client. */
   unitPrice: Money
 }
 
@@ -39,16 +39,7 @@ function todayStamp(now: Date): string {
 }
 
 export class PosService {
-  /**
-   * Membuat transaksi kasir.
-   *
-   * Seluruh langkah berada dalam satu transaksi database: penulisan header,
-   * baris, dan pengurangan stok tiap varian. Bila stok satu varian tidak
-   * mencukupi, seluruh penjualan batal — tidak ada penjualan setengah jadi.
-   *
-   * HPP diambil server dari database, bukan dari request, sehingga kasir tidak
-   * bisa memengaruhi angka COGS.
-   */
+  // Create a cashier sale. Header, lines, and per-variant stock decrements all run in one transaction; if any variant is short the whole sale aborts. HPP is read server-side, so the cashier can't influence COGS.
   async createSale(request: CreateSaleRequest, context: PosContext) {
     await requirePermission(request.projectId, context.userId, 'pos:operate')
     await requireBranchAccess(request.projectId, context.userId, request.branchId)
@@ -150,10 +141,7 @@ export class PosService {
     return result
   }
 
-  /**
-   * Membatalkan transaksi kasir dan mengembalikan stoknya. Alasan wajib —
-   * ditegakkan di sini dan lagi oleh CHECK constraint di database.
-   */
+  // Void a cashier sale and return its stock. A reason is required, enforced here and by a database CHECK.
   async voidSale(
     projectId: string,
     transactionId: string,
@@ -221,7 +209,7 @@ export class PosService {
     logger.info({ projectId, transactionId }, 'POS sale voided')
   }
 
-  /** Riwayat penjualan kasir, terbaru dulu. Terikat cakupan cabang pemanggil. */
+  /** Cashier sales history, newest first; bound to the caller's branch scope. */
   async listSales(
     projectId: string,
     userId: string,
@@ -240,7 +228,7 @@ export class PosService {
     )
   }
 
-  /** Data struk satu transaksi kasir untuk dicetak. */
+  /** Receipt data for one cashier sale, for printing. */
   async getReceipt(projectId: string, userId: string, transactionId: string) {
     await requirePermission(projectId, userId, 'project:view')
 

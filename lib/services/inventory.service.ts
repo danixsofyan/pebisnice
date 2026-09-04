@@ -16,11 +16,7 @@ export interface StockMovementContext {
 }
 
 export class InventoryService {
-  /**
-   * Satu-satunya jalur mutasi stok. Menghitung dampaknya di domain layer,
-   * lalu menerapkannya dalam satu transaksi database dengan baris saldo
-   * terkunci — sehingga dua penjualan bersamaan tidak bisa membuat stok minus.
-   */
+  // The only stock-mutation path. Effects are computed in the domain layer, then applied in one transaction with the balance row locked, so two concurrent sales can't oversell.
   async applyStockMovement(
     location: StockLocation,
     command: StockMovementCommand,
@@ -69,10 +65,7 @@ export class InventoryService {
     return plan
   }
 
-  /**
-   * Membandingkan saldo cepat dengan penjumlahan ledger. Selisih berarti ada
-   * mutasi yang tidak melewati `applyStockMovement()`.
-   */
+  // Compare the fast balance with the ledger sum; a mismatch means a movement bypassed applyStockMovement().
   async verifyBalance(
     location: StockLocation
   ): Promise<{ balance: number; ledger: number; consistent: boolean }> {

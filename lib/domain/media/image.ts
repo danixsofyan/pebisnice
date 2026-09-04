@@ -1,10 +1,4 @@
-/**
- * Aturan berkas gambar produk.
- *
- * Validasi jenis dilakukan dari byte, bukan dari nama berkas atau Content-Type
- * kiriman klien: keduanya mudah dipalsukan. Ekstensi keluaran ditentukan server
- * dari byte itu, sehingga tak mungkin menyimpan objek `.php` berkedok gambar.
- */
+// Product image rules. Type is checked from bytes, not the client-declared name or Content-Type; the output extension is server-decided so a disguised .php cannot be stored.
 
 export interface ImageKind {
   mime: string
@@ -13,7 +7,7 @@ export interface ImageKind {
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024 // 2 MB
 
-/** Angka ajaib beberapa byte pertama tiap format. */
+// Magic numbers of each format's first bytes.
 const SIGNATURES: Array<{ kind: ImageKind; test: (b: Uint8Array) => boolean }> = [
   {
     kind: { mime: 'image/jpeg', ext: 'jpg' },
@@ -25,7 +19,7 @@ const SIGNATURES: Array<{ kind: ImageKind; test: (b: Uint8Array) => boolean }> =
   },
   {
     kind: { mime: 'image/webp', ext: 'webp' },
-    // "RIFF"...."WEBP"
+    // RIFF....WEBP
     test: (b) =>
       b[0] === 0x52 &&
       b[1] === 0x49 &&

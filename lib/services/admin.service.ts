@@ -32,12 +32,11 @@ export interface SubscriberRow {
 }
 
 export class AdminService {
-  /** Ringkasan untuk halaman utama admin. */
+  /** Overview for the admin home page. */
   async overview(now: Date = new Date()): Promise<AdminOverview> {
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
 
-    // Hitungan pakai operator drizzle, bukan fragmen SQL mentah: menyisipkan
-    // Date langsung ke `sql`...`` membuat driver gagal mem-bind parameternya.
+    // Count with drizzle operators, not a raw sql fragment: a Date inside sql`` fails to bind.
     const notDeleted = isNull(subscriptions.deletedAt)
     const runningNow = and(
       or(eq(subscriptions.status, 'active'), eq(subscriptions.status, 'trialing')),
@@ -101,7 +100,7 @@ export class AdminService {
     }
   }
 
-  /** Daftar pelanggan dengan pencarian dan filter status. */
+  /** Subscriber list with search and status filter. */
   async listSubscribers(options: {
     search?: string
     status?: SubscriptionStatus
@@ -138,13 +137,7 @@ export class AdminService {
       .offset(options.offset ?? 0)
   }
 
-  /**
-   * Menambah/memperpanjang akses beberapa hari secara manual.
-   *
-   * Menghitung dari sisa masa yang masih berjalan bila ada, jadi hari yang
-   * tersisa tidak hangus. Membuat langganan trial baru bila pelanggan belum
-   * punya.
-   */
+  // Manually grant/extend N days; extends from remaining time if any, else creates a trial subscription.
   async grantAccessDays(userId: string, days: number, adminId: string): Promise<void> {
     if (days < 1 || days > 365) throw new ValidationError('Jumlah hari tidak wajar')
 
@@ -186,15 +179,12 @@ export class AdminService {
     logger.info({ adminId, userId, days, until: newEnd }, 'admin granted access days')
   }
 
-  /** Semua paket, termasuk yang nonaktif, untuk halaman kelola paket. */
+  /** All plans, including inactive, for the plans admin page. */
   async listAllPlans() {
     return db.select().from(plans).where(isNull(plans.deletedAt)).orderBy(asc(plans.sortOrder))
   }
 
-  /**
-   * Memperbarui isi paket. Hanya memengaruhi checkout dan trial berikutnya —
-   * langganan yang sedang berjalan mempertahankan periode dan harganya.
-   */
+  // Update plan fields; affects only the next checkout/trial, running subscriptions keep their period and price.
   async updatePlan(
     planId: string,
     fields: {
@@ -217,7 +207,7 @@ export class AdminService {
     logger.info({ adminId, planId }, 'admin updated plan')
   }
 
-  /** Membuat paket baru. Kode harus unik di antara paket yang belum dihapus. */
+  /** Create a plan; the code must be unique among non-deleted plans. */
   async createPlan(
     fields: {
       code: string
@@ -241,7 +231,7 @@ export class AdminService {
     logger.info({ adminId, code: fields.code }, 'admin created plan')
   }
 
-  /** Mengubah status langganan (mis. membatalkan atau mengaktifkan kembali). */
+  /** Change subscription status (e.g. cancel or reactivate). */
   async setStatus(userId: string, status: SubscriptionStatus, adminId: string): Promise<void> {
     const rows = await db
       .update(subscriptions)

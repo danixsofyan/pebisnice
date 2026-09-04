@@ -1,10 +1,4 @@
-/**
- * Dua bentuk tampilan varian produk.
- *
- * Perbedaannya bukan soal menyembunyikan di UI: bentuk tanpa biaya memang
- * tidak pernah meng-select kolom HPP dari database, sehingga nilainya tidak
- * pernah melewati batas server sekalipun ada bug serialisasi.
- */
+// Two variant view shapes; the cost-free one never selects the HPP column, so cost cannot leak past a serialization bug.
 
 export interface VariantWithoutCost {
   id: string
@@ -21,18 +15,14 @@ export interface VariantWithCost extends VariantWithoutCost {
 
 export type VariantView = VariantWithoutCost | VariantWithCost
 
-/** Nama kolom yang dianggap membocorkan biaya. Dipakai juga oleh test. */
+// Column names considered cost-revealing; also used by tests.
 export const COST_FIELDS = ['hpp', 'hppUpdatedAt', 'hpp_at_time', 'cost', 'costAmount'] as const
 
 export function hasCost(variant: VariantView): variant is VariantWithCost {
   return 'hpp' in variant
 }
 
-/**
- * Jaring pengaman terakhir sebelum data meninggalkan server. Idealnya tidak
- * pernah menemukan apa pun untuk dibuang — kalau menemukan, berarti ada query
- * yang meng-select kolom biaya padahal seharusnya tidak.
- */
+// Last guard before data leaves the server; finding anything means a query selected a cost column it should not.
 export function stripCostFields<T extends object>(value: T): Omit<T, (typeof COST_FIELDS)[number]> {
   const clean = { ...value } as Record<string, unknown>
   for (const field of COST_FIELDS) delete clean[field]

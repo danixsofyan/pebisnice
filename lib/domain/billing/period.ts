@@ -3,11 +3,7 @@ import type { planIntervalEnum } from '@/lib/db/schema/enums'
 export type PlanInterval = (typeof planIntervalEnum.enumValues)[number]
 export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'expired' | 'canceled'
 
-/**
- * Menambah bulan dengan menjepit tanggal akhir bulan: 31 Jan + 1 bulan → 28/29
- * Feb, bukan meluber ke Maret. JavaScript Date meluber diam-diam, jadi ditangani
- * eksplisit di sini.
- */
+// Add months, clamping to month end (Jan 31 + 1 = Feb 28/29); JS Date otherwise overflows.
 export function addMonths(date: Date, months: number): Date {
   const result = new Date(date.getTime())
   const targetMonth = result.getUTCMonth() + months
@@ -30,26 +26,17 @@ export interface Period {
   end: Date
 }
 
-/** Masa trial: mulai sekarang, berakhir sekian hari kemudian. */
 export function trialPeriod(now: Date, trialDays: number): Period {
   return { start: now, end: addDays(now, trialDays) }
 }
 
-/**
- * Periode berbayar. Untuk perpanjangan yang masih aktif, mulai dihitung dari
- * akhir periode berjalan agar sisa hari tidak hangus; bila sudah kedaluwarsa,
- * dari sekarang.
- */
+// An active renewal extends from the current end so remaining days are not lost.
 export function paidPeriod(now: Date, interval: PlanInterval, currentEnd: Date | null): Period {
   const start = currentEnd && currentEnd > now ? currentEnd : now
   const end = interval === 'yearly' ? addMonths(start, 12) : addMonths(start, 1)
   return { start: now, end }
 }
 
-/**
- * Keputusan akses tunggal yang dipakai gating. Memisahkan "boleh pakai app"
- * dari status mentah, supaya pemanggil tak perlu mengulang aturannya.
- */
 export type AccessState = 'active' | 'expired' | 'none'
 
 export function accessState(

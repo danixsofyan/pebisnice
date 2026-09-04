@@ -1,16 +1,13 @@
 import { ValidationError } from '@/lib/errors/app-error'
 import { ZERO, type Money } from '@/lib/domain/money'
 
-/**
- * Komponen laba-rugi. Dipisah per channel supaya laporan bisa menjawab
- * "berapa kontribusi offline vs marketplace" tanpa perhitungan ulang.
- */
+// Profit-and-loss parts, split by channel so reports can answer offline vs marketplace without recomputing.
 export interface ProfitLossInput {
   marketplaceRevenue: Money
   posRevenue: Money
-  /** COGS gabungan, dari snapshot HPP saat transaksi terjadi. */
+  /** Combined COGS, from the HPP snapshot at transaction time. */
   cogs: Money
-  /** Potongan marketplace: komisi, layanan, ongkir, iklan. */
+  /** Marketplace fees: commission, service, shipping, ads. */
   platformFees: Money
   operatingExpenses: Money
 }
@@ -24,7 +21,7 @@ export interface ProfitLossReport {
   platformFees: Money
   operatingExpenses: Money
   netProfit: Money
-  /** Margin dalam basis point (1% = 100 bp) supaya tetap bilangan bulat. */
+  /** Margin in basis points (1% = 100 bp) to stay integer. */
   grossMarginBasisPoints: number
   netMarginBasisPoints: number
 }
@@ -37,10 +34,7 @@ function assertNonNegative(value: Money, field: string): void {
   }
 }
 
-/**
- * Margin sebagai basis point, dibulatkan half-up. Mengembalikan 0 saat
- * pendapatan nol — bukan Infinity atau NaN.
- */
+// Margin in basis points, half-up; returns 0 (not Infinity/NaN) when revenue is zero.
 function marginBasisPoints(profit: Money, revenue: Money): number {
   if (revenue === ZERO) return 0
 
@@ -53,13 +47,7 @@ function marginBasisPoints(profit: Money, revenue: Money): number {
   return Number(rounded)
 }
 
-/**
- * Menyusun laporan laba-rugi gabungan.
- *
- * Revenue − COGS = laba kotor. Laba kotor − biaya platform − OpEx = laba
- * bersih. COGS memakai snapshot HPP saat transaksi, bukan HPP saat ini,
- * sehingga laporan periode lampau tidak berubah ketika HPP diperbarui.
- */
+// Combined P&L: revenue - COGS = gross; gross - platform fees - opex = net. COGS uses the transaction-time HPP snapshot so past reports stay stable.
 export function calculateProfitLoss(input: ProfitLossInput): ProfitLossReport {
   assertNonNegative(input.marketplaceRevenue, 'marketplaceRevenue')
   assertNonNegative(input.posRevenue, 'posRevenue')
@@ -85,7 +73,7 @@ export function calculateProfitLoss(input: ProfitLossInput): ProfitLossReport {
   }
 }
 
-/** Format margin basis point menjadi teks persen untuk tampilan. */
+/** Format a basis-point margin as a percent string. */
 export function formatMargin(basisPoints: number): string {
   const percent = basisPoints / 100
   return `${percent.toFixed(2)}%`
