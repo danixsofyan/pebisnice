@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import { transactionItems, transactions } from '@/lib/db/schema'
 import type { Transaction } from '@/lib/db/tenant'
+import { execRows } from '@/lib/db/rows'
 import { toDecimalString, type Money } from '@/lib/domain/money'
 import type { PricedCart } from '@/lib/domain/pos/cart'
 import type { InferSelectModel } from 'drizzle-orm'
@@ -136,7 +137,7 @@ export class PosRepository {
         AND order_id LIKE ${`${branchCode}-${today}-%`}
     `)
 
-    const rows = (result as unknown as { rows?: Array<{ sequence: number }> }).rows ?? []
+    const rows = execRows<{ sequence: number }>(result)
     const sequence = Number(rows[0]?.sequence ?? 1)
 
     return `${branchCode}-${today}-${String(sequence).padStart(4, '0')}`

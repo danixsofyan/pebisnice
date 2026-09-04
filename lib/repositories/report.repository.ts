@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import type { Transaction } from '@/lib/db/tenant'
+import { execRows } from '@/lib/db/rows'
 import { fromDecimalString, ZERO, type Money } from '@/lib/domain/money'
 
 export interface PeriodFilter {
@@ -21,7 +22,7 @@ export interface RevenueBreakdown {
 }
 
 function firstRow<T>(result: unknown): T | undefined {
-  return (result as { rows?: T[] }).rows?.[0]
+  return execRows<T>(result)[0]
 }
 
 function toMoney(value: string | null | undefined): Money {
@@ -111,7 +112,7 @@ export class ReportRepository {
       ORDER BY SUM(e.amount) DESC
     `)
 
-    const rows = (result as { rows?: Array<{ category: string; total: string }> }).rows ?? []
+    const rows = execRows<{ category: string; total: string }>(result)
     return rows.map((row) => ({ category: row.category, amount: toMoney(row.total) }))
   }
 
@@ -145,12 +146,7 @@ export class ReportRepository {
       ORDER BY 1
     `)
 
-    const rows =
-      (
-        result as {
-          rows?: Array<{ day: string; marketplace_revenue: string; pos_revenue: string }>
-        }
-      ).rows ?? []
+    const rows = execRows<{ day: string; marketplace_revenue: string; pos_revenue: string }>(result)
 
     return rows.map((row) => ({
       date: row.day,

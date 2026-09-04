@@ -1,6 +1,7 @@
 import { eq, and, desc, sql, isNull } from 'drizzle-orm'
 import { branches, projects } from '@/lib/db/schema'
 import { BaseRepository } from './base.repository'
+import { execRows } from '@/lib/db/rows'
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
 
 export type Project = InferSelectModel<typeof projects>
@@ -37,7 +38,7 @@ export class ProjectRepository extends BaseRepository {
       LIMIT 1
     `)
 
-    return (result as unknown as { rows: Project[] }).rows[0] ?? null
+    return execRows<Project>(result)[0] ?? null
   }
 
   // Create a project with its first branch in one transaction. Every project needs at least one branch, since stock, POS, and production are all branch-scoped; without it a new project would be unusable. Old projects got a "Pusat" branch via migration 0002; this is the equivalent for new ones.

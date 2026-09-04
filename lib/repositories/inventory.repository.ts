@@ -1,5 +1,6 @@
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import { inventory, inventoryMovements } from '@/lib/db/schema'
+import { execRows } from '@/lib/db/rows'
 import type { Transaction } from '@/lib/db/tenant'
 import type { InferSelectModel } from 'drizzle-orm'
 import type { PlannedStockMovement } from '@/lib/domain/inventory/stock-movement'
@@ -25,7 +26,7 @@ export class InventoryRepository {
       FOR UPDATE
     `)
 
-    const rows = (locked as unknown as { rows?: Array<{ stock_qty: number }> }).rows ?? []
+    const rows = execRows<{ stock_qty: number }>(locked)
     if (rows[0]) return Number(rows[0].stock_qty)
 
     await tx
@@ -86,7 +87,7 @@ export class InventoryRepository {
         AND product_variant_id = ${location.productVariantId}
     `)
 
-    const rows = (result as unknown as { rows?: Array<{ total: string | null }> }).rows ?? []
+    const rows = execRows<{ total: string | null }>(result)
     return Number(rows[0]?.total ?? 0)
   }
 }

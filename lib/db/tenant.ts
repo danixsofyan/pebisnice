@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
+import { execRows } from '@/lib/db/rows'
 import { isValidUuid } from '@/lib/security/uuid'
 import { AppError } from '@/lib/errors/app-error'
 
@@ -27,6 +28,5 @@ export async function currentTenant(tx: Transaction): Promise<string | null> {
   const result = await tx.execute<{ project_id: string | null }>(
     sql`select nullif(current_setting(${TENANT_SETTING}, true), '') as project_id`
   )
-  const rows = result as unknown as { rows?: Array<{ project_id: string | null }> }
-  return rows.rows?.[0]?.project_id ?? null
+  return execRows<{ project_id: string | null }>(result)[0]?.project_id ?? null
 }

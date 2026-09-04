@@ -1,6 +1,7 @@
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import { cashSessions, transactions } from '@/lib/db/schema'
 import type { Transaction } from '@/lib/db/tenant'
+import { execRows } from '@/lib/db/rows'
 import { fromDecimalString, toDecimalString, type Money } from '@/lib/domain/money'
 import type { InferSelectModel } from 'drizzle-orm'
 
@@ -91,7 +92,7 @@ export class CashSessionRepository {
         AND deleted_at IS NULL
     `)
 
-    const rows = (result as unknown as { rows?: Array<{ total: string }> }).rows ?? []
+    const rows = execRows<{ total: string }>(result)
     return fromDecimalString(rows[0]?.total ?? '0')
   }
 
