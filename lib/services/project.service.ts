@@ -1,3 +1,6 @@
+import { and, eq, isNull } from 'drizzle-orm'
+import { db } from '@/lib/db'
+import { projects } from '@/lib/db/schema'
 import { projectRepository } from '@/lib/repositories/project.repository'
 import { auditRepository } from '@/lib/repositories/audit.repository'
 import { requirePermission } from '@/lib/rbac'
@@ -19,6 +22,27 @@ export class ProjectService {
     const project = await projectRepository.findByIdAndUser(projectId, userId)
     if (!project) throw new NotFoundError('Project tidak ditemukan')
     return project
+  }
+
+  /**
+   * Detail project untuk halaman pengaturan. Berbasis permission (bukan hanya
+   * pemilik), sehingga admin non-owner pun bisa membacanya.
+   */
+  async getSettings(projectId: string, userId: string) {
+    await requirePermission(projectId, userId, 'project:view')
+    const [row] = await db
+      .select({
+        name: projects.name,
+        description: projects.description,
+        defaultCalcMethod: projects.defaultCalcMethod,
+        currency: projects.currency,
+        timezone: projects.timezone,
+      })
+      .from(projects)
+      .where(and(eq(projects.id, projectId), isNull(projects.deletedAt)))
+      .limit(1)
+    if (!row) throw new NotFoundError('Project tidak ditemukan')
+    return row
   }
 
   async create(
