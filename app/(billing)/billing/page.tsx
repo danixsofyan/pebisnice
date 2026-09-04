@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { subscriptionService } from '@/lib/services/subscription.service'
+import { subscriptionPaymentService } from '@/lib/services/subscription-payment.service'
 import { resolveBillingState } from '@/lib/auth/billing-state'
 import { Button } from '@/components/ui/button'
 import { PlanCards } from '@/components/billing/plan-cards'
@@ -60,6 +61,7 @@ export default async function BillingPage() {
   // Belum ada langganan atau sudah kedaluwarsa: tawarkan paket.
   const plans = await subscriptionService.listActivePlans()
   const expired = billing.access === 'expired'
+  const pendingPayment = await subscriptionPaymentService.hasPendingPayment(userId)
 
   return (
     <div>
@@ -71,6 +73,16 @@ export default async function BillingPage() {
           ? 'Masa langganan Anda telah berakhir. Perpanjang untuk kembali mengakses aplikasi.'
           : 'Pilih paket untuk mulai memakai aplikasi.'}
       </p>
+
+      {pendingPayment ? (
+        <div className="border-border bg-muted/40 mt-6 rounded-xl border p-4 text-sm">
+          <p className="font-medium">Pembayaran sedang diproses</p>
+          <p className="text-muted-foreground mt-1">
+            Jika Anda baru saja membayar, konfirmasi bisa memakan waktu sejenak. Muat ulang halaman
+            ini setelah pembayaran selesai.
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-8">
         <PlanCards

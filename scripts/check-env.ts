@@ -134,6 +134,27 @@ const CHECKS: Check[] = [
     required: false,
     note: 'buat dulu bucket-nya di penyedia storage',
   },
+  {
+    name: 'MIDTRANS_SERVER_KEY',
+    required: false,
+    note: 'SB-Mid-server-... (sandbox) atau Mid-server-... (produksi)',
+    validate: (value) =>
+      /^(SB-)?Mid-server-/.test(value) ? null : 'bukan format server key Midtrans',
+  },
+  {
+    name: 'MIDTRANS_CLIENT_KEY',
+    required: false,
+    note: 'SB-Mid-client-... (sandbox) atau Mid-client-... (produksi)',
+    validate: (value) =>
+      /^(SB-)?Mid-client-/.test(value) ? null : 'bukan format client key Midtrans',
+  },
+  { name: 'MIDTRANS_MERCHANT_ID', required: false, note: 'dari dashboard Midtrans' },
+  {
+    name: 'MIDTRANS_IS_PRODUCTION',
+    required: false,
+    note: 'true hanya untuk Midtrans live; bawaan sandbox',
+    validate: (value) => (value === 'true' || value === 'false' ? null : 'isi true atau false'),
+  },
 ]
 
 /** Variabel yang harus terisi bersama-sama, atau kosong semuanya. */
@@ -147,6 +168,10 @@ const GROUPS: Array<{ label: string; members: string[] }> = [
       'STORAGE_SECRET_ACCESS_KEY',
       'STORAGE_BUCKET',
     ],
+  },
+  {
+    label: 'Midtrans',
+    members: ['MIDTRANS_SERVER_KEY', 'MIDTRANS_CLIENT_KEY'],
   },
 ]
 

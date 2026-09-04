@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { formatRupiahFromDecimal } from '@/lib/formatters'
-import { startTrialAction } from '@/app/actions/billing'
+import { createCheckoutAction, startTrialAction } from '@/app/actions/billing'
 
 export interface PlanCard {
   id: string
@@ -37,6 +37,7 @@ export function PlanCards({
 }) {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
+  const [busyPlan, setBusyPlan] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function chooseTrial() {
@@ -48,6 +49,21 @@ export function PlanCards({
         return
       }
       router.replace('/onboarding')
+    })
+  }
+
+  function choosePaid(planId: string) {
+    setError(null)
+    setBusyPlan(planId)
+    startTransition(async () => {
+      const result = await createCheckoutAction({ planId })
+      if (!result.success) {
+        setError(result.error)
+        setBusyPlan(null)
+        return
+      }
+      // Menuju halaman pembayaran Midtrans; webhook yang mengaktifkan langganan.
+      window.location.href = result.data.redirectUrl
     })
   }
 
@@ -95,8 +111,13 @@ export function PlanCards({
                         : 'Mulai coba gratis'}
                   </Button>
                 ) : (
-                  <Button variant="outline" disabled className="w-full">
-                    Pembayaran online segera
+                  <Button
+                    variant="outline"
+                    onClick={() => choosePaid(plan.id)}
+                    disabled={isPending}
+                    className="w-full"
+                  >
+                    {busyPlan === plan.id ? 'Mengalihkan…' : 'Langganan'}
                   </Button>
                 )}
               </div>
