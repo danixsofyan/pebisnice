@@ -50,6 +50,7 @@ export function ProductsTable({ items, branchId, canViewCost, canManage }: Produ
                       variantName: item.variantName,
                       hpp: item.hpp,
                       productionWage: item.productionWage,
+                      price: item.price,
                       imageKey: item.imageKey,
                     }}
                     onClose={() => setEditingId(null)}

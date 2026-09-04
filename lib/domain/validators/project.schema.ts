@@ -18,6 +18,7 @@ export const createProjectSchema = z.object({
 export const updateProjectSchema = createProjectSchema.partial().extend({
   taxRateBasisPoints: z.number().int().min(0).max(10000).optional(),
   taxInclusive: z.boolean().optional(),
+  waNumber: z.string().trim().max(20).nullable().optional(),
 })
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>

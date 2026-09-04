@@ -16,6 +16,7 @@ export function SettingsForm({
     defaultCalcMethod: 'income_based' | 'order_based'
     taxRatePercent: number
     taxInclusive: boolean
+    waNumber: string
   }
 }) {
   const router = useRouter()
@@ -24,6 +25,7 @@ export function SettingsForm({
   const [calc, setCalc] = useState(initial.defaultCalcMethod)
   const [taxRate, setTaxRate] = useState(String(initial.taxRatePercent))
   const [taxInclusive, setTaxInclusive] = useState(initial.taxInclusive)
+  const [waNumber, setWaNumber] = useState(initial.waNumber)
   const [msg, setMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -39,6 +41,7 @@ export function SettingsForm({
         defaultCalcMethod: calc,
         taxRatePercent: Number(taxRate || 0),
         taxInclusive,
+        waNumber: waNumber.trim() || undefined,
       })
       if (!result.success) return setError(result.error)
       setMsg('Tersimpan')
@@ -89,6 +92,20 @@ export function SettingsForm({
           />
           Harga sudah termasuk PPN
         </label>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="s-wa">Nomor WhatsApp toko (untuk link order)</Label>
+        <Input
+          id="s-wa"
+          value={waNumber}
+          onChange={(e) => setWaNumber(e.target.value)}
+          inputMode="tel"
+          placeholder="628123456789"
+        />
+        <p className="text-muted-foreground text-xs">
+          Format internasional tanpa +, mis. 628123456789. Dipakai tombol WhatsApp di link order.
+        </p>
       </div>
 
       <div className="flex items-center gap-3">

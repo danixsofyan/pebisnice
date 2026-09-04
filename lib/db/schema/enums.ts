@@ -47,6 +47,13 @@ export const movementTypeEnum = pgEnum('movement_type', [
 // Purchase order lifecycle: ordered -> received (goods in) or cancelled.
 export const purchaseStatusEnum = pgEnum('purchase_status', ['ordered', 'received', 'cancelled'])
 
+// Public (WhatsApp) order lifecycle: pending -> accepted (converted to a POS sale) or rejected.
+export const onlineOrderStatusEnum = pgEnum('online_order_status', [
+  'pending',
+  'accepted',
+  'rejected',
+])
+
 export const feeTypeEnum = pgEnum('fee_type', [
   'commission',
   'service_fee',

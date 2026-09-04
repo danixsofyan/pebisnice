@@ -50,6 +50,8 @@ export const productVariants = pgTable(
     variantName: text('variant_name'),
     hpp: money('hpp').default('0').notNull(),
     hppUpdatedAt: tz('hpp_updated_at').defaultNow(),
+    // Default sell price, shown on the public order link and used as the POS default.
+    price: money('price').default('0').notNull(),
     // Piece-rate wage paid to the production worker per unit made (upah borongan).
     productionWage: money('production_wage').default('0').notNull(),
     ...actorColumns,

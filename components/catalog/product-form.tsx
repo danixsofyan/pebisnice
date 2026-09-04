@@ -24,6 +24,8 @@ export interface EditableProduct {
   hpp: string | null
   /** Decimal string, or null if the role can't see cost. */
   productionWage: string | null
+  /** Default sell price (decimal string). */
+  price: string
   imageKey: string | null
 }
 
@@ -49,6 +51,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
   const [variantName, setVariantName] = useState(product?.variantName ?? '')
   const [hpp, setHpp] = useState(product?.hpp ?? '')
   const [productionWage, setProductionWage] = useState(product?.productionWage ?? '')
+  const [price, setPrice] = useState(product?.price ?? '')
   const [initialStock, setInitialStock] = useState('')
 
   const [imageKey, setImageKey] = useState<string | null>(savedKey)
@@ -113,6 +116,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
     setVariantName('')
     setHpp('')
     setProductionWage('')
+    setPrice('')
     setInitialStock('')
     setImageKey(null)
     setUnsavedKey(null)
@@ -143,6 +147,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
             variantName: variantName.trim() || undefined,
             hpp: Number(hpp || 0).toFixed(2),
             productionWage: Number(productionWage || 0).toFixed(2),
+            price: Number(price || 0).toFixed(2),
             imageKey,
           })
         : await createProductAction({
@@ -153,6 +158,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
             variantName: variantName.trim() || undefined,
             hpp: Number(hpp || 0).toFixed(2),
             productionWage: Number(productionWage || 0).toFixed(2),
+            price: Number(price || 0).toFixed(2),
             initialStock: Number(initialStock || 0),
             imageKey: imageKey ?? undefined,
           })
@@ -218,6 +224,17 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
             value={variantName}
             onChange={(e) => setVariantName(e.target.value)}
             placeholder="Sedang, Merah, 500gr"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="p-price">Harga jual</Label>
+          <Input
+            id="p-price"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            inputMode="numeric"
+            placeholder="0"
           />
         </div>
 

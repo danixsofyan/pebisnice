@@ -17,6 +17,7 @@ import {
   ArrowLeftRight,
   ShoppingBag,
   Truck,
+  ClipboardList,
   Settings,
 } from 'lucide-react'
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar'
@@ -37,6 +38,11 @@ const mainNavItems = [
     title: 'Transaksi',
     url: '/transactions',
     icon: ReceiptText,
+  },
+  {
+    title: 'Pesanan Online',
+    url: '/orders',
+    icon: ClipboardList,
   },
   {
     title: 'Pelanggan',

@@ -19,6 +19,8 @@ export const projects = pgTable(
     // PPN rate in basis points (1100 = 11%); 0 disables tax. taxInclusive means listed prices already include it.
     taxRateBasisPoints: integer('tax_rate_basis_points').default(0).notNull(),
     taxInclusive: boolean('tax_inclusive').default(false).notNull(),
+    // Merchant WhatsApp number (E.164 digits, e.g. 628123…) for the public order link hand-off.
+    waNumber: text('wa_number'),
     defaultCalcMethod: calcMethodEnum('default_calc_method').default('income_based').notNull(),
     isArchived: boolean('is_archived').default(false).notNull(),
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),

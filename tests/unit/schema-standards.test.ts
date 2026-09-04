@@ -38,6 +38,7 @@ const CHILD_TABLES = [
   'saleReturnItems',
   'stockTransferItems',
   'purchaseOrderItems',
+  'onlineOrderItems',
 ]
 
 describe('kepatuhan skema terhadap db-standards.md', () => {
@@ -53,6 +54,8 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'financialMutations',
       'inventory',
       'inventoryMovements',
+      'onlineOrderItems',
+      'onlineOrders',
       'plans',
       'productCostHistory',
       'productVariants',
@@ -172,6 +175,8 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'suppliers',
       'purchaseOrders',
       'purchaseOrderItems',
+      'onlineOrders',
+      'onlineOrderItems',
     ]
 
     for (const tableName of tenantScoped) {

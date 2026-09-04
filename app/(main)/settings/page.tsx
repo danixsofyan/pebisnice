@@ -59,6 +59,7 @@ export default async function SettingsPage({
             defaultCalcMethod: settings.defaultCalcMethod,
             taxRatePercent: settings.taxRateBasisPoints / 100,
             taxInclusive: settings.taxInclusive,
+            waNumber: settings.waNumber ?? '',
           }}
         />
       ) : (
@@ -78,6 +79,24 @@ export default async function SettingsPage({
       ) : null}
 
       <MarketplaceConnect stores={stores} branches={branches} />
+
+      <div className="border-border bg-card space-y-3 rounded-xl border p-6 text-sm">
+        <div>
+          <h2 className="font-semibold">Link Pesanan (WhatsApp)</h2>
+          <p className="text-muted-foreground text-xs">
+            Bagikan ke pelanggan. Pesanan masuk ke menu <strong>Pesanan Online</strong> untuk
+            dikonfirmasi jadi transaksi kasir.
+          </p>
+        </div>
+        {branches.map((b) => (
+          <div key={b.id} className="rounded-md border p-2 text-xs break-all">
+            <span className="text-muted-foreground">{b.name}: </span>
+            <code>
+              /order/{context.projectId}/{b.id}
+            </code>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

@@ -36,6 +36,7 @@ export class ProjectService {
         timezone: projects.timezone,
         taxRateBasisPoints: projects.taxRateBasisPoints,
         taxInclusive: projects.taxInclusive,
+        waNumber: projects.waNumber,
       })
       .from(projects)
       .where(and(eq(projects.id, projectId), isNull(projects.deletedAt)))
@@ -90,6 +91,8 @@ export class ProjectService {
     if (input.taxRateBasisPoints !== undefined)
       sanitized.taxRateBasisPoints = input.taxRateBasisPoints
     if (input.taxInclusive !== undefined) sanitized.taxInclusive = input.taxInclusive
+    if (input.waNumber !== undefined)
+      sanitized.waNumber = input.waNumber ? input.waNumber.replace(/[^\d]/g, '') : null
 
     const updated = await projectRepository.update(projectId, sanitized)
     if (!updated) throw new NotFoundError('Project tidak ditemukan')
