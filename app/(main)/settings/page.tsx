@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { getAccessibleBranches, getSessionContext } from '@/lib/auth/session-context'
 import { projectService } from '@/lib/services/project.service'
 import { hasRolePermission } from '@/lib/authz/permissions'
@@ -34,6 +35,21 @@ export default async function SettingsPage({
           <p className="font-medium">{settings.timezone}</p>
         </div>
       </div>
+
+      {canEdit ? (
+        <Link
+          href="/audit"
+          className="border-border hover:bg-muted/40 flex items-center justify-between rounded-xl border p-4 text-sm"
+        >
+          <span>
+            <span className="font-medium">Log Audit</span>
+            <span className="text-muted-foreground block text-xs">
+              Jejak perubahan: siapa mengubah apa dan kapan
+            </span>
+          </span>
+          <span className="text-muted-foreground">→</span>
+        </Link>
+      ) : null}
 
       {canEdit ? (
         <SettingsForm
