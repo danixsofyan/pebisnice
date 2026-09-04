@@ -4,6 +4,7 @@ import type { NextConfig } from 'next'
 // host luar — disajikan proxy satu-origin di app/api/v1/files, jadi tak ada
 // host penyedia storage yang perlu diizinkan.
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   images: {
     remotePatterns: [{ protocol: 'https', hostname: 'lh3.googleusercontent.com' }],
   },

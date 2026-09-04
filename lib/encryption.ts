@@ -5,20 +5,19 @@ const KEY_LENGTH = 32
 const IV_LENGTH = 12
 const SALT = 'marketprofit-v1'
 
-function deriveKey(secret: string): Buffer {
-  return scryptSync(secret, SALT, KEY_LENGTH)
-}
+let cachedKey: Buffer | null = null
 
-const ENCRYPTION_KEY = deriveKey(
-  process.env.ENCRYPTION_SECRET_KEY ??
-    (() => {
-      throw new Error('ENCRYPTION_SECRET_KEY wajib di-set')
-    })()
-)
+function encryptionKey(): Buffer {
+  if (cachedKey) return cachedKey
+  const secret = process.env.ENCRYPTION_SECRET_KEY
+  if (!secret) throw new Error('ENCRYPTION_SECRET_KEY wajib di-set')
+  cachedKey = scryptSync(secret, SALT, KEY_LENGTH)
+  return cachedKey
+}
 
 export function encryptToken(plainText: string): string {
   const iv = randomBytes(IV_LENGTH)
-  const cipher = createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv)
+  const cipher = createCipheriv(ALGORITHM, encryptionKey(), iv)
 
   const encrypted = Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()])
 
@@ -36,7 +35,7 @@ export function decryptToken(cipherText: string): string {
   const authTag = Buffer.from(authTagB64, 'base64')
   const encrypted = Buffer.from(encryptedB64, 'base64')
 
-  const decipher = createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv)
+  const decipher = createDecipheriv(ALGORITHM, encryptionKey(), iv)
   decipher.setAuthTag(authTag)
 
   return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8')

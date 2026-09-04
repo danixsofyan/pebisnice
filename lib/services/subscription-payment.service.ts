@@ -5,6 +5,7 @@ import { subscriptionPayments } from '@/lib/db/schema'
 import { subscriptionService } from '@/lib/services/subscription.service'
 import { buildOrderId, toMidtransAmount } from '@/lib/domain/billing/order'
 import { mapMidtransStatus } from '@/lib/domain/billing/midtrans-status'
+import { redactMidtransPayload } from '@/lib/domain/billing/midtrans-redact'
 import { verifyMidtransSignature } from '@/lib/security/midtrans-signature'
 import { createSnapTransaction, ENABLED_PAYMENTS } from '@/lib/payments/midtrans'
 import { ValidationError } from '@/lib/errors/app-error'
@@ -124,7 +125,7 @@ export class SubscriptionPaymentService {
       paymentType: payload.payment_type ?? null,
       midtransTransactionId: payload.transaction_id ?? null,
       fraudStatus: payload.fraud_status ?? null,
-      raw: payload as Record<string, unknown>,
+      raw: redactMidtransPayload(payload as Record<string, unknown>),
     }
 
     if (status === 'paid') {
