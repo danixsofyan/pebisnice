@@ -1,60 +1,82 @@
-import { KpiCard } from '@/components/dashboard/kpi-card'
-import { Package, Wallet, AlertTriangle, Plus, RefreshCw, ClipboardList } from 'lucide-react'
-import { InventoryTable } from '@/components/dashboard/inventory-table'
+import { getAccessibleBranches, getSessionContext } from '@/lib/auth/session-context'
+import { catalogService } from '@/lib/services/catalog.service'
+import { hasRolePermission } from '@/lib/authz/permissions'
+import { AdjustStock } from '@/components/inventory/adjust-stock'
 
-export default function InventoryPage() {
+export default async function InventoryPage() {
+  const context = await getSessionContext()
+  const branches = await getAccessibleBranches(context)
+  const branch = branches[0]
+
+  if (!branch) {
+    return (
+      <div className="border-border rounded-xl border border-dashed p-12 text-center">
+        <h1 className="text-lg font-bold">Belum ada cabang</h1>
+        <p className="text-muted-foreground mt-2 text-sm">
+          Stok dicatat per cabang; buat cabang lebih dulu.
+        </p>
+      </div>
+    )
+  }
+
+  const items = await catalogService.list(context.projectId, branch.id, context.userId)
+  const canManage = hasRolePermission(context.role, 'product:manage')
+  const lowStock = items.filter((i) => i.stockQty <= 5).length
+
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <KpiCard
-          title="Total Produk Aktif"
-          value={1240}
-          change={5}
-          format="number"
-          className="border-primary/20 bg-primary/10"
-          icon={<Package className="text-primary size-5" />}
-          iconClassName="bg-primary/20"
-          description="SKU"
-        />
-        <KpiCard
-          title="Total Nilai Stok"
-          value={450000000}
-          change={2}
-          format="currency"
-          className="border-emerald-500/20 bg-emerald-500/10"
-          icon={<Wallet className="size-5 text-emerald-500" />}
-          iconClassName="bg-emerald-500/20"
-        />
-        <KpiCard
-          title="Stok Rendah / Habis"
-          value={12}
-          change={0}
-          format="number"
-          className="border-orange-500/20 bg-orange-500/10"
-          icon={<AlertTriangle className="size-5 text-orange-500" />}
-          iconClassName="bg-orange-500/20"
-          description="SKU (Perlu restock)"
-        />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-bold">Inventaris</h1>
+        <p className="text-muted-foreground text-sm">
+          Cabang {branch.name} · {items.length} varian · {lowStock} stok menipis (≤5)
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:flex md:items-center md:justify-between">
-        <div className="grid grid-cols-2 gap-3 md:flex">
-          <button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 flex flex-col items-center justify-center gap-1 rounded-lg px-3 py-3 text-xs font-bold shadow-lg transition-all md:flex-row md:px-5 md:py-2.5 md:text-sm">
-            <Plus className="size-4 md:size-5" />
-            <span className="text-center">Tambah Produk</span>
-          </button>
-          <button className="flex flex-col items-center justify-center gap-1 rounded-lg bg-slate-800 px-3 py-3 text-xs font-bold text-white transition-all hover:bg-slate-700 md:flex-row md:px-5 md:py-2.5 md:text-sm dark:bg-slate-700 dark:hover:bg-slate-600">
-            <RefreshCw className="size-4" />
-            <span className="text-center">Sync Market</span>
-          </button>
+      {items.length === 0 ? (
+        <p className="text-muted-foreground border-border rounded-xl border border-dashed p-12 text-center text-sm">
+          Belum ada produk untuk dikelola stoknya.
+        </p>
+      ) : (
+        <div className="border-border overflow-x-auto rounded-xl border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-left">
+              <tr>
+                <th className="px-4 py-3 font-medium">Produk</th>
+                <th className="px-4 py-3 font-medium">SKU</th>
+                <th className="px-4 py-3 text-right font-medium">Stok</th>
+                {canManage ? <th className="px-4 py-3 text-right font-medium">Aksi</th> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.variantId} className="border-border border-t align-top">
+                  <td className="px-4 py-3">
+                    {item.name}
+                    {item.variantName ? (
+                      <span className="text-muted-foreground"> · {item.variantName}</span>
+                    ) : null}
+                  </td>
+                  <td className="text-muted-foreground px-4 py-3">{item.sku ?? '—'}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    <span className={item.stockQty <= 5 ? 'text-destructive font-medium' : ''}>
+                      {item.stockQty}
+                    </span>
+                  </td>
+                  {canManage ? (
+                    <td className="px-4 py-3 text-right">
+                      <AdjustStock
+                        branchId={branch.id}
+                        productVariantId={item.variantId}
+                        stockQty={item.stockQty}
+                      />
+                    </td>
+                  ) : null}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <button className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-5 py-3 text-sm font-bold text-slate-900 transition-all hover:bg-slate-200 md:py-2.5 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
-          <ClipboardList className="size-5" />
-          Stock Opname
-        </button>
-      </div>
-
-      <InventoryTable />
+      )}
     </div>
   )
 }
