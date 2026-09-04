@@ -1,11 +1,6 @@
 import { headers } from 'next/headers'
 
-/**
- * Origin absolut permintaan saat ini (mis. https://app.contoh.id).
- *
- * Dibaca dari header yang diteruskan proxy, bukan dari env, supaya callback
- * Midtrans otomatis benar di produksi maupun preview tanpa konfigurasi tambahan.
- */
+// Absolute origin of the current request (e.g. https://app.example.id). Read from proxy-forwarded headers, not env, so Midtrans callbacks are automatically correct in production and previews.
 export async function getRequestOrigin(): Promise<string> {
   const h = await headers()
   const host = h.get('x-forwarded-host') ?? h.get('host')

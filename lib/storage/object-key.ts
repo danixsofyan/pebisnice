@@ -1,13 +1,6 @@
 import { isValidUuid } from '@/lib/security/uuid'
 
-/**
- * Konvensi kunci objek: `<projectId>/<resource>/<id>.<ext>`.
- *
- * Prefiks `projectId` bukan sekadar penataan folder — itu penegak batas
- * antar-tenant. Proxy hanya melayani objek yang prefiksnya cocok dengan project
- * pemohon, sehingga menebak kunci milik project lain tidak cukup untuk
- * membacanya.
- */
+// Object key convention: <projectId>/<resource>/<id>.<ext>. The projectId prefix isn't just folder tidiness, it's the cross-tenant boundary: the proxy serves only objects whose prefix matches the requesting project, so guessing another project's key isn't enough to read it.
 
 const SAFE_SEGMENT = /^[a-z0-9][a-z0-9-]*$/
 const SAFE_ID = /^[a-z0-9][a-z0-9-]*$/i
@@ -37,12 +30,7 @@ export function buildObjectKey(parts: ObjectKeyParts): string {
   return `${parts.projectId}/${parts.resource}/${parts.id}.${parts.ext.toLowerCase()}`
 }
 
-/**
- * Menyusun kembali kunci dari potongan path proxy, dengan menolak segala yang
- * bisa keluar dari ruang milik satu project (traversal, prefiks kosong).
- * Mengembalikan `null` bila kunci tidak sah — pemanggil memperlakukannya sebagai
- * 404, bukan error.
- */
+// Rebuild a key from proxy path segments, rejecting anything that could escape one project's space (traversal, empty prefix). Returns null for an invalid key; callers treat that as 404, not an error.
 export function objectKeyFromSegments(segments: string[], projectId: string): string | null {
   if (segments.length < 2) return null
   if (segments.some((segment) => segment === '' || segment === '.' || segment === '..')) {
@@ -56,17 +44,13 @@ export function objectKeyFromSegments(segments: string[], projectId: string): st
   return segments.join('/')
 }
 
-/**
- * Apakah sebuah kunci utuh berada dalam ruang milik satu project. Dipakai
- * sebelum menghapus objek atas permintaan pengguna, agar tak seorang pun bisa
- * menghapus berkas project lain dengan menebak kuncinya.
- */
+// Whether a whole key lives within one project's space. Used before deleting an object on user request, so no one can delete another project's file by guessing its key.
 export function objectKeyBelongsToProject(key: string, projectId: string): boolean {
   if (key.includes('..') || key.includes('\\')) return false
   return key.startsWith(`${projectId}/`)
 }
 
-/** URL yang dipakai klien: relatif, satu origin dengan aplikasi. */
+/** The client-facing URL: relative, same origin as the app. */
 export function fileProxyUrl(key: string): string {
   return `/api/v1/files/${key.split('/').map(encodeURIComponent).join('/')}`
 }

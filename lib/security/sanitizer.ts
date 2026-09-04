@@ -1,22 +1,9 @@
 export { isValidUuid } from './uuid'
 
-/**
- * Sanitasi teks polos tanpa ketergantungan DOM.
- *
- * Sebelumnya memakai DOMPurify, yang di server menyeret `jsdom` — dan jsdom
- * berulang kali membawa sub-dependensi ESM-only yang tak bisa di-`require()`
- * oleh bundel server Next, sehingga produksi tumbang (ERR_REQUIRE_ESM). Field
- * yang kita bersihkan hanyalah teks polos (nama, catatan, SKU), jadi DOM penuh
- * berlebihan; implementasi kecil ini menghapus seluruh markup dan tak menambah
- * ketergantungan apa pun.
- *
- * Isi <script>/<style> dibuang berikut isinya; tag lain dibuang tetapi teksnya
- * dipertahankan. Diulang sampai stabil agar tag yang disusun ulang
- * (`<scr<script>ipt>`) tidak lolos.
- */
+// Plain-text sanitizer with no DOM dependency. Previously used DOMPurify, which drags in jsdom on the server, and jsdom repeatedly ships ESM-only subdeps that Next's server bundle can't require() (ERR_REQUIRE_ESM). We only clean plain text (names, notes, SKUs), so a full DOM is overkill; this strips all markup and adds no dependency. script/style content is dropped; other tags are removed but their text kept; looped until stable so reconstructed tags can't slip through.
 const SCRIPT_STYLE = /<(script|style)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi
 const TAG = /<[^>]*>/g
-// Dibangun dari string agar byte kontrol tak tertulis mentah di berkas sumber.
+// Built from a string so control bytes aren't written raw in the source file.
 const CONTROL_CHARS = new RegExp('[\\u0000-\\u001F\\u007F-\\u009F]', 'g')
 
 export function sanitizeText(input: string): string {
@@ -32,7 +19,7 @@ export function sanitizeText(input: string): string {
   return clean.replace(CONTROL_CHARS, '').trim()
 }
 
-/** Hanya mengizinkan URL http/https; menolak skema seperti javascript: dan data:. */
+/** Allow only http/https URLs; reject schemes like javascript: and data:. */
 export function sanitizeUrl(input: string): string | null {
   try {
     const url = new URL(input)

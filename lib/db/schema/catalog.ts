@@ -14,10 +14,7 @@ export const products = pgTable(
     platform: platformEnum('platform'),
     sku: text('sku'),
     name: text('name').notNull(),
-    /**
-     * Kunci objek foto di bucket privat, berformat `<projectId>/products/<id>.<ext>`.
-     * Bukan URL: berkas hanya bisa dibaca lewat proxy beracuan-tenant.
-     */
+    // Photo object key in the private bucket, <projectId>/products/<id>.<ext>. Not a URL: files are read only via the tenant-scoped proxy.
     imageKey: text('image_key'),
     isArchived: boolean('is_archived').default(false).notNull(),
     ...actorColumns,
@@ -38,7 +35,7 @@ export const products = pgTable(
   ]
 )
 
-/** HPP disimpan di level varian. Aksesnya dibatasi permission `cost:view`. */
+/** HPP is stored at variant level; access is gated by cost:view. */
 export const productVariants = pgTable(
   'product_variants',
   {

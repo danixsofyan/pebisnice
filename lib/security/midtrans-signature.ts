@@ -1,13 +1,6 @@
 import crypto from 'crypto'
 
-/**
- * Memverifikasi tanda tangan notifikasi Midtrans.
- *
- * Midtrans menandatangani dengan sha512(order_id + status_code + gross_amount +
- * ServerKey). Notifikasi webhook tidak tepercaya sampai tanda tangannya cocok —
- * tanpa ini siapa pun bisa memalsukan "sudah bayar". Perbandingan dibuat
- * konstan-waktu.
- */
+// Verify a Midtrans notification signature. Midtrans signs with sha512(order_id + status_code + gross_amount + ServerKey); a webhook isn't trusted until it matches, else anyone could fake a paid status. Comparison is constant-time.
 export function verifyMidtransSignature(input: {
   orderId: string
   statusCode: string

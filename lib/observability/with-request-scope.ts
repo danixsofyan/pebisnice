@@ -2,15 +2,7 @@ import { logger } from '@/lib/logging/logger'
 import { enrichRequestContext, runWithRequestContext } from './request-context'
 import { readRequestContext } from './server-context'
 
-/**
- * Menjalankan sebuah server action di dalam konteks request.
- *
- * Middleware dan Server Action berjalan di runtime yang berbeda, sehingga
- * AsyncLocalStorage milik `proxy.ts` tidak sampai ke sini. Pembungkus ini
- * membangun ulang konteksnya dari header `x-request-id` yang dititipkan
- * proxy, supaya seluruh log dan error di dalam action membawa id korelasi
- * yang sama dengan permintaan HTTP-nya.
- */
+// Run a server action inside the request context. Middleware and Server Actions run in different runtimes, so proxy.ts's AsyncLocalStorage doesn't reach here; this rebuilds the context from the x-request-id header the proxy passes, so every log and error in the action carries the same correlation id as its HTTP request.
 export async function withRequestScope<T>(name: string, fn: () => Promise<T>): Promise<T> {
   const context = await readRequestContext()
 
@@ -23,8 +15,7 @@ export async function withRequestScope<T>(name: string, fn: () => Promise<T>): P
       logger.info({ action: name, durationMs: Date.now() - startedAt }, 'action completed')
       return result
     } catch (error) {
-      // Dicatat di sini agar durasi dan nama action ikut terekam; error-nya
-      // tetap dilempar supaya `handleActionError` yang memutuskan responsnya.
+      // Logged here so duration and action name are captured; the error still throws so handleActionError decides the response.
       logger.warn(
         {
           action: name,
@@ -38,7 +29,7 @@ export async function withRequestScope<T>(name: string, fn: () => Promise<T>): P
   })
 }
 
-/** Melengkapi konteks setelah sesi diketahui, agar log berikutnya membawanya. */
+/** Enrich the context once the session is known, so later logs carry it. */
 export function tagRequestActor(userId: string, projectId?: string): void {
   enrichRequestContext(projectId ? { userId, projectId } : { userId })
 }

@@ -1,19 +1,12 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 
-/**
- * Konteks per-request yang mengikuti seluruh rantai pemanggilan.
- *
- * Dipakai supaya setiap baris log dari satu request bisa dikorelasikan tanpa
- * mengoper `requestId` sebagai parameter ke setiap fungsi. Tanpa ini, log
- * error di produksi hanya berupa stack trace tanpa cara menghubungkannya ke
- * permintaan yang mana, pengguna yang mana, atau tenant yang mana.
- */
+// Per-request context that follows the whole call chain, so every log line from one request can be correlated without threading requestId through every function. Without it, a production error log is just a stack trace with no link to which request, user, or tenant.
 export interface RequestContext {
-  /** Diambil dari header `x-request-id`; dibuat proxy bila belum ada. */
+  /** From the x-request-id header; created by the proxy if absent. */
   requestId: string
   method: string
   path: string
-  /** Terisi setelah sesi diketahui. */
+  /** Filled once the session is known. */
   userId?: string
   projectId?: string
 }
@@ -28,10 +21,7 @@ export function getRequestContext(): RequestContext | undefined {
   return storage.getStore()
 }
 
-/**
- * Melengkapi konteks yang sedang berjalan. Dipanggil setelah sesi diketahui,
- * sehingga log berikutnya membawa identitas pengguna dan tenant.
- */
+// Enrich the running context; called once the session is known, so later logs carry the user and tenant identity.
 export function enrichRequestContext(fields: Partial<RequestContext>): void {
   const current = storage.getStore()
   if (!current) return

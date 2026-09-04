@@ -1,14 +1,4 @@
-/**
- * Klien Snap Midtrans, mode redirect.
- *
- * Kami tidak memuat snap.js di klien: server membuat transaksi lalu browser
- * diarahkan ke halaman pembayaran Midtrans. Ini menghindari kerumitan CSP
- * (skrip & iframe pihak ketiga) dan membuat webhook tetap menjadi satu-satunya
- * sumber kebenaran status.
- *
- * Konfigurasi dibaca malas agar satu env yang belum diisi tidak menggagalkan
- * build seluruh aplikasi — hanya alur pembayaran yang gagal, dengan pesan jelas.
- */
+// Midtrans Snap client, redirect mode. We don't load snap.js on the client: the server creates the transaction and the browser is sent to Midtrans, avoiding CSP complexity (third-party script and iframe) and keeping the webhook the single source of truth. Config is read lazily so one missing env fails only the payment flow, with a clear message, not the whole build.
 
 interface MidtransConfig {
   serverKey: string
@@ -51,7 +41,7 @@ export interface CreateSnapInput {
   item: SnapItem
   customer: { firstName?: string; email?: string }
   finishUrl: string
-  /** Diberitahukan ke Midtrans sebagai URL notifikasi untuk transaksi ini. */
+  /** Told to Midtrans as this transaction's notification URL. */
   notificationUrl?: string
   enabledPayments?: string[]
 }
@@ -61,13 +51,7 @@ export interface SnapTransaction {
   redirectUrl: string
 }
 
-/**
- * Membuat transaksi Snap dan mengembalikan URL redirect.
- *
- * `gross_amount` harus sama dengan harga item dikalikan jumlahnya, kalau tidak
- * Midtrans menolak. `X-Override-Notification` mengarahkan webhook ke lingkungan
- * ini tanpa bergantung pada satu setelan dashboard.
- */
+// Create a Snap transaction and return the redirect URL. gross_amount must equal item price times quantity or Midtrans rejects it. X-Override-Notification points the webhook at this environment without depending on one dashboard setting.
 export async function createSnapTransaction(input: CreateSnapInput): Promise<SnapTransaction> {
   const config = readConfig()
   const auth = Buffer.from(`${config.serverKey}:`).toString('base64')
@@ -117,7 +101,7 @@ export async function createSnapTransaction(input: CreateSnapInput): Promise<Sna
   return { token: data.token, redirectUrl: data.redirect_url }
 }
 
-/** Metode yang ditawarkan di halaman Snap. QRIS dan Virtual Account bank. */
+/** Methods offered on the Snap page: QRIS and bank Virtual Account. */
 export const ENABLED_PAYMENTS = [
   'other_qris',
   'bca_va',

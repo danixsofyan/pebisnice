@@ -9,13 +9,7 @@ import { actorColumns, tenantColumn } from './columns'
 import { feeTypeEnum, orderStatusEnum, paymentMethodEnum, salesChannelEnum } from './enums'
 import { lifecycleColumns, money, tz } from './primitives'
 
-/**
- * Satu tabel untuk dua channel penjualan.
- *
- * `marketplace` mengisi `store_id`; `pos` mengisi `branch_id` dan
- * `cash_session_id`. CHECK constraint di migration menegakkan pasangan yang
- * benar supaya baris setengah jadi tidak mungkin tersimpan.
- */
+// One table for two sales channels. marketplace fills store_id; pos fills branch_id and cash_session_id. A migration CHECK enforces the right pairing so half-formed rows can't be stored.
 export const transactions = pgTable(
   'transactions',
   {
@@ -89,7 +83,7 @@ export const transactionFees = pgTable(
   (t) => [index('fees_tx_id_idx').on(t.transactionId), index('fees_project_id_idx').on(t.projectId)]
 )
 
-/** `hppAtTime` adalah snapshot HPP saat transaksi terjadi — dasar COGS historis. */
+/** hppAtTime is the HPP snapshot at transaction time, the basis for historical COGS. */
 export const transactionItems = pgTable(
   'transaction_items',
   {

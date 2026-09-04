@@ -1,12 +1,7 @@
 import { logger } from '@/lib/logging/logger'
 import { getRequestContext } from '@/lib/observability/request-context'
 
-/**
- * Mencatat error tak terduga secara terstruktur dan mengembalikan requestId.
- *
- * Sengaja memuat nama, pesan, dan stack sebagai bidang terpisah — bukan satu
- * string — supaya bisa dicari dan dikelompokkan di Vercel Logs.
- */
+// Log an unexpected error structurally and return a requestId. Name, message, and stack are separate fields, not one string, so they're searchable and groupable in Vercel Logs.
 function logUnexpected(error: unknown, message: string): string {
   const requestId = getRequestContext()?.requestId ?? 'unknown'
 
@@ -72,14 +67,7 @@ export class RateLimitError extends AppError {
   }
 }
 
-/**
- * Mengubah error menjadi hasil server action yang aman dikirim ke browser.
- *
- * Error operasional (validasi, izin, tidak ditemukan) memang untuk dibaca
- * pengguna. Error tak terduga dicatat lengkap ke log dengan requestId, tetapi
- * yang dikirim balik hanya pesan umum plus id itu — supaya pengguna punya
- * sesuatu untuk disebutkan saat melapor tanpa membocorkan isi sistem.
- */
+// Turn an error into a browser-safe server-action result. Operational errors (validation, permission, not-found) are meant to be read by the user; unexpected ones are logged in full with a requestId, and only a generic message plus that id is returned, so users have something to quote without leaking internals.
 export function handleActionError(error: unknown): {
   success: false
   error: string

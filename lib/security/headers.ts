@@ -11,18 +11,14 @@ export function buildCsp(nonce: string): string {
   const directives = [
     `default-src 'self'`,
 
-    // 'strict-dynamic' lets the nonced Next.js bootstrap load its own chunks and
-    // next/script tags; browsers that honour it ignore host allowlists, so no CDN
-    // origin is listed here on purpose.
+    // 'strict-dynamic' lets the nonced Next.js bootstrap load its own chunks; browsers that honour it ignore host allowlists, so no CDN origin is listed here.
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
 
-    // next/font meng-host font sendiri saat build, jadi tidak perlu
-    // mengizinkan origin Google Fonts.
+    // next/font self-hosts fonts at build time, so no Google Fonts origin is needed.
     `style-src 'self' 'unsafe-inline'`,
     `font-src 'self'`,
 
-    // Berkas unggahan disajikan proxy satu-origin (`/api/v1/files`), jadi
-    // tercakup 'self'; tidak ada host penyedia storage yang diizinkan di sini.
+    // Uploads are served by the same-origin proxy (/api/v1/files), so 'self' covers them; no storage host is allowed here.
     `img-src 'self' data: blob: https://lh3.googleusercontent.com`,
 
     `connect-src 'self'${isDev ? ' ws://localhost:*' : ''}`,

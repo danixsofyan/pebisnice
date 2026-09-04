@@ -1,10 +1,7 @@
 import { boolean, index, integer, pgTable, primaryKey, text } from 'drizzle-orm/pg-core'
 import { tz } from './primitives'
 
-/**
- * Tabel milik Auth.js. Bentuknya ditentukan DrizzleAdapter, jadi tidak
- * mengikuti kolom siklus hidup standar dan tidak dilindungi RLS.
- */
+// Auth.js tables; shape is set by the DrizzleAdapter, so no standard lifecycle columns and no RLS.
 export const users = pgTable('users', {
   id: text('id')
     .primaryKey()
@@ -15,7 +12,7 @@ export const users = pgTable('users', {
   image: text('image'),
   plan: text('plan').default('free').notNull(),
   timezone: text('timezone').default('Asia/Jakarta').notNull(),
-  /** Admin platform (pengelola langganan), bukan pengguna bisnis biasa. */
+  /** Platform admin (manages subscriptions), not a regular business user. */
   isPlatformAdmin: boolean('is_platform_admin').default(false).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: tz('created_at').defaultNow().notNull(),

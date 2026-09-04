@@ -5,11 +5,7 @@ import { actorColumns, tenantColumn } from './columns'
 import { expenseCategoryEnum } from './enums'
 import { lifecycleColumns, money } from './primitives'
 
-/**
- * Pengeluaran operasional (OpEx) — komponen terakhir P&L setelah laba kotor
- * dan biaya platform. `branchId` boleh NULL untuk biaya tingkat perusahaan
- * yang tidak dibebankan ke cabang tertentu.
- */
+// Operating expenses (OpEx), the last P&L component after gross profit and platform fees. branchId may be NULL for company-level costs not charged to a branch.
 export const expenses = pgTable(
   'expenses',
   {

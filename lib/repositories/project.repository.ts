@@ -40,14 +40,7 @@ export class ProjectRepository extends BaseRepository {
     return (result as unknown as { rows: Project[] }).rows[0] ?? null
   }
 
-  /**
-   * Membuat project beserta cabang pertamanya dalam satu transaksi.
-   *
-   * Setiap project wajib punya minimal satu cabang — stok, POS, dan produksi
-   * semuanya ter-scope cabang. Tanpa ini, project baru akan lahir dalam
-   * kondisi tidak bisa dipakai. Project lama mendapat cabang "Pusat" lewat
-   * migration 0002; ini padanannya untuk project baru.
-   */
+  // Create a project with its first branch in one transaction. Every project needs at least one branch, since stock, POS, and production are all branch-scoped; without it a new project would be unusable. Old projects got a "Pusat" branch via migration 0002; this is the equivalent for new ones.
   async createWithDefaultBranch(data: NewProject): Promise<Project> {
     return this.db.transaction(async (tx) => {
       const [project] = await tx.insert(projects).values(data).returning()

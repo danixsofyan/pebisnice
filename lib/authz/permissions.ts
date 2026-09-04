@@ -18,13 +18,7 @@ export type Permission =
   | 'data:upload'
 
 export type TeamRole =
-  | 'owner'
-  | 'admin'
-  | 'manager'
-  | 'finance'
-  | 'cashier'
-  | 'production'
-  | 'operator'
+  'owner' | 'admin' | 'manager' | 'finance' | 'cashier' | 'production' | 'operator'
 
 export const ALL_PERMISSIONS: readonly Permission[] = [
   'project:view',
@@ -46,11 +40,7 @@ export const ALL_PERMISSIONS: readonly Permission[] = [
   'data:upload',
 ]
 
-/**
- * Gerbang tunggal untuk HPP. Peran yang tidak memilikinya tidak pernah
- * menerima kolom biaya dalam bentuk apa pun — bukan disembunyikan di UI,
- * melainkan tidak ikut di-select dari database.
- */
+// The single gate for HPP. Roles without it never receive cost columns in any form; not hidden in the UI, but not selected from the database.
 export const COST_PERMISSION: Permission = 'cost:view'
 
 const CASHIER_PERMISSIONS: readonly Permission[] = [
@@ -85,9 +75,7 @@ const ROLE_PERMISSIONS: Record<TeamRole, readonly Permission[]> = {
 
   production: ['project:view', 'production:manage'],
 
-  // Peran warisan v1.0: pengunggah data marketplace. Sengaja TIDAK dipetakan
-  // ke cashier — itu akan mencabut `data:upload` yang sudah dipakai. Nilai
-  // enum lama di database tetap berfungsi apa adanya.
+  // Legacy v1.0 role: marketplace data uploader. Deliberately NOT mapped to cashier, which would remove data:upload; old enum rows keep working as-is.
   operator: ['project:view', 'data:upload'],
 }
 
@@ -95,15 +83,12 @@ export function hasRolePermission(role: string, permission: Permission): boolean
   return ROLE_PERMISSIONS[role as TeamRole]?.includes(permission) ?? false
 }
 
-/** Peran yang boleh melihat HPP. Dipakai test untuk mengunci daftarnya. */
+/** Roles allowed to view HPP; tests lock the list. */
 export function canRoleViewCost(role: string): boolean {
   return hasRolePermission(role, COST_PERMISSION)
 }
 
-/**
- * Cakupan cabang seorang anggota tim. `null` berarti seluruh cabang —
- * dipakai owner, admin, dan finance.
- */
+// A member's branch scope. null means all branches, used by owner, admin, and finance.
 export function isBranchAllowed(memberBranchId: string | null, targetBranchId: string): boolean {
   if (memberBranchId === null) return true
   return memberBranchId === targetBranchId

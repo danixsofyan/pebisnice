@@ -7,7 +7,7 @@ import { actorColumns, tenantColumn } from './columns'
 import { movementTypeEnum } from './enums'
 import { lifecycleColumns, tz } from './primitives'
 
-/** Saldo cepat per cabang per varian. Kebenarannya tetap `inventory_movements`. */
+/** Fast per-branch per-variant balance; the truth stays inventory_movements. */
 export const inventory = pgTable(
   'inventory',
   {
@@ -40,7 +40,7 @@ export const inventory = pgTable(
   ]
 )
 
-/** Append-only. Trigger `fn_prevent_mutation()` menolak UPDATE dan DELETE. */
+/** Append-only; fn_prevent_mutation() rejects UPDATE and DELETE. */
 export const inventoryMovements = pgTable(
   'inventory_movements',
   {

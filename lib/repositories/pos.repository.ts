@@ -22,11 +22,7 @@ export interface CreatePosTransactionInput {
 }
 
 export class PosRepository {
-  /**
-   * Menulis header dan seluruh barisnya. Dipanggil di dalam transaksi database
-   * milik service, bukan membuka transaksinya sendiri — supaya pengurangan
-   * stok ikut batal bila salah satu langkah gagal.
-   */
+  // Write the header and all its lines. Called inside the service's transaction, not opening its own, so the stock decrement rolls back too if any step fails.
   async insertTransaction(
     tx: Transaction,
     input: CreatePosTransactionInput
@@ -131,7 +127,7 @@ export class PosRepository {
     return rows.length > 0
   }
 
-  /** Nomor urut struk per cabang per hari, dikunci di database. */
+  /** Per-branch per-day receipt sequence number, locked in the database. */
   async nextOrderCode(tx: Transaction, branchCode: string, today: string): Promise<string> {
     const result = await tx.execute<{ sequence: number }>(sql`
       SELECT COUNT(*) + 1 AS sequence

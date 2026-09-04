@@ -1,14 +1,7 @@
 import crypto from 'crypto'
 import { logger } from '@/lib/logging/logger'
 
-/**
- * Memeriksa header Authorization sebuah permintaan cron.
- *
- * Dibuat bersama agar setiap endpoint cron memakai pemeriksaan yang persis
- * sama. Kedua sisi di-hash lebih dulu sebelum dibandingkan: `timingSafeEqual`
- * melempar bila panjang buffer berbeda, dan hashing juga menghindari kebocoran
- * panjang secret lewat waktu perbandingan.
- */
+// Check a cron request's Authorization header. Shared so every cron endpoint uses the exact same check; both sides are hashed before comparison, since timingSafeEqual throws on length mismatch and hashing also avoids leaking secret length via comparison time.
 export function isAuthorizedCronRequest(request: Request): boolean {
   const secret = process.env.CRON_SECRET
   if (!secret) {

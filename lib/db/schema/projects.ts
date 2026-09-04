@@ -4,10 +4,7 @@ import { users } from './auth'
 import { calcMethodEnum } from './enums'
 import { lifecycleColumns } from './primitives'
 
-/**
- * Tenant. Sengaja tidak dilindungi RLS karena harus terbaca sebelum
- * tenant aktif ditentukan.
- */
+// Tenant. Deliberately not RLS-protected because it must be read before the active tenant is known.
 export const projects = pgTable(
   'projects',
   {

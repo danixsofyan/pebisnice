@@ -3,10 +3,7 @@ import { sql } from 'drizzle-orm'
 import { actorColumns, tenantColumn } from './columns'
 import { lifecycleColumns } from './primitives'
 
-/**
- * Cabang fisik. Setiap project wajib punya minimal satu; project lama
- * mendapat cabang "Pusat" saat migrasi.
- */
+// Physical branch. Every project has at least one; old projects got a "Pusat" branch on migration.
 export const branches = pgTable(
   'branches',
   {

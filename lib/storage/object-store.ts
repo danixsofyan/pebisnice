@@ -7,18 +7,7 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3'
 
-/**
- * Akses bucket privat lewat protokol S3.
- *
- * Bucket sengaja privat: satu-satunya pintu ke berkas adalah proxy aplikasi
- * (`/api/v1/files/...`), yang menegakkan batas antar-tenant. Tidak ada URL
- * publik penyedia yang pernah sampai ke browser, dan menebak nama objek tidak
- * cukup untuk membacanya.
- *
- * Kredensial S3 sama untuk penyedia apa pun yang berbicara protokol ini
- * (Supabase Storage, Cloudflare R2, MinIO, Wasabi), jadi tidak ada nama vendor
- * di sini.
- */
+// Private bucket access over the S3 protocol. The bucket is private on purpose: the only door to files is the app proxy (/api/v1/files/...), which enforces the cross-tenant boundary. No provider public URL ever reaches the browser, and guessing an object name isn't enough to read it. S3 credentials are the same for any provider speaking this protocol (Supabase Storage, Cloudflare R2, MinIO, Wasabi), so no vendor name here.
 
 export interface StorageObject {
   body: ReadableStream
@@ -36,13 +25,7 @@ interface StorageConfig {
   bucket: string
 }
 
-/**
- * Membaca konfigurasi sekali saat pertama dipakai, bukan saat modul dimuat.
- *
- * Kalau dibaca saat impor, satu env yang belum diisi akan menggagalkan build
- * seluruh aplikasi — padahal fitur unggah bersifat opsional. Dengan lazy, hanya
- * permintaan yang benar-benar menyentuh storage yang gagal, dengan pesan jelas.
- */
+// Read config once on first use, not at module load. At import time one missing env would fail the whole build, though uploads are optional; lazily, only requests actually touching storage fail, with a clear message.
 let cachedConfig: StorageConfig | null = null
 
 function readConfig(): StorageConfig {
@@ -90,7 +73,7 @@ function client(config: StorageConfig): S3Client {
       accessKeyId: config.accessKeyId,
       secretAccessKey: config.secretAccessKey,
     },
-    // Supabase, MinIO, dan R2 memakai jalur bucket di path, bukan subdomain.
+    // Supabase, MinIO, and R2 put the bucket in the path, not a subdomain.
     forcePathStyle: true,
   })
   return cachedClient
@@ -113,7 +96,7 @@ export async function putObject(
   )
 }
 
-/** Mengembalikan `null` bila objek tidak ada, bukan melempar. */
+/** Returns null if the object is absent, rather than throwing. */
 export async function getObject(key: string): Promise<StorageObject | null> {
   const config = readConfig()
   try {
@@ -157,13 +140,7 @@ export interface ListedObject {
   size: number
 }
 
-/**
- * Menelusuri seluruh objek (opsional dengan prefiks), menangani paginasi.
- *
- * Dipakai pembersih berkas yatim. Sengaja mengembalikan semua, bukan halaman
- * demi halaman, karena pemanggil perlu membandingkannya dengan seluruh kunci
- * yang masih dirujuk sekaligus.
- */
+// Walk all objects (optionally by prefix), handling pagination. Used by the orphan cleaner; it returns everything, not page by page, because the caller must compare against all referenced keys at once.
 export async function listObjects(prefix?: string): Promise<ListedObject[]> {
   const config = readConfig()
   const objects: ListedObject[] = []
@@ -199,7 +176,7 @@ function isNotFound(error: unknown): boolean {
   return name === 'NoSuchKey' || name === 'NotFound' || status === 404
 }
 
-/** Hanya untuk test — memaksa konfigurasi dibaca ulang. */
+/** Test-only: force config to be re-read. */
 export function __resetStorageForTests(): void {
   cachedConfig = null
   cachedClient = null

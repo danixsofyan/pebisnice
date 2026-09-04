@@ -13,16 +13,9 @@ export interface StockLocation {
   productVariantId: string
 }
 
-/**
- * Seluruh method menerima `tx` dari luar. Repository tidak pernah membuka
- * transaksinya sendiri supaya pemanggil bisa menggabungkan beberapa mutasi
- * dalam satu unit atomik, dan supaya unit test bisa menyuntikkan mock.
- */
+// Every method takes tx from outside; the repository never opens its own transaction, so callers can group several mutations into one atomic unit and tests can inject a mock.
 export class InventoryRepository {
-  /**
-   * Mengunci baris saldo untuk mencegah race condition, membuatnya bila belum
-   * ada. Mengembalikan saldo terkini.
-   */
+  // Lock the balance row to prevent a race, creating it if absent; returns the current balance.
   async lockBalance(tx: Transaction, location: StockLocation): Promise<number> {
     const locked = await tx.execute<{ stock_qty: number }>(sql`
       SELECT stock_qty FROM inventory
@@ -85,7 +78,7 @@ export class InventoryRepository {
     })
   }
 
-  /** Menjumlahkan ledger — dipakai untuk membuktikan saldo tidak melenceng. */
+  /** Sum the ledger; used to prove the balance hasn't drifted. */
   async sumMovements(tx: Transaction, location: StockLocation): Promise<number> {
     const result = await tx.execute<{ total: string | null }>(sql`
       SELECT COALESCE(SUM(qty), 0) AS total FROM inventory_movements

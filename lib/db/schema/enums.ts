@@ -12,9 +12,7 @@ export const orderStatusEnum = pgEnum('order_status', [
 
 export const calcMethodEnum = pgEnum('calc_method', ['income_based', 'order_based'])
 
-// `operator` dipertahankan sebagai peran warisan v1.0 (pengunggah data).
-// Menghapus nilai enum Postgres mahal dan berisiko, sementara barisnya masih
-// dipakai — jadi dibiarkan hidup berdampingan dengan peran baru.
+// 'operator' is a legacy v1.0 role (data uploader); dropping a Postgres enum value is costly and its rows are still used, so it coexists with the new roles.
 export const teamRoleEnum = pgEnum('team_role', [
   'owner',
   'admin',
@@ -66,7 +64,7 @@ export const auditActionEnum = pgEnum('audit_action', [
   'invite',
 ])
 
-/** Sumber penjualan. `marketplace` disinkron API/import, `pos` dari kasir. */
+/** Sales source. marketplace is API/import-synced, pos is from the cashier. */
 export const salesChannelEnum = pgEnum('sales_channel', ['marketplace', 'pos'])
 
 export const paymentMethodEnum = pgEnum('payment_method', [
@@ -79,10 +77,10 @@ export const paymentMethodEnum = pgEnum('payment_method', [
 
 export const cashSessionStatusEnum = pgEnum('cash_session_status', ['open', 'closed'])
 
-/** `finished` = siap jual, `material` = bahan yang dipakai produksi. */
+/** finished = sellable, material = used in production. */
 export const productTypeEnum = pgEnum('product_type', ['finished', 'material'])
 
-/** Jenis paket langganan. Harga & durasi diambil dari baris `plans`. */
+/** Subscription plan kind. Price and duration come from plan rows. */
 export const planIntervalEnum = pgEnum('plan_interval', ['trial', 'monthly', 'yearly'])
 
 export const subscriptionStatusEnum = pgEnum('subscription_status', [
@@ -93,7 +91,7 @@ export const subscriptionStatusEnum = pgEnum('subscription_status', [
   'canceled',
 ])
 
-/** Status pembayaran, dipetakan dari transaction_status Midtrans. */
+/** Payment status, mapped from Midtrans transaction_status. */
 export const paymentStatusEnum = pgEnum('payment_status', [
   'pending',
   'paid',

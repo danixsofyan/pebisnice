@@ -5,13 +5,7 @@ import { productVariants } from './catalog'
 import { actorColumns, tenantColumn } from './columns'
 import { lifecycleColumns, money } from './primitives'
 
-/**
- * Satu kali proses merakit produk jadi dari bahan.
- *
- * `totalMaterialCost` dan `unitCost` dihitung server dari snapshot HPP bahan
- * saat produksi terjadi — bukan dari HPP saat ini, supaya biaya historis tidak
- * ikut berubah ketika HPP bahan diperbarui.
- */
+// One run assembling a finished good from materials. totalMaterialCost and unitCost are server-computed from the material HPP snapshot at production time, not current HPP, so historical cost doesn't shift when material HPP updates.
 export const productionLogs = pgTable(
   'production_logs',
   {
@@ -45,7 +39,7 @@ export const productionLogs = pgTable(
   ]
 )
 
-/** Bahan yang terpakai, dengan snapshot HPP-nya. */
+/** Materials consumed, with their HPP snapshot. */
 export const productionMaterials = pgTable(
   'production_materials',
   {

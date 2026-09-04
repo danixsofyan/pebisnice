@@ -1,13 +1,7 @@
 import { headers } from 'next/headers'
 import { REQUEST_ID_HEADER, type RequestContext } from './request-context'
 
-/**
- * Membaca konteks request dari header yang disisipkan `proxy.ts`.
- *
- * Server Component dan Server Action tidak berbagi AsyncLocalStorage dengan
- * middleware, jadi id korelasinya dititipkan lewat header request. Ini cara
- * yang sama dipakai untuk nonce CSP.
- */
+// Read request context from headers injected by proxy.ts. Server Components and Actions don't share AsyncLocalStorage with middleware, so the correlation id is passed via request headers, the same way as the CSP nonce.
 export async function readRequestContext(): Promise<RequestContext> {
   const headerList = await headers()
 
@@ -18,7 +12,7 @@ export async function readRequestContext(): Promise<RequestContext> {
   }
 }
 
-/** Metadata request untuk audit log — IP dan user agent. */
+/** Request metadata for audit logs: IP and user agent. */
 export async function readRequestMeta(): Promise<{
   requestId: string
   ip: string

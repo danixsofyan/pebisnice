@@ -6,10 +6,7 @@ import { actorColumns, tenantColumn } from './columns'
 import { cashSessionStatusEnum } from './enums'
 import { lifecycleColumns, money, tz } from './primitives'
 
-/**
- * Shift kasir. Satu cabang hanya boleh punya satu sesi terbuka pada satu
- * waktu — ditegakkan partial unique index, bukan hanya oleh kode.
- */
+// Cashier shift. A branch may have only one open session at a time, enforced by a partial unique index, not just code.
 export const cashSessions = pgTable(
   'cash_sessions',
   {

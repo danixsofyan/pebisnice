@@ -2,13 +2,7 @@ import { and, asc, eq, ilike, isNull, or, sql } from 'drizzle-orm'
 import { inventory, productVariants, products } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant'
 
-/**
- * Item yang bisa dipilih kasir.
- *
- * Sengaja tanpa kolom biaya apa pun — layar POS dipakai peran `cashier` yang
- * tidak punya `cost:view`. HPP untuk COGS diambil terpisah di server saat
- * transaksi disimpan.
- */
+// Items a cashier can pick. No cost column at all, since the POS screen is used by the cashier role without cost:view; HPP for COGS is fetched separately server-side when the sale is saved.
 export interface SellableItem {
   productVariantId: string
   productName: string

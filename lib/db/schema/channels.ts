@@ -5,7 +5,7 @@ import { actorColumns, tenantColumn } from './columns'
 import { calcMethodEnum, platformEnum, syncStatusEnum } from './enums'
 import { lifecycleColumns, tz } from './primitives'
 
-/** Akun marketplace yang tertaut ke sebuah project. */
+/** Marketplace account linked to a project. */
 export const stores = pgTable(
   'stores',
   {

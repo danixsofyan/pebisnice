@@ -80,10 +80,7 @@ export class CashSessionRepository {
     return session ?? null
   }
 
-  /**
-   * Menjumlahkan penjualan tunai sesi, mengabaikan transaksi yang di-void.
-   * Dihitung di database supaya tidak perlu memuat seluruh baris ke memori.
-   */
+  // Sum the session's cash sales, ignoring voided transactions; computed in the database to avoid loading every row into memory.
   async sumCashSales(tx: Transaction, sessionId: string): Promise<Money> {
     const result = await tx.execute<{ total: string }>(sql`
       SELECT COALESCE(SUM(net_amount), 0)::text AS total

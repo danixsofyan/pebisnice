@@ -4,14 +4,11 @@ import { accessState, daysLeft, type AccessState } from '@/lib/domain/billing/pe
 export interface BillingState {
   access: AccessState
   current: SubscriptionWithPlan | null
-  /** Sisa hari periode berjalan; 0 bila tak ada/kedaluwarsa. */
+  /** Days left in the current period; 0 if none or expired. */
   daysLeft: number
 }
 
-/**
- * Keadaan langganan sebuah akun untuk keperluan gating. Tidak melempar — halaman
- * yang memutuskan ke mana mengarahkan, sama pola dengan `resolveSessionState`.
- */
+// An account's subscription state for gating. Never throws; the page decides where to redirect, like resolveSessionState.
 export async function resolveBillingState(
   userId: string,
   now: Date = new Date()

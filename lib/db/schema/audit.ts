@@ -4,12 +4,7 @@ import { auditActionEnum } from './enums'
 import { projects } from './projects'
 import { tz } from './primitives'
 
-/**
- * Immutable. Trigger `fn_prevent_mutation()` menolak UPDATE dan DELETE.
- *
- * `project_id` nullable karena event login/logout tidak terikat project, jadi
- * tabel ini dikecualikan dari policy RLS dan dibatasi di data-access layer.
- */
+// Immutable; fn_prevent_mutation() rejects UPDATE and DELETE. project_id is nullable (login/logout aren't project-bound), so this table is excluded from RLS and guarded in the data-access layer.
 export const auditLogs = pgTable(
   'audit_logs',
   {

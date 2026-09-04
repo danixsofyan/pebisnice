@@ -7,10 +7,7 @@ import type {
   VariantWithoutCost,
 } from '@/lib/domain/catalog/variant-view'
 
-/**
- * Bentuk select tanpa kolom biaya. Ini yang dipakai untuk peran tanpa
- * `cost:view` — HPP tidak ikut dibaca dari database sama sekali.
- */
+// Cost-free select shape, used for roles without cost:view; HPP is never read from the database at all.
 const VARIANT_COLUMNS_WITHOUT_COST = {
   id: productVariants.id,
   projectId: productVariants.projectId,
@@ -26,10 +23,7 @@ const VARIANT_COLUMNS_WITH_COST = {
 } as const
 
 export class ProductRepository {
-  /**
-   * `includeCost` tidak boleh berasal dari input pemanggil luar — hanya
-   * service yang menentukannya dari hasil pengecekan permission.
-   */
+  // includeCost must not come from outside-caller input; only the service sets it from a permission check.
   async findVariantsByProduct(
     projectId: string,
     productId: string,

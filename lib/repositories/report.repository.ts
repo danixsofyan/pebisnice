@@ -4,16 +4,12 @@ import { fromDecimalString, ZERO, type Money } from '@/lib/domain/money'
 
 export interface PeriodFilter {
   projectId: string
-  /** Inklusif, format YYYY-MM-DD. */
+  /** Inclusive, YYYY-MM-DD. */
   startDate: string
   endDate: string
-  /** NULL berarti seluruh cabang. */
+  /** NULL means all branches. */
   branchId: string | null
-  /**
-   * Zona waktu project, menentukan batas hari. Diambil dari kolom
-   * `projects.timezone`, tidak ditulis mati — tenant di zona berbeda harus
-   * mendapat batas hari yang benar.
-   */
+  // Project timezone, setting day boundaries; taken from projects.timezone, not hardcoded, so tenants in other zones get correct day cutoffs.
   timezone: string
 }
 
@@ -33,14 +29,7 @@ function toMoney(value: string | null | undefined): Money {
 }
 
 export class ReportRepository {
-  /**
-   * Pendapatan, COGS, dan biaya platform dalam satu query agregasi.
-   *
-   * Transaksi yang di-void maupun yang di-soft-delete dikecualikan. Rentang
-   * tanggal memakai `order_date` yang sudah TIMESTAMPTZ, dikonversi ke zona
-   * waktu project agar batas hari sesuai persepsi pengguna. Zona waktunya
-   * dikirim sebagai bind parameter, bukan disisipkan ke string SQL.
-   */
+  // Revenue, COGS, and platform fees in one aggregate query. Voided and soft-deleted transactions are excluded. The date range uses order_date (already TIMESTAMPTZ), converted to the project timezone so day boundaries match user perception; the timezone is a bind parameter, not spliced into the SQL string.
   async revenueBreakdown(tx: Transaction, filter: PeriodFilter): Promise<RevenueBreakdown> {
     const branchCondition = filter.branchId ? sql`AND t.branch_id = ${filter.branchId}` : sql``
 
@@ -126,7 +115,7 @@ export class ReportRepository {
     return rows.map((row) => ({ category: row.category, amount: toMoney(row.total) }))
   }
 
-  /** Penjualan harian per channel — dasar grafik tren 30 hari. */
+  /** Daily sales per channel; basis for the 30-day trend chart. */
   async dailySales(
     tx: Transaction,
     filter: PeriodFilter

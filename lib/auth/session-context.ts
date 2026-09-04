@@ -10,25 +10,18 @@ export interface SessionContext {
   projectId: string
   projectName: string
   role: TeamRole
-  /** NULL berarti akses seluruh cabang. */
+  /** NULL means access to all branches. */
   branchId: string | null
   canViewCost: boolean
 }
 
-/**
- * Tiga keadaan yang mungkin dialami pengunjung.
- *
- * Sengaja berupa union, bukan `SessionContext | null`: bentuk nullable membuat
- * "belum login" dan "belum punya project" tidak bisa dibedakan, dan pemanggil
- * jadi mengarahkan ke tempat yang salah — atau seperti sebelumnya, melempar
- * error dan berujung layar 500.
- */
+// The three states a visitor can be in. A union, not SessionContext | null: the nullable shape couldn't tell 'not logged in' from 'no project', so callers redirected wrong or threw into a 500.
 export type SessionState =
   | { status: 'unauthenticated' }
   | { status: 'no-project'; userId: string }
   | { status: 'ready'; context: SessionContext }
 
-/** Tidak pernah melempar. Halaman yang memutuskan ke mana mengarahkan. */
+/** Never throws; the page decides where to redirect. */
 export async function resolveSessionState(): Promise<SessionState> {
   const session = await auth()
   const user = session?.user
@@ -82,11 +75,7 @@ export async function resolveSessionState(): Promise<SessionState> {
   }
 }
 
-/**
- * Menuntut project aktif. Dipakai server action, di mana melempar memang
- * perilaku yang benar — `handleActionError` mengubahnya jadi pesan yang rapi.
- * Halaman sebaiknya memakai `resolveSessionState()`.
- */
+// Requires an active project. For server actions, where throwing is correct; handleActionError turns it into a clean message. Pages should use resolveSessionState().
 export async function getSessionContext(): Promise<SessionContext> {
   const state = await resolveSessionState()
 
@@ -100,10 +89,7 @@ export async function getSessionContext(): Promise<SessionContext> {
   return state.context
 }
 
-/**
- * Cabang yang boleh diakses pengguna. Anggota yang terikat satu cabang hanya
- * melihat cabangnya sendiri.
- */
+// Branches a user may access. A member bound to one branch sees only theirs.
 export async function getAccessibleBranches(context: SessionContext) {
   const all = await db
     .select({ id: branches.id, name: branches.name, code: branches.code })

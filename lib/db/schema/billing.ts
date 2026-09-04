@@ -4,11 +4,7 @@ import { users } from './auth'
 import { planIntervalEnum, paymentStatusEnum, subscriptionStatusEnum } from './enums'
 import { lifecycleColumns, money, tz } from './primitives'
 
-/**
- * Paket langganan. Harga, jenis, dan lama trial semuanya baris data — supaya
- * bisa diubah tanpa deploy. Sengaja tidak dilindungi RLS: dibaca sebelum tenant
- * ditentukan, sama seperti `projects`.
- */
+// Subscription plans. Price, kind, and trial length are all data so they change without a deploy. No RLS: read before the tenant is known, like projects.
 export const plans = pgTable(
   'plans',
   {
@@ -17,9 +13,9 @@ export const plans = pgTable(
     name: text('name').notNull(),
     description: text('description'),
     interval: planIntervalEnum('interval').notNull(),
-    /** Harga sekali tagih untuk satu periode. 0 untuk trial. */
+    /** One-off charge for a period. 0 for trial. */
     price: money('price').default('0').notNull(),
-    /** Hanya untuk paket trial: lama masa coba dalam hari. */
+    /** Trial only: trial length in days. */
     trialDays: integer('trial_days'),
     sortOrder: integer('sort_order').default(0).notNull(),
     ...lifecycleColumns,
@@ -34,10 +30,7 @@ export const plans = pgTable(
   ]
 )
 
-/**
- * Langganan level akun — satu baris per user, merekam keadaan terkini.
- * Riwayat transaksi ada di `subscription_payments`.
- */
+// Account-level subscription: one row per user, holding current state. Payment history lives in subscription_payments.
 export const subscriptions = pgTable(
   'subscriptions',
   {
@@ -63,11 +56,7 @@ export const subscriptions = pgTable(
   ]
 )
 
-/**
- * Satu upaya bayar lewat Midtrans. `order_id` yang kita bangkitkan jadi jangkar
- * idempotensi webhook, dan `raw` menyimpan payload notifikasi terakhir untuk
- * audit bila terjadi sengketa.
- */
+// One Midtrans payment attempt. Our generated order_id is the webhook idempotency anchor; raw keeps the last notification payload for dispute audit.
 export const subscriptionPayments = pgTable(
   'subscription_payments',
   {

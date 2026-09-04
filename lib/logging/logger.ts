@@ -1,18 +1,7 @@
 import pino, { type LoggerOptions } from 'pino'
 import { getRequestContext } from '@/lib/observability/request-context'
 
-/**
- * Logger terstruktur untuk seluruh aplikasi.
- *
- * Setiap baris keluar sebagai JSON satu baris dengan bidang yang seragam,
- * supaya bisa difilter dan dikorelasikan di Vercel Logs — bukan teks bebas
- * yang hanya bisa dibaca manusia.
- *
- * Bidang yang selalu ada:
- *   level, time, service, env, msg
- * Bidang yang ikut bila requestnya diketahui:
- *   requestId, method, path, userId, projectId
- */
+// Structured app-wide logger. Every line is one-line JSON with uniform fields for filtering and correlation in Vercel Logs, not free text. Always: level, time, service, env, msg. When the request is known: requestId, method, path, userId, projectId.
 
 const SERVICE_NAME = 'pebisnice'
 
@@ -24,20 +13,15 @@ const options: LoggerOptions = {
     env: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? 'development',
   },
 
-  // Waktu ISO 8601 UTC agar bisa diurutkan lintas sistem.
+  // ISO 8601 UTC time so it sorts across systems.
   timestamp: pino.stdTimeFunctions.isoTime,
 
   formatters: {
-    // Vercel Logs mengelompokkan berdasarkan `level` sebagai teks, bukan angka.
+    // Vercel Logs groups by `level` as text, not a number.
     level: (label) => ({ level: label }),
   },
 
-  /**
-   * Bidang yang tidak boleh muncul di log dalam keadaan apa pun.
-   *
-   * Daftarnya menyebut jalur bersarang juga, karena objek error dan request
-   * kerap membawa header serta payload utuh.
-   */
+  // Fields that must never appear in logs; nested paths included, since error and request objects often carry whole headers and payloads.
   redact: {
     paths: [
       'password',
@@ -79,12 +63,7 @@ if (process.env.NODE_ENV === 'development') {
 
 const rootLogger = pino(options)
 
-/**
- * Logger yang otomatis membawa konteks request yang sedang berjalan.
- *
- * Dipakai sebagai `logger.info(...)` biasa; bidang requestId, path, userId,
- * dan projectId disisipkan sendiri bila tersedia.
- */
+// Logger that auto-carries the running request context; used like a normal logger.info(...), with requestId/path/userId/projectId added when available.
 function withRequestContext() {
   const context = getRequestContext()
   if (!context) return rootLogger
@@ -120,5 +99,5 @@ export const logger = {
   fatal: forward('fatal'),
 }
 
-/** Untuk tempat yang butuh instance pino asli, mis. pengujian. */
+/** For places needing the raw pino instance, e.g. tests. */
 export const baseLogger = rootLogger

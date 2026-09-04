@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { AuthError, ForbiddenError } from '@/lib/errors/app-error'
 
-/** Apakah user ini admin platform. */
+/** Is this user a platform admin? */
 export async function isPlatformAdmin(userId: string): Promise<boolean> {
   const rows = await db
     .select({ isAdmin: users.isPlatformAdmin })
@@ -19,7 +19,7 @@ export interface AdminState {
   userId: string | null
 }
 
-/** Untuk layout: tidak melempar, cukup memberi tahu boleh masuk atau tidak. */
+/** For layouts: never throws, just says whether access is allowed. */
 export async function resolveAdminState(): Promise<AdminState> {
   const session = await auth()
   const userId = session?.user?.id
@@ -27,7 +27,7 @@ export async function resolveAdminState(): Promise<AdminState> {
   return { isAdmin: await isPlatformAdmin(userId), userId }
 }
 
-/** Untuk server action: melempar bila bukan admin. Mengembalikan userId admin. */
+/** For server actions: throws if not admin; returns the admin userId. */
 export async function requirePlatformAdmin(): Promise<string> {
   const session = await auth()
   const userId = session?.user?.id

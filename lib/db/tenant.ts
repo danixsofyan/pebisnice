@@ -7,14 +7,7 @@ export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 export const TENANT_SETTING = 'app.current_project_id'
 
-/**
- * Menjalankan `fn` di dalam satu transaksi database dengan `app.current_project_id`
- * ter-set, sehingga policy RLS pada tabel bisnis dapat mengenali tenant aktif.
- *
- * Ini adalah jaring pengaman lapis kedua. Lapis pertama tetap pengecekan
- * permission di service; RLS hanya memastikan query yang lolos dari sana pun
- * tidak bisa menyentuh baris milik project lain.
- */
+// Run fn in one transaction with app.current_project_id set, so RLS policies on business tables recognize the active tenant. This is the second line of defense; the first is the permission check in the service.
 export async function withTenant<T>(
   projectId: string,
   fn: (tx: Transaction) => Promise<T>
@@ -29,10 +22,7 @@ export async function withTenant<T>(
   })
 }
 
-/**
- * Membaca tenant yang sedang aktif pada koneksi. Mengembalikan null bila belum
- * di-set — dipakai test untuk membuktikan RLS menutup data saat tenant kosong.
- */
+// Read the tenant currently set on the connection; null if unset. Used by tests to prove RLS hides data when the tenant is empty.
 export async function currentTenant(tx: Transaction): Promise<string | null> {
   const result = await tx.execute<{ project_id: string | null }>(
     sql`select nullif(current_setting(${TENANT_SETTING}, true), '') as project_id`

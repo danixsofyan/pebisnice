@@ -17,7 +17,7 @@ export interface RecordProductionInput {
   actorId: string
 }
 
-/** Bentuk ringkasan tanpa kolom biaya, untuk peran tanpa `cost:view`. */
+/** Cost-free summary shape, for roles without cost:view. */
 const LOG_COLUMNS_WITHOUT_COST = {
   id: productionLogs.id,
   projectId: productionLogs.projectId,
@@ -68,10 +68,7 @@ export class ProductionRepository {
     return created
   }
 
-  /**
-   * `includeCost` ditentukan service dari permission, bukan pemanggil luar —
-   * pola yang sama dengan katalog produk.
-   */
+  // includeCost is decided by the service from permission, not an outside caller, mirroring the product catalog.
   async listByBranch(tx: Transaction, projectId: string, branchId: string, includeCost: boolean) {
     const where = and(
       eq(productionLogs.projectId, projectId),
