@@ -4,7 +4,9 @@ import { projectService } from '@/lib/services/project.service'
 import { hasRolePermission } from '@/lib/authz/permissions'
 import { SettingsForm } from '@/components/settings/settings-form'
 import { MarketplaceConnect } from '@/components/settings/marketplace-connect'
+import { OrderLinkRow } from '@/components/settings/order-link-row'
 import { storeService } from '@/lib/services/store.service'
+import { onlineOrderService } from '@/lib/services/online-order.service'
 
 export default async function SettingsPage({
   searchParams,
@@ -17,6 +19,10 @@ export default async function SettingsPage({
   const stores = await storeService.list(context.projectId, context.userId)
   const branches = await getAccessibleBranches(context)
   const canEdit = hasRolePermission(context.role, 'project:edit')
+  const canOrder = hasRolePermission(context.role, 'pos:operate')
+  const orderLinkSlugs = canOrder
+    ? await onlineOrderService.listLinks(context.projectId, context.userId)
+    : {}
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -89,12 +95,12 @@ export default async function SettingsPage({
           </p>
         </div>
         {branches.map((b) => (
-          <div key={b.id} className="rounded-md border p-2 text-xs break-all">
-            <span className="text-muted-foreground">{b.name}: </span>
-            <code>
-              /order/{context.projectId}/{b.id}
-            </code>
-          </div>
+          <OrderLinkRow
+            key={b.id}
+            branchId={b.id}
+            branchName={b.name}
+            slug={orderLinkSlugs[b.id] ?? null}
+          />
         ))}
       </div>
     </div>

@@ -52,16 +52,46 @@ async function staffCtx() {
   return { projectId: context.projectId, actor: { userId: context.userId, ...meta } }
 }
 
-export async function acceptOnlineOrderAction(orderId: string) {
+const acceptSchema = z.object({
+  orderId: z.string().uuid('Pesanan tidak valid'),
+  paymentMethod: z.enum(['cash', 'transfer', 'qris', 'card', 'other']),
+})
+
+export async function acceptOnlineOrderAction(raw: unknown) {
   return withRequestScope('acceptOnlineOrderAction', async () => {
     try {
-      if (!z.string().uuid().safeParse(orderId).success)
-        throw new ValidationError('Pesanan tidak valid')
+      const parsed = acceptSchema.safeParse(raw)
+      if (!parsed.success) throw new ValidationError('Metode bayar tidak valid')
       const { projectId, actor } = await staffCtx()
-      await onlineOrderService.accept(projectId, orderId, actor)
+      await onlineOrderService.accept(
+        projectId,
+        parsed.data.orderId,
+        parsed.data.paymentMethod,
+        actor
+      )
       revalidatePath('/orders')
       revalidatePath('/transactions')
       return { success: true as const }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
+export async function createOrderLinkAction(branchId: string) {
+  return withRequestScope('createOrderLinkAction', async () => {
+    try {
+      if (!z.string().uuid().safeParse(branchId).success)
+        throw new ValidationError('Cabang tidak valid')
+      const context = await getSessionContext()
+      tagRequestActor(context.userId, context.projectId)
+      const slug = await onlineOrderService.getOrCreateLink(
+        context.projectId,
+        context.userId,
+        branchId
+      )
+      revalidatePath('/settings')
+      return { success: true as const, data: { slug } }
     } catch (error) {
       return handleActionError(error)
     }

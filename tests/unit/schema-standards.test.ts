@@ -39,6 +39,7 @@ const CHILD_TABLES = [
   'stockTransferItems',
   'purchaseOrderItems',
   'onlineOrderItems',
+  'orderLinks',
 ]
 
 describe('kepatuhan skema terhadap db-standards.md', () => {
@@ -56,6 +57,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'inventoryMovements',
       'onlineOrderItems',
       'onlineOrders',
+      'orderLinks',
       'plans',
       'productCostHistory',
       'productVariants',

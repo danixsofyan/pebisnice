@@ -25,7 +25,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 DO $$
 DECLARE t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['users','accounts','sessions','"verificationTokens"','projects','team_members','audit_logs']
+  FOREACH t IN ARRAY ARRAY['users','accounts','sessions','"verificationTokens"','projects','team_members','audit_logs','order_links']
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS app_full_access ON %s', t);
     EXECUTE format('CREATE POLICY app_full_access ON %s FOR ALL TO pebisnice_app USING (true) WITH CHECK (true)', t);

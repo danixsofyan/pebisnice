@@ -1,11 +1,34 @@
-import { index, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { index, integer, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { branches } from './branches'
 import { productVariants } from './catalog'
 import { tenantColumn } from './columns'
+import { projects } from './projects'
 import { onlineOrderStatusEnum } from './enums'
-import { lifecycleColumns, money } from './primitives'
+import { lifecycleColumns, money, tz } from './primitives'
 import { transactions } from './sales'
+
+// Short public slug -> project/branch for the order link. Resolved before any tenant is known,
+// so it is granted app_full_access (not tenant RLS), like the account/discovery tables. Holds
+// only opaque ids, no business data.
+export const orderLinks = pgTable(
+  'order_links',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    slug: text('slug').notNull(),
+    projectId: uuid('project_id')
+      .references(() => projects.id, { onDelete: 'cascade' })
+      .notNull(),
+    branchId: uuid('branch_id')
+      .references(() => branches.id, { onDelete: 'cascade' })
+      .notNull(),
+    createdAt: tz('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('order_links_slug_idx').on(t.slug),
+    uniqueIndex('order_links_branch_idx').on(t.branchId),
+  ]
+)
 
 // A self-service order placed via the public WhatsApp order link (no login). It holds no stock
 // until staff accept it, which converts it to a POS sale. Customer phone is encrypted (UU PDP).

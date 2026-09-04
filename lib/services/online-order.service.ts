@@ -1,18 +1,22 @@
+import { randomBytes } from 'node:crypto'
 import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm'
 import {
   branches,
   inventory,
   onlineOrderItems,
   onlineOrders,
+  orderLinks,
   productVariants,
   products,
   projects,
   transactions,
 } from '@/lib/db/schema'
+import { db } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant'
 import { decryptToken, encryptToken } from '@/lib/encryption'
 import { fromDecimalString, toDecimalString, ZERO } from '@/lib/domain/money'
 import { posService } from '@/lib/services/pos.service'
+import type { PaymentMethod } from '@/lib/repositories/pos.repository'
 import { customerService } from '@/lib/services/customer.service'
 import { auditRepository } from '@/lib/repositories/audit.repository'
 import { requirePermission } from '@/lib/rbac'
@@ -37,6 +41,53 @@ export interface PublicMenu {
 }
 
 export class OnlineOrderService {
+  // Resolve a public short slug to its project/branch. order_links is app_full_access, so this
+  // works before any tenant is set (the whole point of the short link).
+  async resolveLink(slug: string): Promise<{ projectId: string; branchId: string } | null> {
+    const [row] = await db
+      .select({ projectId: orderLinks.projectId, branchId: orderLinks.branchId })
+      .from(orderLinks)
+      .where(eq(orderLinks.slug, slug))
+      .limit(1)
+    return row ?? null
+  }
+
+  // The branch's short order slug, creating one on first use. Gated pos:operate.
+  async getOrCreateLink(projectId: string, userId: string, branchId: string): Promise<string> {
+    await requirePermission(projectId, userId, 'pos:operate')
+    const [existing] = await db
+      .select({ slug: orderLinks.slug })
+      .from(orderLinks)
+      .where(eq(orderLinks.branchId, branchId))
+      .limit(1)
+    if (existing) return existing.slug
+
+    const slug = randomBytes(5).toString('hex')
+    const [row] = await db
+      .insert(orderLinks)
+      .values({ slug, projectId, branchId })
+      .onConflictDoNothing({ target: orderLinks.branchId })
+      .returning({ slug: orderLinks.slug })
+    if (row) return row.slug
+    // Lost a race: another request created it first.
+    const [now] = await db
+      .select({ slug: orderLinks.slug })
+      .from(orderLinks)
+      .where(eq(orderLinks.branchId, branchId))
+      .limit(1)
+    return now!.slug
+  }
+
+  // Existing order-link slugs for a project, keyed by branch, for the settings screen.
+  async listLinks(projectId: string, userId: string): Promise<Record<string, string>> {
+    await requirePermission(projectId, userId, 'pos:operate')
+    const rows = await db
+      .select({ branchId: orderLinks.branchId, slug: orderLinks.slug })
+      .from(orderLinks)
+      .where(eq(orderLinks.projectId, projectId))
+    return Object.fromEntries(rows.map((r) => [r.branchId, r.slug]))
+  }
+
   // Public catalog for the order link: sellable finished goods (price and stock > 0). No auth;
   // the project is taken from the link, and the branch is verified to belong to it.
   async publicMenu(projectId: string, branchId: string): Promise<PublicMenu> {
@@ -264,7 +315,12 @@ export class OnlineOrderService {
 
   // Accept a pending order: turn it into a POS sale (stock decremented via posService), link/
   // create the customer, and mark it accepted. Requires an open cash session at the branch.
-  async accept(projectId: string, orderId: string, context: OrderContext): Promise<void> {
+  async accept(
+    projectId: string,
+    orderId: string,
+    paymentMethod: PaymentMethod,
+    context: OrderContext
+  ): Promise<void> {
     await requirePermission(projectId, context.userId, 'pos:operate')
 
     const order = await withTenant(projectId, async (tx) => {
@@ -309,7 +365,7 @@ export class OnlineOrderService {
         branchId: order.head.branchId,
         lines,
         discount: { type: 'none' },
-        paymentMethod: 'transfer',
+        paymentMethod,
         paidAmount: lines.reduce((sum, l) => sum + l.unitPrice * BigInt(l.qty), ZERO),
       },
       context

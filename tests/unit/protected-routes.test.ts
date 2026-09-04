@@ -45,7 +45,7 @@ const PROTECTED_ROUTES: string[] = (() => {
 })()
 
 /** Halaman yang memang harus bisa diakses tanpa sesi. */
-const PUBLIC_ROUTES = new Set(['/', '/login', '/order/[projectId]/[branchId]'])
+const PUBLIC_ROUTES = new Set(['/', '/login', '/order/[projectId]/[branchId]', '/o/[slug]'])
 
 describe('cakupan PROTECTED_ROUTES', () => {
   it('menemukan halaman untuk diperiksa', () => {
