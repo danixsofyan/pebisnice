@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -38,7 +39,9 @@ const PREAMBLE = `-- ===========================================================
 --   4. Tempel seluruh berkas ini ke SQL editor Supabase dan jalankan.
 --   5. Jalankan verifikasi di bagian akhir.
 --
--- Skrip ini idempoten untuk migration 0000 (dilewati sebagai baseline).
+-- Skrip ini idempoten untuk migration 0000 (dilewati sebagai baseline) dan
+-- mencatat seluruh migration ke tabel pelacak drizzle, sehingga
+-- \`pnpm db:migrate\` berikutnya hanya menjalankan yang benar-benar baru.
 -- =============================================================
 
 -- -------------------------------------------------------------
@@ -74,6 +77,47 @@ BEGIN
 END;
 $baseline$;
 `
+
+/**
+ * Mencatat migration ke tabel pelacak drizzle.
+ *
+ * Tanpa ini, `pnpm db:migrate` berikutnya akan mengira belum ada migration
+ * yang diterapkan dan mencoba menjalankan ulang semuanya. Bentuk tabel dan
+ * cara hash-nya mengikuti `drizzle-orm/pg-core/dialect`: sha256 dari isi
+ * berkas apa adanya, dan `created_at` dari kolom `when` di journal.
+ */
+function buildMigrationLedger(entries: JournalEntry[]): string {
+  const rows = entries
+    .map((entry) => {
+      const raw = readFileSync(join(MIGRATIONS_DIR, `${entry.tag}.sql`), 'utf8')
+      const hash = createHash('sha256').update(raw).digest('hex')
+      return `  ('${hash}', ${entry.when})`
+    })
+    .join(',\n')
+
+  return `
+-- -------------------------------------------------------------
+-- Catat seluruh migration sebagai sudah diterapkan, supaya
+-- \`pnpm db:migrate\` berikutnya hanya menjalankan yang baru.
+-- -------------------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS "drizzle";
+
+CREATE TABLE IF NOT EXISTS "drizzle"."__drizzle_migrations" (
+  id SERIAL PRIMARY KEY,
+  hash text NOT NULL,
+  created_at bigint
+);
+
+INSERT INTO "drizzle"."__drizzle_migrations" ("hash", "created_at")
+SELECT v.hash, v.created_at
+FROM (VALUES
+${rows}
+) AS v(hash, created_at)
+WHERE NOT EXISTS (
+  SELECT 1 FROM "drizzle"."__drizzle_migrations" m WHERE m.hash = v.hash
+);
+`
+}
 
 const VERIFICATION = `
 COMMIT;
@@ -124,6 +168,7 @@ for (const entry of journal.entries) {
 ${sql.split('--> statement-breakpoint').join('').trim()}`)
 }
 
+parts.push(buildMigrationLedger(journal.entries))
 parts.push(VERIFICATION)
 
 writeFileSync(OUTPUT, parts.join('\n') + '\n')

@@ -13,7 +13,9 @@
 --   4. Tempel seluruh berkas ini ke SQL editor Supabase dan jalankan.
 --   5. Jalankan verifikasi di bagian akhir.
 --
--- Skrip ini idempoten untuk migration 0000 (dilewati sebagai baseline).
+-- Skrip ini idempoten untuk migration 0000 (dilewati sebagai baseline) dan
+-- mencatat seluruh migration ke tabel pelacak drizzle, sehingga
+-- `pnpm db:migrate` berikutnya hanya menjalankan yang benar-benar baru.
 -- =============================================================
 
 -- -------------------------------------------------------------
@@ -709,6 +711,35 @@ DROP POLICY IF EXISTS policy_expenses_tenant ON expenses;
 CREATE POLICY policy_expenses_tenant ON expenses
   USING (project_id = current_setting('app.current_project_id', true)::uuid)
   WITH CHECK (project_id = current_setting('app.current_project_id', true)::uuid);
+
+-- -------------------------------------------------------------
+-- Catat seluruh migration sebagai sudah diterapkan, supaya
+-- `pnpm db:migrate` berikutnya hanya menjalankan yang baru.
+-- -------------------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS "drizzle";
+
+CREATE TABLE IF NOT EXISTS "drizzle"."__drizzle_migrations" (
+  id SERIAL PRIMARY KEY,
+  hash text NOT NULL,
+  created_at bigint
+);
+
+INSERT INTO "drizzle"."__drizzle_migrations" ("hash", "created_at")
+SELECT v.hash, v.created_at
+FROM (VALUES
+  ('c87e766f42d6abec29822c6b82c904343d74d9063d2a13119400ca43671094f9', 1788438605874),
+  ('670807c5fd4819f4fa56decc5edefb402430ca5f6481ced9a79050ac616f4ef2', 1788440434332),
+  ('2c0d96bc52137620f58fb100612c26549f02d9b7ac17ca30b56848b10a24047e', 1788441441426),
+  ('b6f13023b8d6e21c253fcfdf8ca0e1cc770ff70d415239ace0097e9610dcf80e', 1788441442426),
+  ('dcb5105d5d3ac93c6cc1f55b8fe17a1f6c3b0c61f7d3da42c0074dd8cd87b29e', 1788474677802),
+  ('24d0d59b06eff9e35b28d58879cede494129a6ed0b7c23964821b613c75e3b6b', 1788475628396),
+  ('57305f684173f8f26362083ddd251b3a37c117a90fe3a481feea00a0b7ba713a', 1788476692629),
+  ('b39d8622e7ffcc89fffc363ab128ff15681d58fff745da1c294005c7ce55e468', 1788477036154)
+) AS v(hash, created_at)
+WHERE NOT EXISTS (
+  SELECT 1 FROM "drizzle"."__drizzle_migrations" m WHERE m.hash = v.hash
+);
+
 
 COMMIT;
 
