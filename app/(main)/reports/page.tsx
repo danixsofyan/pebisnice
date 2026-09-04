@@ -3,6 +3,7 @@ import { reportService } from '@/lib/services/report.service'
 import { hasRolePermission } from '@/lib/authz/permissions'
 import { readRequestMeta } from '@/lib/observability/server-context'
 import { formatRupiahFromDecimal } from '@/lib/formatters'
+import { ReportsTabs } from '@/components/reports/reports-tabs'
 
 const CATEGORY_LABEL: Record<string, string> = {
   rent: 'Sewa',
@@ -82,6 +83,8 @@ export default async function ReportsPage({
         <h1 className="text-xl font-bold">Laporan Laba-Rugi</h1>
         <p className="text-muted-foreground text-sm">Gabungan marketplace &amp; kasir</p>
       </div>
+
+      <ReportsTabs />
 
       <form className="flex flex-wrap items-end gap-2" action="/reports">
         <div className="space-y-1">

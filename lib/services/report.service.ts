@@ -1,6 +1,6 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, gte, isNull, lte, ne, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { projects } from '@/lib/db/schema'
+import { projects, transactionItems, transactions } from '@/lib/db/schema'
 import { reportRepository, type PeriodFilter } from '@/lib/repositories/report.repository'
 import { withTenant } from '@/lib/db/tenant'
 import { calculateProfitLoss, type ProfitLossReport } from '@/lib/domain/finance/profit-loss'
@@ -174,6 +174,51 @@ export class ReportService {
 
     return rows.map((row) => ({ category: row.category, amount: toDecimalString(row.amount) }))
   }
+
+  // Best sellers over a period: quantity, revenue, and order count per product. Ranked by revenue; branch-scoped when a branch is given.
+  async salesByProduct(
+    request: ReportRequest,
+    context: ReportContext
+  ): Promise<SalesByProductRow[]> {
+    assertPeriod(request)
+    await requirePermission(request.projectId, context.userId, 'report:view')
+
+    const start = new Date(`${request.startDate}T00:00:00.000Z`)
+    const end = new Date(`${request.endDate}T23:59:59.999Z`)
+
+    return withTenant(request.projectId, (tx) => {
+      const conditions = [
+        eq(transactions.projectId, request.projectId),
+        ne(transactions.status, 'cancelled'),
+        isNull(transactions.voidedAt),
+        isNull(transactions.deletedAt),
+        gte(transactions.orderDate, start),
+        lte(transactions.orderDate, end),
+      ]
+      if (request.branchId) conditions.push(eq(transactions.branchId, request.branchId))
+
+      return tx
+        .select({
+          name: transactionItems.productName,
+          qty: sql<number>`sum(${transactionItems.qty})::int`,
+          revenue: sql<string>`coalesce(sum(${transactionItems.qty} * ${transactionItems.unitPrice}), 0)`,
+          orders: sql<number>`count(distinct ${transactions.id})::int`,
+        })
+        .from(transactionItems)
+        .innerJoin(transactions, eq(transactions.id, transactionItems.transactionId))
+        .where(and(...conditions))
+        .groupBy(transactionItems.productName)
+        .orderBy(desc(sql`sum(${transactionItems.qty} * ${transactionItems.unitPrice})`))
+        .limit(200)
+    })
+  }
+}
+
+export interface SalesByProductRow {
+  name: string
+  qty: number
+  revenue: string
+  orders: number
 }
 
 export const reportService = new ReportService()

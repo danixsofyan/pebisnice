@@ -1,3 +1,6 @@
+import { and, desc, eq } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
+import { branches, cashSessions, users } from '@/lib/db/schema'
 import { cashSessionRepository } from '@/lib/repositories/cash-session.repository'
 import { auditRepository } from '@/lib/repositories/audit.repository'
 import { withTenant } from '@/lib/db/tenant'
@@ -115,6 +118,61 @@ export class CashSessionService {
 
     return result
   }
+
+  // Shift history for the closing report: opener/closer, expected vs counted, and the difference. Scoped to branches the caller can access.
+  async history(
+    projectId: string,
+    userId: string,
+    filter: { branchId?: string; limit?: number } = {}
+  ): Promise<ShiftHistoryRow[]> {
+    await requirePermission(projectId, userId, 'cash_session:manage')
+
+    const opener = alias(users, 'opener')
+    const closer = alias(users, 'closer')
+
+    return withTenant(projectId, (tx) => {
+      const conditions = [eq(cashSessions.projectId, projectId)]
+      if (filter.branchId) conditions.push(eq(cashSessions.branchId, filter.branchId))
+
+      return tx
+        .select({
+          id: cashSessions.id,
+          branchName: branches.name,
+          status: cashSessions.status,
+          openedAt: cashSessions.openedAt,
+          closedAt: cashSessions.closedAt,
+          openingBalance: cashSessions.openingBalance,
+          expectedBalance: cashSessions.expectedBalance,
+          countedBalance: cashSessions.countedBalance,
+          difference: cashSessions.difference,
+          note: cashSessions.note,
+          openedByEmail: opener.email,
+          closedByEmail: closer.email,
+        })
+        .from(cashSessions)
+        .leftJoin(branches, eq(branches.id, cashSessions.branchId))
+        .leftJoin(opener, eq(opener.id, cashSessions.openedBy))
+        .leftJoin(closer, eq(closer.id, cashSessions.closedBy))
+        .where(and(...conditions))
+        .orderBy(desc(cashSessions.openedAt))
+        .limit(Math.min(filter.limit ?? 60, 200))
+    })
+  }
+}
+
+export interface ShiftHistoryRow {
+  id: string
+  branchName: string | null
+  status: 'open' | 'closed'
+  openedAt: Date
+  closedAt: Date | null
+  openingBalance: string
+  expectedBalance: string | null
+  countedBalance: string | null
+  difference: string | null
+  note: string | null
+  openedByEmail: string | null
+  closedByEmail: string | null
 }
 
 export const cashSessionService = new CashSessionService()
