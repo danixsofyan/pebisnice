@@ -1,0 +1,1 @@
+ALTER TABLE "purchase_order_items" ADD COLUMN "qty_received" integer DEFAULT 0 NOT NULL;

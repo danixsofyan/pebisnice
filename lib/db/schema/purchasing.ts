@@ -74,6 +74,7 @@ export const purchaseOrderItems = pgTable(
       .references(() => productVariants.id, { onDelete: 'restrict' })
       .notNull(),
     qty: integer('qty').notNull(),
+    qtyReceived: integer('qty_received').default(0).notNull(),
     unitCost: money('unit_cost').notNull(),
   },
   (t) => [

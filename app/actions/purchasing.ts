@@ -94,14 +94,47 @@ export async function createOrderAction(raw: unknown) {
   })
 }
 
-export async function receiveOrderAction(purchaseOrderId: string) {
-  return withRequestScope('receiveOrderAction', async () => {
+export async function getReceivableItemsAction(purchaseOrderId: string) {
+  return withRequestScope('getReceivableItemsAction', async () => {
     try {
       if (!z.string().uuid().safeParse(purchaseOrderId).success) {
         throw new ValidationError('PO tidak valid')
       }
+      const context = await getSessionContext()
+      tagRequestActor(context.userId, context.projectId)
+      const items = await purchasingService.listReceivableItems(
+        context.projectId,
+        context.userId,
+        purchaseOrderId
+      )
+      return { success: true as const, data: items }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
+const receiveSchema = z.object({
+  purchaseOrderId: z.string().uuid('PO tidak valid'),
+  items: z
+    .array(z.object({ itemId: z.string().uuid(), qty: z.number().int().min(1) }))
+    .min(1, 'Isi jumlah diterima'),
+})
+
+export async function receiveOrderAction(raw: unknown) {
+  return withRequestScope('receiveOrderAction', async () => {
+    try {
+      const parsed = receiveSchema.safeParse(raw)
+      if (!parsed.success) {
+        throw new ValidationError('Validasi gagal', parsed.error.flatten().fieldErrors)
+      }
       const { projectId, actor } = await ctx()
-      await purchasingService.receiveOrder(projectId, purchaseOrderId, actor)
+      await purchasingService.receiveOrder(
+        projectId,
+        parsed.data.purchaseOrderId,
+        parsed.data.items,
+        actor
+      )
       revalidatePath('/purchases')
       revalidatePath('/inventory')
       return { success: true as const }

@@ -1,8 +1,9 @@
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import {
   branches,
   productCostHistory,
+  products,
   productVariants,
   purchaseOrderItems,
   purchaseOrders,
@@ -158,14 +159,52 @@ export class PurchasingService {
     return created
   }
 
-  // Receive an ordered PO: stock in per item and refresh each variant's cost from the
-  // purchase price (logged to the cost history), then mark the PO received.
+  // Items of a PO still awaiting receipt (ordered minus already received).
+  async listReceivableItems(
+    projectId: string,
+    userId: string,
+    purchaseOrderId: string
+  ): Promise<Array<{ itemId: string; productName: string; remaining: number }>> {
+    await requirePermission(projectId, userId, MANAGE)
+    return withTenant(projectId, (tx) =>
+      tx
+        .select({
+          itemId: purchaseOrderItems.id,
+          productName: products.name,
+          variantName: productVariants.variantName,
+          remaining: sql<number>`(${purchaseOrderItems.qty} - ${purchaseOrderItems.qtyReceived})::int`,
+        })
+        .from(purchaseOrderItems)
+        .innerJoin(productVariants, eq(productVariants.id, purchaseOrderItems.productVariantId))
+        .innerJoin(products, eq(products.id, productVariants.productId))
+        .where(
+          and(
+            eq(purchaseOrderItems.purchaseOrderId, purchaseOrderId),
+            eq(purchaseOrderItems.projectId, projectId)
+          )
+        )
+    ).then((rows) =>
+      rows
+        .filter((r) => r.remaining > 0)
+        .map((r) => ({
+          itemId: r.itemId,
+          productName: r.variantName ? `${r.productName} · ${r.variantName}` : r.productName,
+          remaining: r.remaining,
+        }))
+    )
+  }
+
+  // Receive an ordered PO, in full or partially: stock in the received qty per line, bump
+  // qty_received, refresh each variant's cost from the purchase price (logged), and mark the
+  // PO received once every line is fully received.
   async receiveOrder(
     projectId: string,
     purchaseOrderId: string,
+    receipts: Array<{ itemId: string; qty: number }>,
     context: PurchasingContext
   ): Promise<void> {
     await requirePermission(projectId, context.userId, MANAGE)
+    if (receipts.length === 0) throw new ValidationError('Isi jumlah yang diterima')
 
     await withTenant(projectId, async (tx) => {
       const [po] = await tx
@@ -179,18 +218,28 @@ export class PurchasingService {
         .limit(1)
       if (!po) throw new NotFoundError('PO tidak ditemukan')
       if (po.status !== 'ordered')
-        throw new ValidationError('PO ini sudah diterima atau dibatalkan')
+        throw new ValidationError('PO ini sudah diterima penuh atau dibatalkan')
 
       const items = await tx
         .select({
+          id: purchaseOrderItems.id,
           productVariantId: purchaseOrderItems.productVariantId,
           qty: purchaseOrderItems.qty,
+          qtyReceived: purchaseOrderItems.qtyReceived,
           unitCost: purchaseOrderItems.unitCost,
         })
         .from(purchaseOrderItems)
         .where(eq(purchaseOrderItems.purchaseOrderId, purchaseOrderId))
+      const byId = new Map(items.map((i) => [i.id, i]))
 
-      for (const item of items) {
+      for (const receipt of receipts) {
+        const item = byId.get(receipt.itemId)
+        if (!item) throw new ValidationError('Barang bukan bagian dari PO ini')
+        const remaining = item.qty - item.qtyReceived
+        if (receipt.qty <= 0 || receipt.qty > remaining) {
+          throw new ValidationError(`Jumlah terima melebihi sisa (${remaining})`)
+        }
+
         const location = {
           projectId,
           branchId: po.branchId,
@@ -198,13 +247,18 @@ export class PurchasingService {
         }
         const currentQty = await inventoryRepository.lockBalance(tx, location)
         const plan = planStockMovement(
-          { type: 'purchase', qty: item.qty, referenceId: purchaseOrderId },
+          { type: 'purchase', qty: receipt.qty, referenceId: purchaseOrderId },
           currentQty
         )
         await inventoryRepository.setBalance(tx, location, plan.quantityAfter, context.userId)
         await inventoryRepository.appendMovement(tx, location, plan, context.userId)
 
-        // Refresh standard cost from the purchase price when it changed.
+        await tx
+          .update(purchaseOrderItems)
+          .set({ qtyReceived: item.qtyReceived + receipt.qty })
+          .where(eq(purchaseOrderItems.id, item.id))
+        item.qtyReceived += receipt.qty
+
         const [variant] = await tx
           .select({ hpp: productVariants.hpp })
           .from(productVariants)
@@ -229,10 +283,13 @@ export class PurchasingService {
         }
       }
 
-      await tx
-        .update(purchaseOrders)
-        .set({ status: 'received', receivedAt: new Date(), updatedBy: context.userId })
-        .where(eq(purchaseOrders.id, purchaseOrderId))
+      const fullyReceived = items.every((i) => i.qtyReceived >= i.qty)
+      if (fullyReceived) {
+        await tx
+          .update(purchaseOrders)
+          .set({ status: 'received', receivedAt: new Date(), updatedBy: context.userId })
+          .where(eq(purchaseOrders.id, purchaseOrderId))
+      }
     })
 
     await auditRepository.log({
@@ -243,7 +300,7 @@ export class PurchasingService {
       projectId,
       ipAddress: context.ip,
       userAgent: context.userAgent,
-      metadata: { type: 'receive' },
+      metadata: { type: 'receive', lines: receipts.length },
     })
     logger.info({ projectId, purchaseOrderId }, 'purchase order received')
   }

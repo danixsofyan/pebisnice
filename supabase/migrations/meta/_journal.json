@@ -134,6 +134,13 @@
       "when": 1788537883411,
       "tag": "0018_purchasing",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788563999916,
+      "tag": "0019_po_qty_received",
+      "breakpoints": true
     }
   ]
 }

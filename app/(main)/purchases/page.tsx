@@ -95,7 +95,7 @@ export default async function PurchasesPage() {
                   <td className="px-4 py-3 text-right tabular-nums">
                     {formatRupiahFromDecimal(o.totalAmount)}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="relative px-4 py-3 text-right">
                     {o.status === 'ordered' ? <ReceiveOrderButton purchaseOrderId={o.id} /> : null}
                   </td>
                 </tr>
