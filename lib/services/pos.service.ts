@@ -1,3 +1,5 @@
+import { eq, sql } from 'drizzle-orm'
+import { saleReturnItems, saleReturns, transactionItems, transactions } from '@/lib/db/schema'
 import { posRepository, type PaymentMethod } from '@/lib/repositories/pos.repository'
 import { cashSessionRepository } from '@/lib/repositories/cash-session.repository'
 import { inventoryRepository } from '@/lib/repositories/inventory.repository'
@@ -5,7 +7,7 @@ import { auditRepository } from '@/lib/repositories/audit.repository'
 import { productRepository } from '@/lib/repositories/product.repository'
 import { branchRepository } from '@/lib/repositories/branch.repository'
 import { withTenant } from '@/lib/db/tenant'
-import { fromDecimalString, type Money } from '@/lib/domain/money'
+import { fromDecimalString, toDecimalString, type Money } from '@/lib/domain/money'
 import { calculateChange, priceCart, type CartDiscount } from '@/lib/domain/pos/cart'
 import { planStockMovement } from '@/lib/domain/inventory/stock-movement'
 import { requireBranchAccess, requirePermission } from '@/lib/rbac'
@@ -207,6 +209,194 @@ export class PosService {
     })
 
     logger.info({ projectId, transactionId }, 'POS sale voided')
+  }
+
+  // Return items from a completed sale: restock the returned quantity, record the refund,
+  // and mark the sale 'returned' once every line is fully returned. Each line is capped at
+  // sold minus already-returned, so a sale can be returned in several partial steps.
+  async returnSale(
+    projectId: string,
+    request: {
+      transactionId: string
+      reason: string
+      items: Array<{ productVariantId: string; qty: number }>
+    },
+    context: PosContext
+  ): Promise<{ refundAmount: string }> {
+    await requirePermission(projectId, context.userId, 'pos:void')
+    if (request.items.length === 0)
+      throw new ValidationError('Pilih minimal satu barang untuk diretur')
+
+    const result = await withTenant(projectId, async (tx) => {
+      const header = await posRepository.findPosTransaction(tx, projectId, request.transactionId)
+      if (!header) throw new NotFoundError('Transaksi tidak ditemukan')
+      if (header.voidedAt || header.status === 'cancelled') {
+        throw new ValidationError('Transaksi sudah dibatalkan')
+      }
+      if (header.status === 'returned') throw new ValidationError('Transaksi sudah diretur penuh')
+
+      const sold = await tx
+        .select({
+          productVariantId: transactionItems.productVariantId,
+          productName: transactionItems.productName,
+          qty: transactionItems.qty,
+          unitPrice: transactionItems.unitPrice,
+        })
+        .from(transactionItems)
+        .where(eq(transactionItems.transactionId, request.transactionId))
+
+      const soldByVariant = new Map(
+        sold.filter((s) => s.productVariantId).map((s) => [s.productVariantId!, s])
+      )
+
+      const returnedRows = await tx
+        .select({
+          productVariantId: saleReturnItems.productVariantId,
+          qty: sql<number>`coalesce(sum(${saleReturnItems.qty}), 0)::int`,
+        })
+        .from(saleReturnItems)
+        .innerJoin(saleReturns, eq(saleReturns.id, saleReturnItems.returnId))
+        .where(eq(saleReturns.transactionId, request.transactionId))
+        .groupBy(saleReturnItems.productVariantId)
+      const alreadyReturned = new Map(returnedRows.map((r) => [r.productVariantId, r.qty]))
+
+      let refund = 0n
+      const lines: Array<{
+        productVariantId: string
+        productName: string
+        qty: number
+        unitPrice: string
+      }> = []
+      for (const item of request.items) {
+        const original = soldByVariant.get(item.productVariantId)
+        if (!original) throw new ValidationError('Barang tidak ada di transaksi ini')
+        const remaining = original.qty - (alreadyReturned.get(item.productVariantId) ?? 0)
+        if (item.qty <= 0 || item.qty > remaining) {
+          throw new ValidationError(
+            `Qty retur "${original.productName}" melebihi sisa (${remaining})`
+          )
+        }
+        refund += fromDecimalString(original.unitPrice) * BigInt(item.qty)
+        lines.push({
+          productVariantId: item.productVariantId,
+          productName: original.productName,
+          qty: item.qty,
+          unitPrice: original.unitPrice,
+        })
+      }
+
+      const [ret] = await tx
+        .insert(saleReturns)
+        .values({
+          projectId,
+          transactionId: request.transactionId,
+          branchId: header.branchId!,
+          refundAmount: toDecimalString(refund),
+          reason: request.reason.trim() || null,
+          createdBy: context.userId,
+          updatedBy: context.userId,
+        })
+        .returning({ id: saleReturns.id })
+
+      await tx.insert(saleReturnItems).values(
+        lines.map((l) => ({
+          projectId,
+          returnId: ret!.id,
+          productVariantId: l.productVariantId,
+          productName: l.productName,
+          qty: l.qty,
+          unitPrice: l.unitPrice,
+        }))
+      )
+
+      for (const line of lines) {
+        const location = {
+          projectId,
+          branchId: header.branchId!,
+          productVariantId: line.productVariantId,
+        }
+        const currentQty = await inventoryRepository.lockBalance(tx, location)
+        const plan = planStockMovement(
+          { type: 'return', qty: line.qty, referenceId: ret!.id },
+          currentQty
+        )
+        await inventoryRepository.setBalance(tx, location, plan.quantityAfter, context.userId)
+        await inventoryRepository.appendMovement(tx, location, plan, context.userId)
+      }
+
+      // Fully returned across all lines? Flag the sale so reports exclude it.
+      const fullyReturned = sold.every((s) => {
+        if (!s.productVariantId) return true
+        const justReturned = lines.find((l) => l.productVariantId === s.productVariantId)?.qty ?? 0
+        return (alreadyReturned.get(s.productVariantId) ?? 0) + justReturned >= s.qty
+      })
+      if (fullyReturned) {
+        await tx
+          .update(transactions)
+          .set({ status: 'returned', updatedBy: context.userId })
+          .where(eq(transactions.id, request.transactionId))
+      }
+
+      return { refund: toDecimalString(refund), fullyReturned }
+    })
+
+    await auditRepository.log({
+      action: 'update',
+      resource: 'pos_transaction',
+      resourceId: request.transactionId,
+      userId: context.userId,
+      projectId,
+      ipAddress: context.ip,
+      userAgent: context.userAgent,
+      metadata: { type: 'return', refund: result.refund, fullyReturned: result.fullyReturned },
+    })
+
+    logger.info({ projectId, transactionId: request.transactionId }, 'POS sale returned')
+    return { refundAmount: result.refund }
+  }
+
+  // Items of a sale with how many of each are still returnable (sold minus already returned).
+  async listReturnableItems(
+    projectId: string,
+    userId: string,
+    transactionId: string
+  ): Promise<
+    Array<{ productVariantId: string; productName: string; remaining: number; unitPrice: string }>
+  > {
+    await requirePermission(projectId, userId, 'pos:void')
+
+    return withTenant(projectId, async (tx) => {
+      const sold = await tx
+        .select({
+          productVariantId: transactionItems.productVariantId,
+          productName: transactionItems.productName,
+          qty: transactionItems.qty,
+          unitPrice: transactionItems.unitPrice,
+        })
+        .from(transactionItems)
+        .where(eq(transactionItems.transactionId, transactionId))
+
+      const returnedRows = await tx
+        .select({
+          productVariantId: saleReturnItems.productVariantId,
+          qty: sql<number>`coalesce(sum(${saleReturnItems.qty}), 0)::int`,
+        })
+        .from(saleReturnItems)
+        .innerJoin(saleReturns, eq(saleReturns.id, saleReturnItems.returnId))
+        .where(eq(saleReturns.transactionId, transactionId))
+        .groupBy(saleReturnItems.productVariantId)
+      const returned = new Map(returnedRows.map((r) => [r.productVariantId, r.qty]))
+
+      return sold
+        .filter((s) => s.productVariantId)
+        .map((s) => ({
+          productVariantId: s.productVariantId!,
+          productName: s.productName,
+          remaining: s.qty - (returned.get(s.productVariantId!) ?? 0),
+          unitPrice: s.unitPrice,
+        }))
+        .filter((s) => s.remaining > 0)
+    })
   }
 
   /** Cashier sales history, newest first; bound to the caller's branch scope. */

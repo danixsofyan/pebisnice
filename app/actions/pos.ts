@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
 import { posService } from '@/lib/services/pos.service'
 import { cashSessionService } from '@/lib/services/cash-session.service'
 import { getSessionContext } from '@/lib/auth/session-context'
@@ -116,6 +117,69 @@ export async function voidSaleAction(raw: unknown) {
       revalidatePath('/transactions')
 
       return { success: true as const }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
+export async function getReturnableItemsAction(transactionId: string) {
+  return withRequestScope('getReturnableItemsAction', async () => {
+    try {
+      const context = await getSessionContext()
+      tagRequestActor(context.userId, context.projectId)
+      if (!z.string().uuid().safeParse(transactionId).success) {
+        throw new ValidationError('Transaksi tidak valid')
+      }
+      const items = await posService.listReturnableItems(
+        context.projectId,
+        context.userId,
+        transactionId
+      )
+      return { success: true as const, data: items }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
+const returnSaleSchema = z.object({
+  transactionId: z.string().uuid('Transaksi tidak valid'),
+  reason: z.string().trim().max(300).optional(),
+  items: z
+    .array(
+      z.object({
+        productVariantId: z.string().uuid('Barang tidak valid'),
+        qty: z.number().int().min(1, 'Qty minimal 1'),
+      })
+    )
+    .min(1, 'Pilih minimal satu barang'),
+})
+
+export async function returnSaleAction(raw: unknown) {
+  return withRequestScope('returnSaleAction', async () => {
+    try {
+      const context = await getSessionContext()
+      tagRequestActor(context.userId, context.projectId)
+      const parsed = returnSaleSchema.safeParse(raw)
+      if (!parsed.success) {
+        throw new ValidationError('Validasi gagal', parsed.error.flatten().fieldErrors)
+      }
+      const meta = await requestMeta()
+
+      const result = await posService.returnSale(
+        context.projectId,
+        {
+          transactionId: parsed.data.transactionId,
+          reason: parsed.data.reason ?? '',
+          items: parsed.data.items,
+        },
+        { userId: context.userId, ...meta }
+      )
+
+      revalidatePath('/transactions')
+      revalidatePath('/inventory')
+      return { success: true as const, data: result }
     } catch (error) {
       return handleActionError(error)
     }

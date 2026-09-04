@@ -31,7 +31,12 @@ const AUTH_TABLES = ['users', 'accounts', 'sessions', 'verificationTokens']
 const IMMUTABLE_TABLES = ['auditLogs', 'inventoryMovements', 'productCostHistory']
 
 // Baris anak yang ikut terhapus bersama induknya lewat ON DELETE CASCADE.
-const CHILD_TABLES = ['transactionFees', 'transactionItems', 'productionMaterials']
+const CHILD_TABLES = [
+  'transactionFees',
+  'transactionItems',
+  'productionMaterials',
+  'saleReturnItems',
+]
 
 describe('kepatuhan skema terhadap db-standards.md', () => {
   it('menemukan seluruh tabel yang diharapkan', () => {
@@ -53,6 +58,8 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'productionMaterials',
       'products',
       'projects',
+      'saleReturnItems',
+      'saleReturns',
       'sessions',
       'stores',
       'subscriptionPayments',
@@ -151,6 +158,8 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'teamMembers',
       'fileUploads',
       'financialMutations',
+      'saleReturns',
+      'saleReturnItems',
     ]
 
     for (const tableName of tenantScoped) {

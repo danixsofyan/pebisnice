@@ -3,6 +3,7 @@ import { posService } from '@/lib/services/pos.service'
 import { hasRolePermission } from '@/lib/authz/permissions'
 import { formatRupiahFromDecimal } from '@/lib/formatters'
 import { VoidSaleButton } from '@/components/transactions/void-sale-button'
+import { ReturnSaleButton } from '@/components/transactions/return-sale-button'
 
 const PAYMENT_LABEL: Record<string, string> = {
   cash: 'Tunai',
@@ -90,7 +91,7 @@ export default async function TransactionsPage() {
                     {formatRupiahFromDecimal(s.netAmount)}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap items-center justify-end gap-2">
+                    <div className="relative flex flex-wrap items-center justify-end gap-2">
                       <a
                         href={`/receipt/${s.id}`}
                         target="_blank"
@@ -100,7 +101,10 @@ export default async function TransactionsPage() {
                         Struk
                       </a>
                       {canVoid && s.status === 'completed' ? (
-                        <VoidSaleButton transactionId={s.id} />
+                        <>
+                          <ReturnSaleButton transactionId={s.id} />
+                          <VoidSaleButton transactionId={s.id} />
+                        </>
                       ) : null}
                     </div>
                   </td>
