@@ -9,6 +9,9 @@ on:
 jobs:
   sonarqube:
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -20,13 +23,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm vitest run --coverage
         continue-on-error: true
-      - uses: SonarSource/sonarqube-scan-action@v3
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      - name: SonarQube scan
+        if: ${{ env.SONAR_TOKEN != '' && env.SONAR_HOST_URL != '' }}
+        uses: SonarSource/sonarqube-scan-action@v3
 
   dependency-audit:
     runs-on: ubuntu-latest
+    env:
+      DEFECTDOJO_URL: ${{ secrets.DEFECTDOJO_URL }}
+      DEFECTDOJO_TOKEN: ${{ secrets.DEFECTDOJO_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -37,13 +42,13 @@ jobs:
       - name: Audit dependencies
         run: pnpm audit --json > pnpm-audit.json || true
       - name: Import to DefectDojo
+        if: ${{ env.DEFECTDOJO_URL != '' && env.DEFECTDOJO_TOKEN != '' }}
         run: |
-          curl -sS -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/reimport-scan/" \
-            -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
+          curl -sS -X POST "${DEFECTDOJO_URL}/api/v2/reimport-scan/" \
+            -H "Authorization: Token ${DEFECTDOJO_TOKEN}" \
             -F "scan_type=NPM Audit Scan" \
-            -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
-            -F "active=true" -F "verified=false" \
-            -F "file=@pnpm-audit.json" \
             -F "auto_create_context=true" \
             -F "product_name=Pebisnice" \
-            -F "engagement_name=CI"
+            -F "engagement_name=CI" \
+            -F "active=true" -F "verified=false" \
+            -F "file=@pnpm-audit.json"
