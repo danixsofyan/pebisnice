@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, isNull, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, gte, ilike, isNull, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { plans, subscriptionPayments, subscriptions, users } from '@/lib/db/schema'
 import { addDays, type SubscriptionStatus } from '@/lib/domain/billing/period'
@@ -36,22 +36,42 @@ export class AdminService {
   async overview(now: Date = new Date()): Promise<AdminOverview> {
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
 
-    const [totals] = await db
-      .select({
-        total: sql<number>`count(*)::int`,
-        active: sql<number>`count(*) filter (where (${subscriptions.status} in ('active','trialing')) and ${subscriptions.currentPeriodEnd} > ${now})::int`,
-        trialing: sql<number>`count(*) filter (where ${subscriptions.status} = 'trialing' and ${subscriptions.currentPeriodEnd} > ${now})::int`,
-      })
-      .from(subscriptions)
-      .where(isNull(subscriptions.deletedAt))
+    // Hitungan pakai operator drizzle, bukan fragmen SQL mentah: menyisipkan
+    // Date langsung ke `sql`...`` membuat driver gagal mem-bind parameternya.
+    const notDeleted = isNull(subscriptions.deletedAt)
+    const runningNow = and(
+      or(eq(subscriptions.status, 'active'), eq(subscriptions.status, 'trialing')),
+      gt(subscriptions.currentPeriodEnd, now)
+    )
 
-    const [revenue] = await db
-      .select({
-        total: sql<string>`coalesce(sum(${subscriptionPayments.grossAmount}), 0)`,
-        month: sql<string>`coalesce(sum(${subscriptionPayments.grossAmount}) filter (where ${subscriptionPayments.paidAt} >= ${monthStart}), 0)`,
-      })
-      .from(subscriptionPayments)
-      .where(eq(subscriptionPayments.status, 'paid'))
+    const [[total], [active], [trialing]] = await Promise.all([
+      db.select({ n: count() }).from(subscriptions).where(notDeleted),
+      db.select({ n: count() }).from(subscriptions).where(and(notDeleted, runningNow)),
+      db
+        .select({ n: count() })
+        .from(subscriptions)
+        .where(
+          and(
+            notDeleted,
+            eq(subscriptions.status, 'trialing'),
+            gt(subscriptions.currentPeriodEnd, now)
+          )
+        ),
+    ])
+
+    const sumAmount = sql<string>`coalesce(sum(${subscriptionPayments.grossAmount}), 0)`
+    const [[revenueTotal], [revenueMonth]] = await Promise.all([
+      db
+        .select({ v: sumAmount })
+        .from(subscriptionPayments)
+        .where(eq(subscriptionPayments.status, 'paid')),
+      db
+        .select({ v: sumAmount })
+        .from(subscriptionPayments)
+        .where(
+          and(eq(subscriptionPayments.status, 'paid'), gte(subscriptionPayments.paidAt, monthStart))
+        ),
+    ])
 
     const recent = await db
       .select({
@@ -67,16 +87,16 @@ export class AdminService {
       .orderBy(desc(subscriptionPayments.createdAt))
       .limit(10)
 
-    const total = totals?.total ?? 0
-    const active = totals?.active ?? 0
+    const totalCount = total?.n ?? 0
+    const activeCount = active?.n ?? 0
 
     return {
-      totalSubscribers: total,
-      active,
-      trialing: totals?.trialing ?? 0,
-      expired: total - active,
-      revenueTotal: revenue?.total ?? '0',
-      revenueThisMonth: revenue?.month ?? '0',
+      totalSubscribers: totalCount,
+      active: activeCount,
+      trialing: trialing?.n ?? 0,
+      expired: totalCount - activeCount,
+      revenueTotal: revenueTotal?.v ?? '0',
+      revenueThisMonth: revenueMonth?.v ?? '0',
       recentPayments: recent,
     }
   }
