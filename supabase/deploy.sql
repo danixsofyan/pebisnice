@@ -803,6 +803,11 @@ CREATE TRIGGER trg_subscription_payments_updated_at
   FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
 
 -- -------------------------------------------------------------
+-- 0010_platform_admin
+-- -------------------------------------------------------------
+ALTER TABLE "users" ADD COLUMN "is_platform_admin" boolean DEFAULT false NOT NULL;
+
+-- -------------------------------------------------------------
 -- Catat seluruh migration sebagai sudah diterapkan, supaya
 -- `pnpm db:migrate` berikutnya hanya menjalankan yang baru.
 -- -------------------------------------------------------------
@@ -826,7 +831,8 @@ FROM (VALUES
   ('57305f684173f8f26362083ddd251b3a37c117a90fe3a481feea00a0b7ba713a', 1788476692629),
   ('b39d8622e7ffcc89fffc363ab128ff15681d58fff745da1c294005c7ce55e468', 1788477036154),
   ('3200d85a937e634f60307c6e8f2e8eef3e7e8320c75af5bf60547de4892ace60', 1788508982075),
-  ('278096f0caaadb74247333b7a124e3d17a441a9b09e641e3b2646be27881f5e9', 1788511994647)
+  ('278096f0caaadb74247333b7a124e3d17a441a9b09e641e3b2646be27881f5e9', 1788511994647),
+  ('694463c40a6b18464f91e8d3a7f6de9e91ccd291116bb87006777e60daa7d3f5', 1788514984456)
 ) AS v(hash, created_at)
 WHERE NOT EXISTS (
   SELECT 1 FROM "drizzle"."__drizzle_migrations" m WHERE m.hash = v.hash

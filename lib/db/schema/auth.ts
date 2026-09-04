@@ -15,6 +15,8 @@ export const users = pgTable('users', {
   image: text('image'),
   plan: text('plan').default('free').notNull(),
   timezone: text('timezone').default('Asia/Jakarta').notNull(),
+  /** Admin platform (pengelola langganan), bukan pengguna bisnis biasa. */
+  isPlatformAdmin: boolean('is_platform_admin').default(false).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: tz('created_at').defaultNow().notNull(),
   updatedAt: tz('updated_at').defaultNow().notNull(),
