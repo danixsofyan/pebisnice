@@ -15,10 +15,9 @@ import {
   FieldSeparator,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { loginBackgroundUrl } from '@/lib/storage'
+import { LOGIN_BACKGROUND } from '@/lib/storage'
 
 export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) {
-  const backgroundUrl = loginBackgroundUrl()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
@@ -127,15 +126,13 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
             </FieldGroup>
           </form>
           <div className="bg-muted relative hidden md:block">
-            {backgroundUrl ? (
-              <Image
-                src={backgroundUrl}
-                alt=""
-                fill
-                sizes="(min-width: 768px) 50vw, 0px"
-                className="object-cover opacity-60 mix-blend-luminosity dark:brightness-[0.4] dark:grayscale-0"
-              />
-            ) : null}
+            <Image
+              src={LOGIN_BACKGROUND}
+              alt=""
+              fill
+              sizes="(min-width: 768px) 50vw, 0px"
+              className="object-cover opacity-60 mix-blend-luminosity dark:brightness-[0.4] dark:grayscale-0"
+            />
           </div>
         </CardContent>
       </Card>
