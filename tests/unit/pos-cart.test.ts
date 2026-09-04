@@ -141,3 +141,49 @@ describe('calculateChange', () => {
     )
   })
 })
+
+describe('priceCart tax (PPN)', () => {
+  it('adds exclusive tax on top of the post-discount base', () => {
+    const cart = priceCart(
+      [line({ unitPrice: fromDecimalString('100000.00') })],
+      { type: 'none' },
+      {
+        basisPoints: 1100,
+        inclusive: false,
+      }
+    )
+    expect(toDecimalString(cart.taxAmount)).toBe('11000.00')
+    expect(toDecimalString(cart.total)).toBe('111000.00')
+    // profit uses revenue ex-tax
+    expect(toDecimalString(cart.grossProfit)).toBe('10000.00')
+  })
+
+  it('extracts inclusive tax without changing the total', () => {
+    const cart = priceCart(
+      [line({ unitPrice: fromDecimalString('111000.00') })],
+      { type: 'none' },
+      {
+        basisPoints: 1100,
+        inclusive: true,
+      }
+    )
+    expect(toDecimalString(cart.total)).toBe('111000.00')
+    expect(toDecimalString(cart.taxAmount)).toBe('11000.00')
+  })
+
+  it('applies tax after discount', () => {
+    const cart = priceCart(
+      [line({ unitPrice: fromDecimalString('100000.00') })],
+      { type: 'nominal', amount: fromDecimalString('20000.00') },
+      { basisPoints: 1000, inclusive: false }
+    )
+    // base 80000, tax 10% = 8000, total 88000
+    expect(toDecimalString(cart.taxAmount)).toBe('8000.00')
+    expect(toDecimalString(cart.total)).toBe('88000.00')
+  })
+
+  it('no tax when rate is zero', () => {
+    const cart = priceCart([line()], { type: 'none' })
+    expect(toDecimalString(cart.taxAmount)).toBe('0.00')
+  })
+})

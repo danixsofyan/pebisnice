@@ -57,6 +57,8 @@ export default async function SettingsPage({
             name: settings.name,
             description: settings.description ?? '',
             defaultCalcMethod: settings.defaultCalcMethod,
+            taxRatePercent: settings.taxRateBasisPoints / 100,
+            taxInclusive: settings.taxInclusive,
           }}
         />
       ) : (

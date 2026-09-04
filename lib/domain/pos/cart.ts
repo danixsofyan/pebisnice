@@ -20,13 +20,37 @@ export interface PricedCartLine extends CartLineInput {
 export type CartDiscount =
   { type: 'none' } | { type: 'nominal'; amount: Money } | { type: 'percent'; basisPoints: number }
 
+export interface CartTax {
+  /** PPN rate in basis points (1100 = 11%); 0 means no tax. */
+  basisPoints: number
+  /** true when line prices already include the tax (extract it), false to add on top. */
+  inclusive: boolean
+}
+
+const NO_TAX: CartTax = { basisPoints: 0, inclusive: false }
+
 export interface PricedCart {
   lines: PricedCartLine[]
   subtotal: Money
   discountAmount: Money
+  taxAmount: Money
   total: Money
   cogs: Money
   grossProfit: Money
+}
+
+// Tax on the post-discount base. Exclusive adds on top; inclusive extracts the portion already
+// baked into the price. Half-up rounding keeps the minor-unit total exact.
+function resolveTax(base: Money, tax: CartTax): { taxAmount: Money; total: Money } {
+  const bp = BigInt(Math.max(0, Math.round(tax.basisPoints)))
+  if (bp === 0n) return { taxAmount: ZERO, total: base }
+  if (tax.inclusive) {
+    const denom = 10000n + bp
+    const taxAmount = (base * bp + denom / 2n) / denom
+    return { taxAmount, total: base }
+  }
+  const taxAmount = (base * bp + 5000n) / 10000n
+  return { taxAmount, total: base + taxAmount }
 }
 
 function assertNotEmpty(lines: readonly CartLineInput[]): void {
@@ -79,7 +103,11 @@ function resolveDiscount(subtotal: Money, discount: CartDiscount): Money {
 }
 
 // Compute every number of one POS transaction from the cart. Pure: no database, clock, or randomness; the only place cashier money is computed.
-export function priceCart(lines: readonly CartLineInput[], discount: CartDiscount): PricedCart {
+export function priceCart(
+  lines: readonly CartLineInput[],
+  discount: CartDiscount,
+  tax: CartTax = NO_TAX
+): PricedCart {
   assertNotEmpty(lines)
   lines.forEach(assertLine)
 
@@ -91,16 +119,18 @@ export function priceCart(lines: readonly CartLineInput[], discount: CartDiscoun
 
   const subtotal = sumMoney(priced.map((line) => line.lineTotal))
   const discountAmount = resolveDiscount(subtotal, discount)
-  const total = subtotal - discountAmount
+  const base = subtotal - discountAmount
+  const { taxAmount, total } = resolveTax(base, tax)
   const cogs = sumMoney(priced.map((line) => line.lineCogs))
 
   return {
     lines: priced,
     subtotal,
     discountAmount,
+    taxAmount,
     total,
     cogs,
-    grossProfit: total - cogs,
+    grossProfit: total - taxAmount - cogs,
   }
 }
 

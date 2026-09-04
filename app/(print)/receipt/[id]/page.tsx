@@ -86,6 +86,12 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
               <span>-{formatRupiahFromDecimal(header.discountAmount)}</span>
             </div>
           ) : null}
+          {Number(header.taxAmount) > 0 ? (
+            <div className="flex justify-between">
+              <span>PPN</span>
+              <span>{formatRupiahFromDecimal(header.taxAmount)}</span>
+            </div>
+          ) : null}
           <div className="flex justify-between font-bold">
             <span>Total</span>
             <span>{formatRupiahFromDecimal(header.netAmount)}</span>

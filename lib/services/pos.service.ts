@@ -1,5 +1,11 @@
 import { eq, sql } from 'drizzle-orm'
-import { saleReturnItems, saleReturns, transactionItems, transactions } from '@/lib/db/schema'
+import {
+  projects,
+  saleReturnItems,
+  saleReturns,
+  transactionItems,
+  transactions,
+} from '@/lib/db/schema'
 import { posRepository, type PaymentMethod } from '@/lib/repositories/pos.repository'
 import { cashSessionRepository } from '@/lib/repositories/cash-session.repository'
 import { inventoryRepository } from '@/lib/repositories/inventory.repository'
@@ -61,6 +67,15 @@ export class PosService {
       const branch = await branchRepository.findById(tx, request.branchId)
       if (!branch) throw new NotFoundError('Cabang tidak ditemukan')
 
+      const [taxCfg] = await tx
+        .select({
+          basisPoints: projects.taxRateBasisPoints,
+          inclusive: projects.taxInclusive,
+        })
+        .from(projects)
+        .where(eq(projects.id, request.projectId))
+        .limit(1)
+
       const pricedLines = []
       for (const requested of request.lines) {
         const variant = await productRepository.findVariantWithCost(
@@ -82,7 +97,10 @@ export class PosService {
         })
       }
 
-      const cart = priceCart(pricedLines, request.discount)
+      const cart = priceCart(pricedLines, request.discount, {
+        basisPoints: taxCfg?.basisPoints ?? 0,
+        inclusive: taxCfg?.inclusive ?? false,
+      })
       const changeAmount = calculateChange(cart.total, request.paidAmount)
 
       const orderCode = await posRepository.nextOrderCode(tx, branch.code, todayStamp(new Date()))

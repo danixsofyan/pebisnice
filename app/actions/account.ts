@@ -17,6 +17,8 @@ const settingsSchema = z.object({
   name: z.string().trim().min(1, 'Nama bisnis wajib diisi').max(100),
   description: z.string().trim().max(500).optional(),
   defaultCalcMethod: z.enum(['income_based', 'order_based']),
+  taxRatePercent: z.number().min(0, 'Tidak boleh negatif').max(100, 'Maks 100%').optional(),
+  taxInclusive: z.boolean().optional(),
 })
 
 export async function updateProjectSettingsAction(raw: unknown) {
@@ -38,6 +40,12 @@ export async function updateProjectSettingsAction(raw: unknown) {
           name: parsed.data.name,
           description: parsed.data.description ?? '',
           defaultCalcMethod: parsed.data.defaultCalcMethod,
+          ...(parsed.data.taxRatePercent !== undefined
+            ? { taxRateBasisPoints: Math.round(parsed.data.taxRatePercent * 100) }
+            : {}),
+          ...(parsed.data.taxInclusive !== undefined
+            ? { taxInclusive: parsed.data.taxInclusive }
+            : {}),
         },
         { ip: meta.ip, userAgent: meta.userAgent }
       )

@@ -10,12 +10,20 @@ import { updateProjectSettingsAction } from '@/app/actions/account'
 export function SettingsForm({
   initial,
 }: {
-  initial: { name: string; description: string; defaultCalcMethod: 'income_based' | 'order_based' }
+  initial: {
+    name: string
+    description: string
+    defaultCalcMethod: 'income_based' | 'order_based'
+    taxRatePercent: number
+    taxInclusive: boolean
+  }
 }) {
   const router = useRouter()
   const [name, setName] = useState(initial.name)
   const [description, setDescription] = useState(initial.description)
   const [calc, setCalc] = useState(initial.defaultCalcMethod)
+  const [taxRate, setTaxRate] = useState(String(initial.taxRatePercent))
+  const [taxInclusive, setTaxInclusive] = useState(initial.taxInclusive)
   const [msg, setMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -29,6 +37,8 @@ export function SettingsForm({
         name,
         description: description.trim() || undefined,
         defaultCalcMethod: calc,
+        taxRatePercent: Number(taxRate || 0),
+        taxInclusive,
       })
       if (!result.success) return setError(result.error)
       setMsg('Tersimpan')
@@ -58,6 +68,29 @@ export function SettingsForm({
           <option value="order_based">Berbasis pesanan (tanggal order)</option>
         </select>
       </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="s-tax">Tarif PPN (%)</Label>
+          <Input
+            id="s-tax"
+            value={taxRate}
+            onChange={(e) => setTaxRate(e.target.value)}
+            inputMode="decimal"
+            placeholder="0"
+          />
+          <p className="text-muted-foreground text-xs">Kosongkan / 0 untuk menonaktifkan.</p>
+        </div>
+        <label className="flex items-center gap-2 self-end pb-2 text-sm">
+          <input
+            type="checkbox"
+            checked={taxInclusive}
+            onChange={(e) => setTaxInclusive(e.target.checked)}
+            className="size-4"
+          />
+          Harga sudah termasuk PPN
+        </label>
+      </div>
+
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={isPending || !name.trim()}>
           {isPending ? 'Menyimpan…' : 'Simpan'}

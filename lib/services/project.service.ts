@@ -34,6 +34,8 @@ export class ProjectService {
         defaultCalcMethod: projects.defaultCalcMethod,
         currency: projects.currency,
         timezone: projects.timezone,
+        taxRateBasisPoints: projects.taxRateBasisPoints,
+        taxInclusive: projects.taxInclusive,
       })
       .from(projects)
       .where(and(eq(projects.id, projectId), isNull(projects.deletedAt)))
@@ -85,6 +87,9 @@ export class ProjectService {
     if (input.name !== undefined) sanitized.name = sanitizeText(input.name)
     if (input.description !== undefined) sanitized.description = sanitizeText(input.description)
     if (input.defaultCalcMethod !== undefined) sanitized.defaultCalcMethod = input.defaultCalcMethod
+    if (input.taxRateBasisPoints !== undefined)
+      sanitized.taxRateBasisPoints = input.taxRateBasisPoints
+    if (input.taxInclusive !== undefined) sanitized.taxInclusive = input.taxInclusive
 
     const updated = await projectRepository.update(projectId, sanitized)
     if (!updated) throw new NotFoundError('Project tidak ditemukan')

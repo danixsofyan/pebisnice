@@ -30,6 +30,7 @@ export const transactions = pgTable(
     status: orderStatusEnum('status').notNull(),
     grossAmount: money('gross_amount').notNull(),
     discountAmount: money('discount_amount').default('0').notNull(),
+    taxAmount: money('tax_amount').default('0').notNull(),
     netAmount: money('net_amount').notNull(),
     totalFees: money('total_fees').default('0').notNull(),
     paidAmount: money('paid_amount'),

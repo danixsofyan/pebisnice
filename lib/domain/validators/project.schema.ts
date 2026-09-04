@@ -15,7 +15,10 @@ export const createProjectSchema = z.object({
   defaultCalcMethod: z.enum(['income_based', 'order_based']).default('income_based'),
 })
 
-export const updateProjectSchema = createProjectSchema.partial()
+export const updateProjectSchema = createProjectSchema.partial().extend({
+  taxRateBasisPoints: z.number().int().min(0).max(10000).optional(),
+  taxInclusive: z.boolean().optional(),
+})
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>

@@ -42,6 +42,7 @@ export class PosRepository {
         status: 'completed',
         grossAmount: toDecimalString(input.cart.subtotal),
         discountAmount: toDecimalString(input.cart.discountAmount),
+        taxAmount: toDecimalString(input.cart.taxAmount),
         netAmount: toDecimalString(input.cart.total),
         paidAmount: toDecimalString(input.paidAmount),
         changeAmount: toDecimalString(input.changeAmount),

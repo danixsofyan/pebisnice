@@ -1,4 +1,4 @@
-import { boolean, index, pgTable, text, uuid, varchar } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, pgTable, text, uuid, varchar } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { users } from './auth'
 import { calcMethodEnum } from './enums'
@@ -16,6 +16,9 @@ export const projects = pgTable(
     description: text('description'),
     currency: varchar('currency', { length: 3 }).default('IDR').notNull(),
     timezone: text('timezone').default('Asia/Jakarta').notNull(),
+    // PPN rate in basis points (1100 = 11%); 0 disables tax. taxInclusive means listed prices already include it.
+    taxRateBasisPoints: integer('tax_rate_basis_points').default(0).notNull(),
+    taxInclusive: boolean('tax_inclusive').default(false).notNull(),
     defaultCalcMethod: calcMethodEnum('default_calc_method').default('income_based').notNull(),
     isArchived: boolean('is_archived').default(false).notNull(),
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
