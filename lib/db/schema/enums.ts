@@ -82,6 +82,27 @@ export const cashSessionStatusEnum = pgEnum('cash_session_status', ['open', 'clo
 /** `finished` = siap jual, `material` = bahan yang dipakai produksi. */
 export const productTypeEnum = pgEnum('product_type', ['finished', 'material'])
 
+/** Jenis paket langganan. Harga & durasi diambil dari baris `plans`. */
+export const planIntervalEnum = pgEnum('plan_interval', ['trial', 'monthly', 'yearly'])
+
+export const subscriptionStatusEnum = pgEnum('subscription_status', [
+  'trialing',
+  'active',
+  'past_due',
+  'expired',
+  'canceled',
+])
+
+/** Status pembayaran, dipetakan dari transaction_status Midtrans. */
+export const paymentStatusEnum = pgEnum('payment_status', [
+  'pending',
+  'paid',
+  'failed',
+  'expired',
+  'canceled',
+  'refunded',
+])
+
 export const expenseCategoryEnum = pgEnum('expense_category', [
   'rent',
   'salary',
