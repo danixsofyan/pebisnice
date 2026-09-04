@@ -1,57 +1,87 @@
-import { KpiCard } from '@/components/dashboard/kpi-card'
-import { Users, UserCheck, ShieldCheck, Plus } from 'lucide-react'
-import { EmployeeTable } from '@/components/dashboard/employee-table'
+import { getAccessibleBranches, getSessionContext } from '@/lib/auth/session-context'
+import { teamService } from '@/lib/services/team.service'
+import { hasRolePermission } from '@/lib/authz/permissions'
+import { AddMemberForm } from '@/components/employees/add-member-form'
+import { MemberActions } from '@/components/employees/member-actions'
+import { ROLE_LABEL, STATUS_LABEL } from '@/components/employees/role-labels'
 
-export default function EmployeesPage() {
+export default async function EmployeesPage() {
+  const context = await getSessionContext()
+
+  if (!hasRolePermission(context.role, 'team:manage')) {
+    return (
+      <div className="border-border rounded-xl border border-dashed p-12 text-center">
+        <h1 className="text-lg font-bold">Tidak ada akses</h1>
+        <p className="text-muted-foreground mt-2 text-sm">
+          Hanya pemilik dan admin yang dapat mengelola karyawan.
+        </p>
+      </div>
+    )
+  }
+
+  const [members, branches] = await Promise.all([
+    teamService.list(context.projectId, context.userId),
+    getAccessibleBranches(context),
+  ])
+
+  const active = members.filter((m) => m.status === 'active').length
+  const invited = members.filter((m) => m.status === 'invited').length
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1">
-          <h2 className="text-xl font-bold tracking-tight md:text-2xl">Manajemen Karyawan</h2>
-          <p className="text-xs text-slate-500 md:text-sm dark:text-slate-400">
-            Atur hak akses dan peran tim operasional toko Anda.
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold">Karyawan</h1>
+          <p className="text-muted-foreground text-sm">
+            {members.length} anggota · {active} aktif · {invited} diundang
           </p>
         </div>
-        <button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold shadow-lg transition-all md:py-2.5">
-          <Plus className="size-4 md:size-5" />
-          Tambah Karyawan
-        </button>
+        <AddMemberForm branches={branches} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <KpiCard
-          title="Total Karyawan"
-          value={5}
-          change={0}
-          format="number"
-          className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-800/50"
-          icon={<Users className="text-primary size-5" />}
-          iconClassName="bg-primary/10"
-          description="Orang"
-        />
-        <KpiCard
-          title="Karyawan Aktif"
-          value={4}
-          change={0}
-          format="number"
-          className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-800/50"
-          icon={<UserCheck className="size-5 text-emerald-500" />}
-          iconClassName="bg-emerald-500/10"
-          description="Orang"
-        />
-        <KpiCard
-          title="Admin Utama"
-          value={1}
-          change={0}
-          format="number"
-          className="border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-800/50"
-          icon={<ShieldCheck className="size-5 text-amber-500" />}
-          iconClassName="bg-amber-500/10"
-          description="Orang"
-        />
-      </div>
-
-      <EmployeeTable />
+      {members.length === 0 ? (
+        <p className="text-muted-foreground border-border rounded-xl border border-dashed p-12 text-center text-sm">
+          Belum ada karyawan. Tambahkan anggota tim dengan email Google mereka.
+        </p>
+      ) : (
+        <div className="border-border overflow-x-auto rounded-xl border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-left">
+              <tr>
+                <th className="px-4 py-3 font-medium">Anggota</th>
+                <th className="px-4 py-3 font-medium">Peran</th>
+                <th className="px-4 py-3 font-medium">Cabang</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 text-right font-medium">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m) => (
+                <tr key={m.id} className="border-border border-t align-top">
+                  <td className="px-4 py-3">
+                    <div>{m.name ?? '—'}</div>
+                    <div className="text-muted-foreground text-xs">{m.email}</div>
+                  </td>
+                  <td className="px-4 py-3">{ROLE_LABEL[m.role] ?? m.role}</td>
+                  <td className="text-muted-foreground px-4 py-3">
+                    {m.branchName ?? 'Semua cabang'}
+                  </td>
+                  <td className="px-4 py-3">{STATUS_LABEL[m.status] ?? m.status}</td>
+                  <td className="px-4 py-3">
+                    <MemberActions
+                      memberId={m.id}
+                      role={m.role}
+                      branchId={m.branchId}
+                      status={m.status}
+                      branches={branches}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
