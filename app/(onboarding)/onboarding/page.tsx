@@ -1,0 +1,24 @@
+import { redirect } from 'next/navigation'
+import { findSessionContext } from '@/lib/auth/session-context'
+import { CreateProjectForm } from '@/components/onboarding/create-project-form'
+
+export default async function OnboardingPage() {
+  const context = await findSessionContext()
+  if (context) redirect('/dashboard')
+
+  return (
+    <div className="bg-background flex min-h-svh items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <h1 className="text-2xl font-bold">Selamat datang di Pebisnice</h1>
+        <p className="text-muted-foreground mt-2 text-sm">
+          Buat bisnis pertama Anda untuk mulai mencatat penjualan marketplace dan kasir dalam satu
+          laporan.
+        </p>
+
+        <div className="border-border bg-card mt-8 rounded-xl border p-6">
+          <CreateProjectForm />
+        </div>
+      </div>
+    </div>
+  )
+}
