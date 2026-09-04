@@ -13,6 +13,7 @@ import {
   Coins,
   Users,
   Landmark,
+  Contact,
   Settings,
 } from 'lucide-react'
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar'
@@ -33,6 +34,11 @@ const mainNavItems = [
     title: 'Transaksi',
     url: '/transactions',
     icon: ReceiptText,
+  },
+  {
+    title: 'Pelanggan',
+    url: '/customers',
+    icon: Contact,
   },
   {
     title: 'Produk',

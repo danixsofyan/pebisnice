@@ -40,6 +40,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'auditLogs',
       'branches',
       'cashSessions',
+      'customers',
       'expenses',
       'fileUploads',
       'financialMutations',
@@ -134,6 +135,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
     const tenantScoped = [
       'branches',
       'cashSessions',
+      'customers',
       'expenses',
       'stores',
       'products',

@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto'
+import { createCipheriv, createDecipheriv, createHmac, randomBytes, scryptSync } from 'crypto'
 
 const ALGORITHM = 'aes-256-gcm'
 const KEY_LENGTH = 32
@@ -39,4 +39,13 @@ export function decryptToken(cipherText: string): string {
   decipher.setAuthTag(authTag)
 
   return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8')
+}
+
+// Deterministic keyed hash for exact-match search/dedup on an encrypted field (a blind
+// index), so we never store or query the plaintext. Not reversible; a separate salt keeps
+// it independent from the encryption key.
+export function blindIndex(value: string): string {
+  const secret = process.env.ENCRYPTION_SECRET_KEY
+  if (!secret) throw new Error('ENCRYPTION_SECRET_KEY wajib di-set')
+  return createHmac('sha256', `${secret}:blind-index-v1`).update(value).digest('hex')
 }

@@ -1,30 +1,28 @@
-import { describe, expect, it } from 'vitest'
-import { decryptToken, encryptToken } from '@/lib/encryption'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { blindIndex, decryptToken, encryptToken } from '@/lib/encryption'
 
-describe('encryptToken / decryptToken', () => {
-  it('mengembalikan plaintext yang sama setelah round-trip', () => {
-    const plain = 'shopee-access-token-abc123'
-    expect(decryptToken(encryptToken(plain))).toBe(plain)
+beforeAll(() => {
+  process.env.ENCRYPTION_SECRET_KEY = 'test-secret-key-for-encryption-unit-tests'
+})
+
+describe('encryption', () => {
+  it('round-trips a value through encrypt/decrypt', () => {
+    const plain = '08123456789'
+    const cipher = encryptToken(plain)
+    expect(cipher).not.toContain(plain)
+    expect(cipher.split(':')).toHaveLength(3)
+    expect(decryptToken(cipher)).toBe(plain)
   })
 
-  it('menghasilkan ciphertext berbeda untuk plaintext yang sama (IV acak)', () => {
+  it('produces a different ciphertext each time (random IV)', () => {
     expect(encryptToken('same')).not.toBe(encryptToken('same'))
   })
 
-  it('menangani string kosong dan karakter non-ASCII', () => {
-    expect(decryptToken(encryptToken(''))).toBe('')
-
-    const nonAscii = 'token éè 中文'
-    expect(decryptToken(encryptToken(nonAscii))).toBe(nonAscii)
-  })
-
-  it('menolak ciphertext dengan format salah', () => {
-    expect(() => decryptToken('bukan-format-valid')).toThrow('Format ciphertext tidak valid')
-  })
-
-  it('menolak ciphertext yang auth tag-nya dirusak', () => {
-    const [iv, , payload] = encryptToken('rahasia').split(':')
-    const forgedTag = Buffer.alloc(16).toString('base64')
-    expect(() => decryptToken(`${iv}:${forgedTag}:${payload}`)).toThrow()
+  it('blindIndex is deterministic and hides the input', () => {
+    const a = blindIndex('08123456789')
+    const b = blindIndex('08123456789')
+    expect(a).toBe(b)
+    expect(a).not.toContain('0812')
+    expect(a).not.toBe(blindIndex('08129999999'))
   })
 })

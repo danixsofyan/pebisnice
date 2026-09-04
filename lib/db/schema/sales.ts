@@ -4,6 +4,7 @@ import { users } from './auth'
 import { branches } from './branches'
 import { cashSessions } from './cash-sessions'
 import { productVariants } from './catalog'
+import { customers } from './customers'
 import { stores } from './channels'
 import { actorColumns, tenantColumn } from './columns'
 import { feeTypeEnum, orderStatusEnum, paymentMethodEnum, salesChannelEnum } from './enums'
@@ -21,6 +22,7 @@ export const transactions = pgTable(
     cashSessionId: uuid('cash_session_id').references(() => cashSessions.id, {
       onDelete: 'restrict',
     }),
+    customerId: uuid('customer_id').references(() => customers.id, { onDelete: 'set null' }),
     paymentMethod: paymentMethodEnum('payment_method'),
     orderId: text('order_id').notNull(),
     orderDate: tz('order_date').notNull(),
