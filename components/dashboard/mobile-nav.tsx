@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ShoppingCart,
   ReceiptText,
+  Boxes,
   Package,
   Wallet,
   Users,
@@ -29,6 +30,11 @@ const navItems = [
     icon: ReceiptText,
   },
   {
+    title: 'Produk',
+    url: '/products',
+    icon: Boxes,
+  },
+  {
     title: 'Inventaris',
     url: '/inventory',
     icon: Package,
@@ -49,23 +55,22 @@ export function MobileNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-slate-200 bg-white/80 px-2 pb-safe backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/80 md:hidden">
+    <nav className="pb-safe fixed right-0 bottom-0 left-0 z-50 flex h-16 items-center justify-around border-t border-slate-200 bg-white/80 px-2 backdrop-blur-lg md:hidden dark:border-slate-800 dark:bg-slate-900/80">
       {navItems.map((item) => {
-        const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url))
-        
+        const isActive =
+          pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(item.url))
+
         return (
           <Link
             key={item.title}
             href={item.url}
             className={cn(
-              "flex flex-col items-center justify-center gap-1 transition-colors",
-              isActive 
-                ? "text-primary font-bold" 
-                : "text-slate-500 dark:text-slate-400"
+              'flex flex-col items-center justify-center gap-1 transition-colors',
+              isActive ? 'text-primary font-bold' : 'text-slate-500 dark:text-slate-400'
             )}
           >
-            <item.icon className={cn("size-5", isActive && "fill-primary/10")} />
-            <span className="text-[10px] uppercase tracking-tight">{item.title}</span>
+            <item.icon className={cn('size-5', isActive && 'fill-primary/10')} />
+            <span className="text-[10px] tracking-tight uppercase">{item.title}</span>
           </Link>
         )
       })}

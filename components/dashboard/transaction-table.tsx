@@ -1,11 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import {
-  ChevronDown,
-  ChevronRight,
-  ChevronLeft,
-} from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatRupiah } from '@/lib/formatters'
 
@@ -104,28 +100,43 @@ export function TransactionTable() {
 
   return (
     <div className="space-y-4">
-      <div className="dark:bg-slate-900/40 dark:border-slate-800 overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/40">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="dark:bg-slate-800/50 dark:border-slate-800 border-b border-slate-200 bg-slate-50/50">
-                <th className="px-6 py-4 text-xs font-bold tracking-wider text-slate-500 uppercase">Order ID</th>
-                <th className="px-6 py-4 text-xs font-bold tracking-wider text-slate-500 uppercase">Channel</th>
-                <th className="px-6 py-4 text-xs font-bold tracking-wider text-slate-500 uppercase">Status</th>
-                <th className="px-6 py-4 text-right text-xs font-bold tracking-wider text-slate-500 uppercase">Harga</th>
-                <th className="px-6 py-4 text-right text-xs font-bold tracking-wider text-slate-500 uppercase">Potongan</th>
-                <th className="px-6 py-4 text-right text-xs font-bold tracking-wider text-slate-500 uppercase">HPP</th>
-                <th className="px-6 py-4 text-right text-xs font-bold tracking-wider text-slate-500 uppercase">Profit</th>
+              <tr className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/50">
+                <th className="px-6 py-4 text-xs font-bold tracking-wider text-slate-500 uppercase">
+                  Order ID
+                </th>
+                <th className="px-6 py-4 text-xs font-bold tracking-wider text-slate-500 uppercase">
+                  Channel
+                </th>
+                <th className="px-6 py-4 text-xs font-bold tracking-wider text-slate-500 uppercase">
+                  Status
+                </th>
+                <th className="px-6 py-4 text-right text-xs font-bold tracking-wider text-slate-500 uppercase">
+                  Harga
+                </th>
+                <th className="px-6 py-4 text-right text-xs font-bold tracking-wider text-slate-500 uppercase">
+                  Potongan
+                </th>
+                <th className="px-6 py-4 text-right text-xs font-bold tracking-wider text-slate-500 uppercase">
+                  HPP
+                </th>
+                <th className="px-6 py-4 text-right text-xs font-bold tracking-wider text-slate-500 uppercase">
+                  Profit
+                </th>
                 <th className="px-6 py-4"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {mockTransactions.map((tx) => (
                 <React.Fragment key={tx.id}>
-                  <tr 
+                  <tr
                     className={cn(
-                      "hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group cursor-pointer",
-                      expandedId === tx.id && "bg-primary/[0.03] dark:bg-primary/[0.05] border-l-4 border-l-primary"
+                      'group cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/30',
+                      expandedId === tx.id &&
+                        'bg-primary/[0.03] dark:bg-primary/[0.05] border-l-primary border-l-4'
                     )}
                     onClick={() => toggleExpand(tx.id)}
                   >
@@ -137,49 +148,91 @@ export function TransactionTable() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <div className={cn("size-6 rounded flex items-center justify-center text-[10px] font-bold text-white", getChannelStyle(tx.channel))}>
+                        <div
+                          className={cn(
+                            'flex size-6 items-center justify-center rounded text-[10px] font-bold text-white',
+                            getChannelStyle(tx.channel)
+                          )}
+                        >
                           {tx.channel[0]}
                         </div>
                         <span className="text-sm">{tx.channel}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={cn("inline-flex items-center px-2 py-1 rounded-full text-[11px] font-bold border", getStatusStyle(tx.status))}>
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-bold',
+                          getStatusStyle(tx.status)
+                        )}
+                      >
                         {tx.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right text-sm font-medium">{formatRupiah(tx.price)}</td>
-                    <td className="px-6 py-4 text-right text-sm text-rose-500">-{formatRupiah(tx.discount)}</td>
-                    <td className="px-6 py-4 text-right text-sm text-slate-400">{formatRupiah(tx.hpp)}</td>
-                    <td className="px-6 py-4 text-right text-sm font-bold text-emerald-500">{formatRupiah(tx.profit)}</td>
+                    <td className="px-6 py-4 text-right text-sm font-medium">
+                      {formatRupiah(tx.price)}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm text-rose-500">
+                      -{formatRupiah(tx.discount)}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm text-slate-400">
+                      {formatRupiah(tx.hpp)}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm font-bold text-emerald-500">
+                      {formatRupiah(tx.profit)}
+                    </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-slate-400 transition-transform group-hover:text-primary" style={{ transform: expandedId === tx.id ? 'rotate(180deg)' : 'none' }}>
+                      <button
+                        className="group-hover:text-primary text-slate-400 transition-transform"
+                        style={{ transform: expandedId === tx.id ? 'rotate(180deg)' : 'none' }}
+                      >
                         <ChevronDown className="size-4" />
                       </button>
                     </td>
                   </tr>
-                  
+
                   {expandedId === tx.id && tx.details && (
                     <tr className="bg-primary/[0.02] dark:bg-primary/[0.04]">
-                      <td className="px-6 py-6 border-b border-slate-100 dark:border-slate-800" colSpan={8}>
+                      <td
+                        className="border-b border-slate-100 px-6 py-6 dark:border-slate-800"
+                        colSpan={8}
+                      >
                         <div className="flex flex-col gap-4">
-                          <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest">Rincian Potongan Marketplace</h4>
-                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
-                              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Biaya Layanan</p>
-                              <p className="text-sm font-bold text-rose-500">-{formatRupiah(tx.details.serviceFee)}</p>
+                          <h4 className="text-primary text-[10px] font-bold tracking-widest uppercase">
+                            Rincian Potongan Marketplace
+                          </h4>
+                          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                            <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                              <p className="text-[9px] font-bold tracking-wider text-slate-500 uppercase">
+                                Biaya Layanan
+                              </p>
+                              <p className="text-sm font-bold text-rose-500">
+                                -{formatRupiah(tx.details.serviceFee)}
+                              </p>
                             </div>
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
-                              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Biaya Proses</p>
-                              <p className="text-sm font-bold text-rose-500">-{formatRupiah(tx.details.processingFee)}</p>
+                            <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                              <p className="text-[9px] font-bold tracking-wider text-slate-500 uppercase">
+                                Biaya Proses
+                              </p>
+                              <p className="text-sm font-bold text-rose-500">
+                                -{formatRupiah(tx.details.processingFee)}
+                              </p>
                             </div>
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
-                              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">AMS Marketing</p>
-                              <p className="text-sm font-bold text-rose-500">-{formatRupiah(tx.details.amsMarketing)}</p>
+                            <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                              <p className="text-[9px] font-bold tracking-wider text-slate-500 uppercase">
+                                AMS Marketing
+                              </p>
+                              <p className="text-sm font-bold text-rose-500">
+                                -{formatRupiah(tx.details.amsMarketing)}
+                              </p>
                             </div>
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
-                              <p className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Potongan Voucher</p>
-                              <p className="text-sm font-bold text-rose-500">-{formatRupiah(tx.details.voucherDiscount)}</p>
+                            <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                              <p className="text-[9px] font-bold tracking-wider text-slate-500 uppercase">
+                                Potongan Voucher
+                              </p>
+                              <p className="text-sm font-bold text-rose-500">
+                                -{formatRupiah(tx.details.voucherDiscount)}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -193,18 +246,26 @@ export function TransactionTable() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-2">
-        <p className="text-xs text-slate-500 font-medium">Menampilkan 1-10 dari 1.250 Transaksi</p>
+      <div className="flex flex-col items-center justify-between gap-4 py-2 sm:flex-row">
+        <p className="text-xs font-medium text-slate-500">Menampilkan 1-10 dari 1.250 Transaksi</p>
         <div className="flex items-center gap-1">
-          <button className="size-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary transition-colors">
+          <button className="hover:text-primary flex size-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-colors dark:bg-slate-800">
             <ChevronLeft className="size-4" />
           </button>
-          <button className="size-8 flex items-center justify-center rounded-lg bg-primary text-white text-xs font-bold">1</button>
-          <button className="size-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">2</button>
-          <button className="size-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">3</button>
+          <button className="bg-primary flex size-8 items-center justify-center rounded-lg text-xs font-bold text-white">
+            1
+          </button>
+          <button className="flex size-8 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700">
+            2
+          </button>
+          <button className="flex size-8 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700">
+            3
+          </button>
           <span className="mx-1 text-slate-500">...</span>
-          <button className="size-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">125</button>
-          <button className="size-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary transition-colors">
+          <button className="flex size-8 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700">
+            125
+          </button>
+          <button className="hover:text-primary flex size-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-colors dark:bg-slate-800">
             <ChevronRight className="size-4" />
           </button>
         </div>
@@ -212,5 +273,3 @@ export function TransactionTable() {
     </div>
   )
 }
-
-
