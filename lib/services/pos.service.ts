@@ -220,6 +220,25 @@ export class PosService {
 
     logger.info({ projectId, transactionId }, 'POS sale voided')
   }
+
+  /** Riwayat penjualan kasir, terbaru dulu. Terikat cakupan cabang pemanggil. */
+  async listSales(
+    projectId: string,
+    userId: string,
+    options: { branchId: string | null; limit?: number }
+  ) {
+    await requirePermission(projectId, userId, 'project:view')
+    if (options.branchId) {
+      await requireBranchAccess(projectId, userId, options.branchId)
+    }
+
+    return withTenant(projectId, (tx) =>
+      posRepository.listSales(tx, projectId, {
+        branchId: options.branchId,
+        limit: Math.min(options.limit ?? 50, 200),
+      })
+    )
+  }
 }
 
 export const posService = new PosService()

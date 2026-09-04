@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import { transactionItems, transactions } from '@/lib/db/schema'
 import type { Transaction } from '@/lib/db/tenant'
 import { toDecimalString, type Money } from '@/lib/domain/money'
@@ -144,6 +144,34 @@ export class PosRepository {
     const sequence = Number(rows[0]?.sequence ?? 1)
 
     return `${branchCode}-${today}-${String(sequence).padStart(4, '0')}`
+  }
+
+  async listSales(
+    tx: Transaction,
+    projectId: string,
+    options: { branchId: string | null; limit: number }
+  ) {
+    return tx
+      .select({
+        id: transactions.id,
+        orderId: transactions.orderId,
+        branchId: transactions.branchId,
+        orderDate: transactions.orderDate,
+        netAmount: transactions.netAmount,
+        paymentMethod: transactions.paymentMethod,
+        status: transactions.status,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.projectId, projectId),
+          eq(transactions.channel, 'pos'),
+          isNull(transactions.deletedAt),
+          ...(options.branchId ? [eq(transactions.branchId, options.branchId)] : [])
+        )
+      )
+      .orderBy(desc(transactions.orderDate))
+      .limit(options.limit)
   }
 }
 

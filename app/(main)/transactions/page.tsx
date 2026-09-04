@@ -1,73 +1,95 @@
-import { KpiCard } from '@/components/dashboard/kpi-card'
-import { ShoppingCart, Wallet, ReceiptText, Calendar, Filter } from 'lucide-react'
-import { TransactionTable } from '@/components/dashboard/transaction-table'
+import { getAccessibleBranches, getSessionContext } from '@/lib/auth/session-context'
+import { posService } from '@/lib/services/pos.service'
+import { hasRolePermission } from '@/lib/authz/permissions'
+import { formatRupiahFromDecimal } from '@/lib/formatters'
+import { VoidSaleButton } from '@/components/transactions/void-sale-button'
 
-export default function TransactionsPage() {
+const PAYMENT_LABEL: Record<string, string> = {
+  cash: 'Tunai',
+  transfer: 'Transfer',
+  qris: 'QRIS',
+  card: 'Kartu',
+  other: 'Lainnya',
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  completed: 'Selesai',
+  cancelled: 'Dibatalkan',
+  returned: 'Retur',
+  processing: 'Diproses',
+  shipped: 'Dikirim',
+}
+
+function formatDateTime(date: Date): string {
+  return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+}
+
+export default async function TransactionsPage() {
+  const context = await getSessionContext()
+  const branches = await getAccessibleBranches(context)
+  const branchName = new Map(branches.map((b) => [b.id, b.name]))
+
+  const sales = await posService.listSales(context.projectId, context.userId, {
+    branchId: context.branchId,
+  })
+
+  const canVoid = hasRolePermission(context.role, 'pos:void')
+  const completed = sales.filter((s) => s.status === 'completed')
+  const totalNet = completed.reduce((sum, s) => sum + Number(s.netAmount), 0)
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <KpiCard
-          title="Total Transaksi"
-          value={1250}
-          change={12.5}
-          format="number"
-          className="border-primary/20 bg-primary/10"
-          icon={<ShoppingCart className="text-primary size-5" />}
-          iconClassName="bg-primary/20"
-          description="Pesanan"
-        />
-        <KpiCard
-          title="Pendapatan Bersih"
-          value={45000000}
-          change={8.2}
-          format="currency"
-          className="border-emerald-500/20 bg-emerald-500/10"
-          icon={<Wallet className="size-5 text-emerald-500" />}
-          iconClassName="bg-emerald-500/20"
-        />
-        <KpiCard
-          title="Potongan Marketplace"
-          value={5200000}
-          change={-5.4}
-          format="currency"
-          className="border-rose-500/20 bg-rose-500/10"
-          icon={<ReceiptText className="size-5 text-rose-500" />}
-          iconClassName="bg-rose-500/20"
-        />
+      <div>
+        <h1 className="text-xl font-bold">Transaksi Kasir</h1>
+        <p className="text-muted-foreground text-sm">
+          {completed.length} transaksi selesai · {formatRupiahFromDecimal(String(totalNet))}
+        </p>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="scrollbar-hide flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-          <button className="bg-primary text-primary-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold whitespace-nowrap shadow-sm">
-            Semua
-          </button>
-          <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-bold whitespace-nowrap text-slate-600 transition-colors hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
-            Shopee
-          </button>
-          <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-bold whitespace-nowrap text-slate-600 transition-colors hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
-            TikTok Shop
-          </button>
-          <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-bold whitespace-nowrap text-slate-600 transition-colors hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
-            Tokopedia
-          </button>
-          <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-bold whitespace-nowrap text-slate-600 transition-colors hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
-            Lazada
-          </button>
+      {sales.length === 0 ? (
+        <p className="text-muted-foreground border-border rounded-xl border border-dashed p-12 text-center text-sm">
+          Belum ada transaksi kasir. Catat penjualan di menu Kasir.
+        </p>
+      ) : (
+        <div className="border-border overflow-x-auto rounded-xl border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-left">
+              <tr>
+                <th className="px-4 py-3 font-medium">Order</th>
+                <th className="px-4 py-3 font-medium">Waktu</th>
+                <th className="px-4 py-3 font-medium">Cabang</th>
+                <th className="px-4 py-3 font-medium">Metode</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 text-right font-medium">Total</th>
+                {canVoid ? <th className="px-4 py-3 text-right font-medium">Aksi</th> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {sales.map((s) => (
+                <tr key={s.id} className="border-border border-t">
+                  <td className="px-4 py-3 font-mono text-xs">{s.orderId}</td>
+                  <td className="text-muted-foreground px-4 py-3">{formatDateTime(s.orderDate)}</td>
+                  <td className="text-muted-foreground px-4 py-3">
+                    {s.branchId ? (branchName.get(s.branchId) ?? '—') : '—'}
+                  </td>
+                  <td className="text-muted-foreground px-4 py-3">
+                    {PAYMENT_LABEL[s.paymentMethod ?? ''] ?? s.paymentMethod ?? '—'}
+                  </td>
+                  <td className="px-4 py-3">{STATUS_LABEL[s.status] ?? s.status}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {formatRupiahFromDecimal(s.netAmount)}
+                  </td>
+                  {canVoid ? (
+                    <td className="px-4 py-3 text-right">
+                      {s.status === 'completed' ? <VoidSaleButton transactionId={s.id} /> : null}
+                    </td>
+                  ) : null}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-
-        <div className="mt-2 grid w-full grid-cols-2 items-center gap-3 md:mt-0 md:flex md:w-auto">
-          <div className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-[11px] font-bold md:text-sm dark:border-slate-800 dark:bg-slate-800">
-            <Calendar className="size-3.5 md:size-4" />
-            <span className="whitespace-nowrap">01 Okt - 31 Okt 2023</span>
-          </div>
-          <button className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-[11px] font-bold text-slate-900 transition-all hover:bg-slate-200 md:text-sm dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
-            <Filter className="size-3.5 md:size-4" />
-            Filter
-          </button>
-        </div>
-      </div>
-
-      <TransactionTable />
+      )}
     </div>
   )
 }
