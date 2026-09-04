@@ -1,4 +1,4 @@
-import { getSessionContext } from '@/lib/auth/session-context'
+import { getAccessibleBranches, getSessionContext } from '@/lib/auth/session-context'
 import { projectService } from '@/lib/services/project.service'
 import { hasRolePermission } from '@/lib/authz/permissions'
 import { SettingsForm } from '@/components/settings/settings-form'
@@ -14,6 +14,7 @@ export default async function SettingsPage({
   const params = await searchParams
   const settings = await projectService.getSettings(context.projectId, context.userId)
   const stores = await storeService.list(context.projectId, context.userId)
+  const branches = await getAccessibleBranches(context)
   const canEdit = hasRolePermission(context.role, 'project:edit')
 
   return (
@@ -58,7 +59,7 @@ export default async function SettingsPage({
         </p>
       ) : null}
 
-      <MarketplaceConnect stores={stores} />
+      <MarketplaceConnect stores={stores} branches={branches} />
     </div>
   )
 }

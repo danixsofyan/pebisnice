@@ -3,8 +3,10 @@ import { withTenant } from '@/lib/db/tenant'
 import { stores } from '@/lib/db/schema'
 import { encryptToken } from '@/lib/encryption'
 import { auditRepository } from '@/lib/repositories/audit.repository'
+import { transactionService } from '@/lib/services/transaction.service'
+import { shopeeConnector } from '@/lib/integrations/shopee/connector'
 import { requirePermission } from '@/lib/rbac'
-import { NotFoundError } from '@/lib/errors/app-error'
+import { NotFoundError, ValidationError } from '@/lib/errors/app-error'
 import { logger } from '@/lib/logging/logger'
 
 export interface ConnectShopeeInput {
@@ -93,6 +95,56 @@ export class StoreService {
         .where(and(eq(stores.projectId, projectId), isNull(stores.deletedAt)))
         .orderBy(desc(stores.createdAt))
     )
+  }
+
+  // Pull orders for one store right now, instead of waiting for the cron. Marks
+  // the store's sync status so a failure (e.g. an expired refresh token) shows up.
+  async syncNow(
+    projectId: string,
+    userId: string,
+    storeId: string
+  ): Promise<{ inserted: number; skipped: number }> {
+    await requirePermission(projectId, userId, 'store:manage')
+
+    const store = (
+      await withTenant(projectId, (tx) =>
+        tx
+          .select()
+          .from(stores)
+          .where(
+            and(eq(stores.id, storeId), eq(stores.projectId, projectId), isNull(stores.deletedAt))
+          )
+          .limit(1)
+      )
+    )[0]
+    if (!store) throw new NotFoundError('Toko tidak ditemukan')
+    if (store.platform !== 'shopee') throw new ValidationError('Platform ini belum didukung')
+
+    try {
+      const transactions = await shopeeConnector(store)
+      const result = await transactionService.syncTransactionsForStore(
+        projectId,
+        storeId,
+        transactions
+      )
+      await withTenant(projectId, (tx) =>
+        tx
+          .update(stores)
+          .set({ lastSyncedAt: new Date(), syncStatus: 'connected', syncError: null })
+          .where(eq(stores.id, storeId))
+      )
+      logger.info({ projectId, storeId, ...result }, 'shopee manual sync')
+      return result
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      await withTenant(projectId, (tx) =>
+        tx
+          .update(stores)
+          .set({ syncStatus: 'error', syncError: message })
+          .where(eq(stores.id, storeId))
+      )
+      throw new ValidationError(`Gagal sinkron: ${message}`)
+    }
   }
 
   async disconnect(

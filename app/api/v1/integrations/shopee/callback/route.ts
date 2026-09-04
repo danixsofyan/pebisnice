@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getAccessibleBranches, resolveSessionState } from '@/lib/auth/session-context'
 import { storeService } from '@/lib/services/store.service'
-import { getAccessToken } from '@/lib/integrations/shopee/client'
+import { getAccessToken, getShopInfo } from '@/lib/integrations/shopee/client'
 import { readRequestMeta } from '@/lib/observability/server-context'
 import { logger } from '@/lib/logging/logger'
 
@@ -23,12 +23,23 @@ export async function GET(request: NextRequest) {
     const branches = await getAccessibleBranches(state.context)
     const meta = await readRequestMeta()
 
+    // Honor the branch chosen before connecting, falling back to the first one.
+    const requestedBranch = request.nextUrl.searchParams.get('branch')
+    const branchId = branches.find((b) => b.id === requestedBranch)?.id ?? branches[0]?.id ?? null
+
+    let storeName = `Shopee ${shopId}`
+    try {
+      storeName = (await getShopInfo(tokens.accessToken, shopId)).shopName
+    } catch {
+      // Non-fatal: keep the id-based name if the shop-info call fails.
+    }
+
     await storeService.connectShopee({
       projectId: state.context.projectId,
       userId: state.context.userId,
       platformStoreId: shopId,
-      storeName: `Shopee ${shopId}`,
-      branchId: branches[0]?.id ?? null,
+      storeName,
+      branchId,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresInSeconds: tokens.expiresInSeconds,

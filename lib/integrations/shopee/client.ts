@@ -83,7 +83,8 @@ async function shopGet(
   path: string,
   accessToken: string,
   shopId: string,
-  extra: Record<string, string>
+  extra: Record<string, string>,
+  unwrap = true
 ) {
   const { baseUrl } = shopeeConfig()
   const params = shopUrl(path, accessToken, shopId, nowUnix())
@@ -91,7 +92,16 @@ async function shopGet(
   const res = await fetch(`${baseUrl}${path}?${params.toString()}`)
   const data = (await res.json()) as Record<string, unknown>
   if (data.error) throw new Error(`Shopee: ${data.error} ${data.message ?? ''}`)
-  return (data.response ?? {}) as Record<string, unknown>
+  return (unwrap ? (data.response ?? {}) : data) as Record<string, unknown>
+}
+
+// Fetch the shop's display name so the connected store shows a friendly label.
+export async function getShopInfo(
+  accessToken: string,
+  shopId: string
+): Promise<{ shopName: string }> {
+  const info = await shopGet('/api/v2/shop/get_shop_info', accessToken, shopId, {}, false)
+  return { shopName: String(info.shop_name ?? `Shopee ${shopId}`) }
 }
 
 // Shopee caps get_order_list at a 15-day window, so callers pass a bounded range.
