@@ -105,6 +105,53 @@ const CHECKS: Check[] = [
       /^[a-z0-9-]+\.supabase\.co$/.test(value) ? null : 'format harus <ref>.supabase.co',
   },
   { name: 'LOG_LEVEL', required: false, note: 'bawaan: info' },
+  {
+    name: 'SUPABASE_S3_ENDPOINT',
+    required: false,
+    note: 'https://<ref>.storage.supabase.co/storage/v1/s3',
+    validate: (value) =>
+      /^https:\/\/[a-z0-9-]+\.storage\.supabase\.co\/storage\/v1\/s3$/.test(value)
+        ? null
+        : 'format harus https://<ref>.storage.supabase.co/storage/v1/s3',
+  },
+  {
+    name: 'SUPABASE_S3_REGION',
+    required: false,
+    note: 'mis. ap-southeast-1',
+    validate: (value) =>
+      /^[a-z]{2}-[a-z]+-\d$/.test(value) ? null : 'format region AWS tidak lazim',
+  },
+  {
+    name: 'SUPABASE_S3_ACCESS_KEY_ID',
+    required: false,
+    note: 'dari Supabase Settings -> Storage -> S3 Connection',
+    validate: requireEntropy(20),
+  },
+  {
+    name: 'SUPABASE_S3_SECRET_ACCESS_KEY',
+    required: false,
+    note: 'SERVER-ONLY, jangan diberi awalan NEXT_PUBLIC_',
+    validate: requireEntropy(40),
+  },
+  {
+    name: 'SUPABASE_STORAGE_BUCKET',
+    required: false,
+    note: 'buat dulu bucket-nya di Supabase Storage',
+  },
+]
+
+/** Variabel yang harus terisi bersama-sama, atau kosong semuanya. */
+const GROUPS: Array<{ label: string; members: string[] }> = [
+  {
+    label: 'Supabase S3',
+    members: [
+      'SUPABASE_S3_ENDPOINT',
+      'SUPABASE_S3_REGION',
+      'SUPABASE_S3_ACCESS_KEY_ID',
+      'SUPABASE_S3_SECRET_ACCESS_KEY',
+      'SUPABASE_STORAGE_BUCKET',
+    ],
+  },
 ]
 
 const results = CHECKS.map((check) => {
@@ -130,6 +177,18 @@ const results = CHECKS.map((check) => {
   return { name: check.name, severity: 'ok' as Severity, message: 'ok' }
 })
 
+/**
+ * Konfigurasi yang terisi separuh lebih berbahaya daripada yang kosong: fitur
+ * tampak aktif tapi gagal saat dipakai.
+ */
+const groupProblems = GROUPS.flatMap((group) => {
+  const filled = group.members.filter((name) => (process.env[name] ?? '').trim().length > 0)
+  if (filled.length === 0 || filled.length === group.members.length) return []
+
+  const missing = group.members.filter((name) => !filled.includes(name))
+  return [`${group.label}: terisi separuh — masih kosong: ${missing.join(', ')}`]
+})
+
 const ICON: Record<Severity, string> = { error: 'GAGAL ', warn: 'PERIKSA', ok: 'OK    ' }
 
 console.log('Pemeriksaan variabel lingkungan\n')
@@ -137,14 +196,17 @@ for (const result of results) {
   console.log(`  ${ICON[result.severity]}  ${result.name.padEnd(36)} ${result.message}`)
 }
 
+for (const problem of groupProblems) {
+  console.log(`  ${ICON.error}  ${problem}`)
+}
+
 const errors = results.filter((r) => r.severity === 'error')
 const warns = results.filter((r) => r.severity === 'warn')
 
-console.log(
-  `\n${results.length} diperiksa · ${errors.length} gagal · ${warns.length} perlu dilihat`
-)
+const failures = errors.length + groupProblems.length
+console.log(`\n${results.length} diperiksa · ${failures} gagal · ${warns.length} perlu dilihat`)
 
-if (errors.length > 0) {
+if (errors.length > 0 || groupProblems.length > 0) {
   console.log('\nPerbaiki yang GAGAL sebelum deploy. Lihat .env.example untuk penjelasannya.')
   process.exitCode = 1
 }
