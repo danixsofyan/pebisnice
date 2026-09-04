@@ -186,6 +186,61 @@ export class AdminService {
     logger.info({ adminId, userId, days, until: newEnd }, 'admin granted access days')
   }
 
+  /** Semua paket, termasuk yang nonaktif, untuk halaman kelola paket. */
+  async listAllPlans() {
+    return db.select().from(plans).where(isNull(plans.deletedAt)).orderBy(asc(plans.sortOrder))
+  }
+
+  /**
+   * Memperbarui isi paket. Hanya memengaruhi checkout dan trial berikutnya —
+   * langganan yang sedang berjalan mempertahankan periode dan harganya.
+   */
+  async updatePlan(
+    planId: string,
+    fields: {
+      name: string
+      description: string | null
+      price: string
+      trialDays: number | null
+      isActive: boolean
+      sortOrder: number
+    },
+    adminId: string
+  ): Promise<void> {
+    const rows = await db
+      .update(plans)
+      .set(fields)
+      .where(and(eq(plans.id, planId), isNull(plans.deletedAt)))
+      .returning({ id: plans.id })
+
+    if (rows.length === 0) throw new ValidationError('Paket tidak ditemukan')
+    logger.info({ adminId, planId }, 'admin updated plan')
+  }
+
+  /** Membuat paket baru. Kode harus unik di antara paket yang belum dihapus. */
+  async createPlan(
+    fields: {
+      code: string
+      name: string
+      description: string | null
+      interval: 'trial' | 'monthly' | 'yearly'
+      price: string
+      trialDays: number | null
+      sortOrder: number
+    },
+    adminId: string
+  ): Promise<void> {
+    const clash = await db
+      .select({ id: plans.id })
+      .from(plans)
+      .where(and(eq(plans.code, fields.code), isNull(plans.deletedAt)))
+      .limit(1)
+    if (clash.length > 0) throw new ValidationError(`Kode paket "${fields.code}" sudah dipakai`)
+
+    await db.insert(plans).values(fields)
+    logger.info({ adminId, code: fields.code }, 'admin created plan')
+  }
+
   /** Mengubah status langganan (mis. membatalkan atau mengaktifkan kembali). */
   async setStatus(userId: string, status: SubscriptionStatus, adminId: string): Promise<void> {
     const rows = await db
