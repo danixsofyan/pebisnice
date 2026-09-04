@@ -22,6 +22,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { ThemeProvider } from '@/components/theme-provider'
 
 import { UnicornLoader } from '@/components/unicorn-loader'
+import { Analytics } from '@vercel/analytics/next'
 
 export default async function RootLayout({
   children,
@@ -44,6 +45,14 @@ export default async function RootLayout({
         >
           <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
+
+        {/*
+          Skripnya disuntik lewat document.createElement dari bundle klien yang
+          sudah ber-nonce, sehingga lolos CSP `strict-dynamic` tanpa perlu
+          melonggarkan script-src. Beacon-nya menuju /_vercel/insights pada
+          origin yang sama, jadi connect-src 'self' juga sudah mencukupi.
+        */}
+        <Analytics />
       </body>
     </html>
   )
