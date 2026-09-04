@@ -1,5 +1,5 @@
-import { and, desc, eq, isNull } from 'drizzle-orm'
-import { productionLogs, productionMaterials } from '@/lib/db/schema'
+import { and, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm'
+import { productionLogs, productionMaterials, teamMembers, users } from '@/lib/db/schema'
 import type { Transaction } from '@/lib/db/tenant'
 import { toDecimalString } from '@/lib/domain/money'
 import type { ProductionPlan } from '@/lib/domain/production/production-plan'
@@ -15,6 +15,8 @@ export interface RecordProductionInput {
   note: string | null
   plan: ProductionPlan
   actorId: string
+  producedBy: string | null
+  wageAmount: string
 }
 
 /** Cost-free summary shape, for roles without cost:view. */
@@ -47,6 +49,8 @@ export class ProductionRepository {
         productionDate: input.productionDate,
         totalMaterialCost: toDecimalString(input.plan.totalMaterialCost),
         unitCost: toDecimalString(input.plan.unitCost),
+        producedBy: input.producedBy,
+        wageAmount: input.wageAmount,
         note: input.note,
         createdBy: input.actorId,
         updatedBy: input.actorId,
@@ -89,6 +93,32 @@ export class ProductionRepository {
       .from(productionLogs)
       .where(where)
       .orderBy(desc(productionLogs.productionDate))
+  }
+
+  async workerReport(tx: Transaction, projectId: string, startDate: string, endDate: string) {
+    return tx
+      .select({
+        memberId: teamMembers.id,
+        name: users.name,
+        email: teamMembers.email,
+        totalQty: sql<number>`coalesce(sum(${productionLogs.quantity}), 0)::int`,
+        productVariety: sql<number>`count(distinct ${productionLogs.productVariantId})::int`,
+        daysWorked: sql<number>`count(distinct ${productionLogs.productionDate})::int`,
+        totalWage: sql<string>`coalesce(sum(${productionLogs.wageAmount}), 0)`,
+      })
+      .from(productionLogs)
+      .innerJoin(teamMembers, eq(teamMembers.id, productionLogs.producedBy))
+      .leftJoin(users, eq(users.id, teamMembers.userId))
+      .where(
+        and(
+          eq(productionLogs.projectId, projectId),
+          isNull(productionLogs.deletedAt),
+          gte(productionLogs.productionDate, startDate),
+          lte(productionLogs.productionDate, endDate)
+        )
+      )
+      .groupBy(teamMembers.id, users.name, teamMembers.email)
+      .orderBy(desc(sql`sum(${productionLogs.quantity})`))
   }
 }
 

@@ -21,6 +21,10 @@ const createProductSchema = z.object({
   sku: z.string().trim().max(60).optional(),
   variantName: z.string().trim().max(100).optional(),
   hpp: z.string().regex(/^\d+(\.\d{1,2})?$/, 'HPP harus angka'),
+  productionWage: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/, 'Upah harus angka')
+    .optional(),
   initialStock: z.number().int().min(0, 'Stok awal tidak boleh negatif'),
   imageKey: z.string().trim().max(200).optional(),
 })
@@ -46,6 +50,7 @@ export async function createProductAction(raw: unknown) {
           sku: parsed.data.sku ?? null,
           variantName: parsed.data.variantName ?? null,
           hpp: fromDecimalString(parsed.data.hpp),
+          productionWage: fromDecimalString(parsed.data.productionWage ?? '0'),
           initialStock: parsed.data.initialStock,
           imageKey: parsed.data.imageKey ?? null,
         },
@@ -73,6 +78,10 @@ const updateProductSchema = z.object({
   sku: z.string().trim().max(60).optional(),
   variantName: z.string().trim().max(100).optional(),
   hpp: z.string().regex(/^\d+(\.\d{1,2})?$/, 'HPP harus angka'),
+  productionWage: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/, 'Upah harus angka')
+    .optional(),
   imageKey: z.string().trim().max(200).nullable().optional(),
 })
 
@@ -97,6 +106,7 @@ export async function updateProductAction(raw: unknown) {
           sku: parsed.data.sku ?? null,
           variantName: parsed.data.variantName ?? null,
           hpp: fromDecimalString(parsed.data.hpp),
+          productionWage: fromDecimalString(parsed.data.productionWage ?? '0'),
           imageKey: parsed.data.imageKey ?? null,
         },
         {

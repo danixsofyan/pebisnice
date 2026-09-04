@@ -2,6 +2,7 @@ import { date, index, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { branches } from './branches'
 import { productVariants } from './catalog'
+import { teamMembers } from './team'
 import { actorColumns, tenantColumn } from './columns'
 import { lifecycleColumns, money } from './primitives'
 
@@ -21,6 +22,10 @@ export const productionLogs = pgTable(
     productionDate: date('production_date').notNull(),
     totalMaterialCost: money('total_material_cost').default('0').notNull(),
     unitCost: money('unit_cost').default('0').notNull(),
+    // The worker credited for this run (KPI/attendance/piece-rate); may differ from created_by.
+    producedBy: uuid('produced_by').references(() => teamMembers.id, { onDelete: 'set null' }),
+    // Snapshot of quantity * production_wage at record time, so past payroll is stable if rates change.
+    wageAmount: money('wage_amount').default('0').notNull(),
     note: text('note'),
     ...actorColumns,
     ...lifecycleColumns,
@@ -33,6 +38,7 @@ export const productionLogs = pgTable(
       .on(t.branchId)
       .where(sql`${t.deletedAt} is null`),
     index('production_variant_id_idx').on(t.productVariantId),
+    index('production_produced_by_idx').on(t.producedBy, t.productionDate),
     index('production_date_idx').on(t.productionDate.desc()),
     index('production_created_by_idx').on(t.createdBy),
     index('production_updated_by_idx').on(t.updatedBy),

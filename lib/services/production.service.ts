@@ -1,9 +1,11 @@
+import { and, eq } from 'drizzle-orm'
+import { teamMembers } from '@/lib/db/schema'
 import { productionRepository } from '@/lib/repositories/production.repository'
 import { productRepository } from '@/lib/repositories/product.repository'
 import { inventoryRepository } from '@/lib/repositories/inventory.repository'
 import { auditRepository } from '@/lib/repositories/audit.repository'
 import { withTenant } from '@/lib/db/tenant'
-import { fromDecimalString } from '@/lib/domain/money'
+import { fromDecimalString, toDecimalString } from '@/lib/domain/money'
 import { planProduction } from '@/lib/domain/production/production-plan'
 import { planStockMovement } from '@/lib/domain/inventory/stock-movement'
 import { checkPermission, requireBranchAccess, requirePermission } from '@/lib/rbac'
@@ -25,6 +27,8 @@ export interface RecordProductionRequest {
   productionDate: string
   note: string | null
   materials: MaterialUsageRequest[]
+  /** Team member credited for the run; defaults to the actor's own membership. */
+  producedByMemberId?: string | null
 }
 
 export interface ProductionContext {
@@ -75,6 +79,17 @@ export class ProductionService {
 
       const plan = planProduction(request.quantity, usages)
 
+      // Credit the worker: an explicit member (validated in-tenant) or the actor's own membership.
+      const producedBy = await resolveProducedBy(
+        tx,
+        request.projectId,
+        request.producedByMemberId ?? null,
+        context.userId
+      )
+      const wageAmount = toDecimalString(
+        fromDecimalString(finished.productionWage) * BigInt(request.quantity)
+      )
+
       const log = await productionRepository.insertLog(tx, {
         projectId: request.projectId,
         branchId: request.branchId,
@@ -83,6 +98,8 @@ export class ProductionService {
         note: request.note,
         plan,
         actorId: context.userId,
+        producedBy,
+        wageAmount,
       })
 
       for (const material of plan.materials) {
@@ -168,6 +185,55 @@ export class ProductionService {
       productionRepository.listByBranch(tx, projectId, branchId, canViewCost)
     )
   }
+
+  // Per-worker production over a period: output, variety, days worked (attendance basis),
+  // and piece-rate wage. Gated report:view (management/finance), which never includes the
+  // production role itself.
+  async workerReport(
+    projectId: string,
+    userId: string,
+    range: { startDate: string; endDate: string }
+  ): Promise<WorkerProductionRow[]> {
+    await requirePermission(projectId, userId, 'report:view')
+
+    return withTenant(projectId, (tx) =>
+      productionRepository.workerReport(tx, projectId, range.startDate, range.endDate)
+    )
+  }
+}
+
+// Resolve the credited worker: an explicit membership (must belong to the project) or the
+// actor's own membership; null when neither resolves (e.g. an owner with no member row).
+async function resolveProducedBy(
+  tx: Parameters<Parameters<typeof withTenant>[1]>[0],
+  projectId: string,
+  requestedMemberId: string | null,
+  actorUserId: string
+): Promise<string | null> {
+  if (requestedMemberId) {
+    const [member] = await tx
+      .select({ id: teamMembers.id })
+      .from(teamMembers)
+      .where(and(eq(teamMembers.id, requestedMemberId), eq(teamMembers.projectId, projectId)))
+      .limit(1)
+    return member?.id ?? null
+  }
+  const [own] = await tx
+    .select({ id: teamMembers.id })
+    .from(teamMembers)
+    .where(and(eq(teamMembers.userId, actorUserId), eq(teamMembers.projectId, projectId)))
+    .limit(1)
+  return own?.id ?? null
+}
+
+export interface WorkerProductionRow {
+  memberId: string
+  name: string | null
+  email: string
+  totalQty: number
+  productVariety: number
+  daysWorked: number
+  totalWage: string
 }
 
 export const productionService = new ProductionService()

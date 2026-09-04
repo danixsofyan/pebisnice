@@ -1,6 +1,8 @@
+import Link from 'next/link'
 import { getAccessibleBranches, getSessionContext } from '@/lib/auth/session-context'
 import { catalogService } from '@/lib/services/catalog.service'
 import { productionService } from '@/lib/services/production.service'
+import { teamService } from '@/lib/services/team.service'
 import { hasRolePermission } from '@/lib/authz/permissions'
 import { ProductionForm } from '@/components/production/production-form'
 
@@ -43,6 +45,15 @@ export default async function ProductionPage() {
     }))
 
   const canManage = hasRolePermission(context.role, 'production:manage')
+  const canManageTeam = hasRolePermission(context.role, 'team:manage')
+  const canViewReport = hasRolePermission(context.role, 'report:view')
+
+  // Only managers may credit another worker; a production worker records for themselves.
+  const workerOptions = canManageTeam
+    ? (await teamService.list(context.projectId, context.userId))
+        .filter((m) => m.status !== 'disabled')
+        .map((m) => ({ memberId: m.id, label: `${m.name ?? m.email} · ${m.role}` }))
+    : []
 
   return (
     <div className="space-y-6">
@@ -51,19 +62,30 @@ export default async function ProductionPage() {
           <h1 className="text-xl font-bold">Produksi</h1>
           <p className="text-muted-foreground text-sm">Cabang {branch.name}</p>
         </div>
-        {canManage ? (
-          finishedOptions.length === 0 || materialOptions.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Butuh minimal satu produk jadi dan satu bahan.
-            </p>
-          ) : (
-            <ProductionForm
-              branchId={branch.id}
-              finishedOptions={finishedOptions}
-              materialOptions={materialOptions}
-            />
-          )
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {canViewReport ? (
+            <Link
+              href="/production/workers"
+              className="border-input hover:bg-muted/40 inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+            >
+              Laporan tim
+            </Link>
+          ) : null}
+          {canManage ? (
+            finishedOptions.length === 0 || materialOptions.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Butuh minimal satu produk jadi dan satu bahan.
+              </p>
+            ) : (
+              <ProductionForm
+                branchId={branch.id}
+                finishedOptions={finishedOptions}
+                materialOptions={materialOptions}
+                workerOptions={workerOptions}
+              />
+            )
+          ) : null}
+        </div>
       </div>
 
       {logs.length === 0 ? (

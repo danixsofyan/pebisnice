@@ -11,12 +11,23 @@ export interface VariantWithoutCost {
 export interface VariantWithCost extends VariantWithoutCost {
   hpp: string
   hppUpdatedAt: Date | null
+  productionWage: string
 }
 
 export type VariantView = VariantWithoutCost | VariantWithCost
 
 // Column names considered cost-revealing; also used by tests.
-export const COST_FIELDS = ['hpp', 'hppUpdatedAt', 'hpp_at_time', 'cost', 'costAmount'] as const
+export const COST_FIELDS = [
+  'hpp',
+  'hppUpdatedAt',
+  'hpp_at_time',
+  'cost',
+  'costAmount',
+  'productionWage',
+  'production_wage',
+  'wageAmount',
+  'wage_amount',
+] as const
 
 export function hasCost(variant: VariantView): variant is VariantWithCost {
   return 'hpp' in variant

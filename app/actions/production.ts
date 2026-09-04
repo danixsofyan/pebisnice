@@ -13,6 +13,7 @@ const recordProductionSchema = z.object({
   productVariantId: z.string().uuid('Produk jadi tidak valid'),
   quantity: z.number().int().min(1, 'Jumlah minimal 1'),
   productionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Tanggal tidak valid'),
+  producedByMemberId: z.string().uuid('Pekerja tidak valid').optional(),
   note: z.string().trim().max(300).optional(),
   materials: z
     .array(
@@ -45,6 +46,7 @@ export async function recordProductionAction(raw: unknown) {
           productionDate: parsed.data.productionDate,
           note: parsed.data.note ?? null,
           materials: parsed.data.materials,
+          producedByMemberId: parsed.data.producedByMemberId ?? null,
         },
         { userId: context.userId, ip: meta.ip, userAgent: meta.userAgent }
       )

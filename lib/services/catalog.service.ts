@@ -26,6 +26,8 @@ export interface CreateProductRequest {
   variantName: string | null
   /** Initial HPP; applied only if the caller has cost:view. */
   hpp: Money
+  /** Piece-rate production wage per unit; applied only if the caller has cost:view. */
+  productionWage: Money
   initialStock: number
   /** Object key of a previously uploaded photo. */
   imageKey: string | null
@@ -40,6 +42,8 @@ export interface UpdateProductRequest {
   variantName: string | null
   /** New HPP; applied only if the caller has cost:view. */
   hpp: Money
+  /** New piece-rate production wage per unit; applied only if the caller has cost:view. */
+  productionWage: Money
   /** Photo key: unchanged, a new key, or null to remove. */
   imageKey: string | null
 }
@@ -60,6 +64,8 @@ export interface ProductListItem {
   stockQty: number
   /** Set only for roles with cost:view. */
   hpp: string | null
+  /** Piece-rate production wage per unit; set only for roles with cost:view. */
+  productionWage: string | null
   /** Photo object key, or null; turned into a proxy URL in the view layer. */
   imageKey: string | null
 }
@@ -93,6 +99,7 @@ export class CatalogService {
         variantName: request.variantName ? sanitizeText(request.variantName) : null,
         skuVariant: request.sku ? sanitizeText(request.sku) : null,
         hpp: canViewCost ? toDecimalString(request.hpp) : '0',
+        productionWage: canViewCost ? toDecimalString(request.productionWage) : '0',
         createdBy: userId,
         updatedBy: userId,
       })
@@ -249,7 +256,12 @@ export class CatalogService {
         .set({
           variantName: request.variantName ? sanitizeText(request.variantName) : null,
           skuVariant: request.sku ? sanitizeText(request.sku) : null,
-          ...(canViewCost ? { hpp: toDecimalString(request.hpp) } : {}),
+          ...(canViewCost
+            ? {
+                hpp: toDecimalString(request.hpp),
+                productionWage: toDecimalString(request.productionWage),
+              }
+            : {}),
           ...(costChanged ? { hppUpdatedAt: new Date() } : {}),
           updatedBy: context.userId,
         })
@@ -314,6 +326,7 @@ export class CatalogService {
           variantName: productVariants.variantName,
           stockQty: inventory.stockQty,
           hpp: productVariants.hpp,
+          productionWage: productVariants.productionWage,
           imageKey: products.imageKey,
         })
         .from(productVariants)
@@ -345,6 +358,7 @@ export class CatalogService {
       variantName: row.variantName,
       stockQty: row.stockQty ?? 0,
       hpp: canViewCost ? row.hpp : null,
+      productionWage: canViewCost ? row.productionWage : null,
       imageKey: row.imageKey,
     }))
   }
@@ -371,6 +385,7 @@ export class CatalogService {
         sku: row.sku,
         variantName: row.variantName,
         hpp: fromDecimalString(row.hpp),
+        productionWage: ZERO,
         initialStock: row.initialStock,
         imageKey: null,
       }

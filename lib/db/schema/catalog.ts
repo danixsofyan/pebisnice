@@ -50,6 +50,8 @@ export const productVariants = pgTable(
     variantName: text('variant_name'),
     hpp: money('hpp').default('0').notNull(),
     hppUpdatedAt: tz('hpp_updated_at').defaultNow(),
+    // Piece-rate wage paid to the production worker per unit made (upah borongan).
+    productionWage: money('production_wage').default('0').notNull(),
     ...actorColumns,
     ...lifecycleColumns,
   },

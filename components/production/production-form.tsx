@@ -17,21 +17,29 @@ interface MaterialRow {
   qty: string
 }
 
+interface WorkerOption {
+  memberId: string
+  label: string
+}
+
 // Production form: one finished good, several materials used. Material stock goes down and finished stock up in one server transaction.
 export function ProductionForm({
   branchId,
   finishedOptions,
   materialOptions,
+  workerOptions,
 }: {
   branchId: string
   finishedOptions: VariantOption[]
   materialOptions: VariantOption[]
+  workerOptions: WorkerOption[]
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [productVariantId, setProductVariantId] = useState('')
   const [quantity, setQuantity] = useState('1')
   const [productionDate, setProductionDate] = useState(new Date().toISOString().slice(0, 10))
+  const [producedByMemberId, setProducedByMemberId] = useState('')
   const [note, setNote] = useState('')
   const [materials, setMaterials] = useState<MaterialRow[]>([{ productVariantId: '', qty: '1' }])
   const [error, setError] = useState<string | null>(null)
@@ -50,6 +58,7 @@ export function ProductionForm({
         productVariantId,
         quantity: Number(quantity || 0),
         productionDate,
+        producedByMemberId: producedByMemberId || undefined,
         note: note.trim() || undefined,
         materials: materials
           .filter((m) => m.productVariantId)
@@ -58,6 +67,7 @@ export function ProductionForm({
       if (!result.success) return setError(result.error)
       setProductVariantId('')
       setQuantity('1')
+      setProducedByMemberId('')
       setNote('')
       setMaterials([{ productVariantId: '', qty: '1' }])
       setOpen(false)
@@ -107,6 +117,24 @@ export function ProductionForm({
             required
           />
         </div>
+        {workerOptions.length > 0 ? (
+          <div className="space-y-2">
+            <Label htmlFor="prod-worker">Diproduksi oleh</Label>
+            <select
+              id="prod-worker"
+              value={producedByMemberId}
+              onChange={(e) => setProducedByMemberId(e.target.value)}
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+            >
+              <option value="">Saya sendiri</option>
+              {workerOptions.map((o) => (
+                <option key={o.memberId} value={o.memberId}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
         <div className="space-y-2">
           <Label htmlFor="prod-note">Catatan (opsional)</Label>
           <Input id="prod-note" value={note} onChange={(e) => setNote(e.target.value)} />

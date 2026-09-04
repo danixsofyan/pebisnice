@@ -86,6 +86,7 @@ describe('bentuk tampilan varian', () => {
     ...withoutCost,
     hpp: '12500.00',
     hppUpdatedAt: new Date('2026-01-01T00:00:00Z'),
+    productionWage: '500.00',
   }
 
   it('membedakan kedua bentuk lewat type guard', () => {

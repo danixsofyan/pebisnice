@@ -20,6 +20,7 @@ const VARIANT_COLUMNS_WITH_COST = {
   ...VARIANT_COLUMNS_WITHOUT_COST,
   hpp: productVariants.hpp,
   hppUpdatedAt: productVariants.hppUpdatedAt,
+  productionWage: productVariants.productionWage,
 } as const
 
 export class ProductRepository {

@@ -22,6 +22,8 @@ export interface EditableProduct {
   variantName: string | null
   /** Decimal string, or null if the role can't see HPP. */
   hpp: string | null
+  /** Decimal string, or null if the role can't see cost. */
+  productionWage: string | null
   imageKey: string | null
 }
 
@@ -46,6 +48,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
   const [sku, setSku] = useState(product?.sku ?? '')
   const [variantName, setVariantName] = useState(product?.variantName ?? '')
   const [hpp, setHpp] = useState(product?.hpp ?? '')
+  const [productionWage, setProductionWage] = useState(product?.productionWage ?? '')
   const [initialStock, setInitialStock] = useState('')
 
   const [imageKey, setImageKey] = useState<string | null>(savedKey)
@@ -109,6 +112,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
     setSku('')
     setVariantName('')
     setHpp('')
+    setProductionWage('')
     setInitialStock('')
     setImageKey(null)
     setUnsavedKey(null)
@@ -138,6 +142,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
             sku: sku.trim() || undefined,
             variantName: variantName.trim() || undefined,
             hpp: Number(hpp || 0).toFixed(2),
+            productionWage: Number(productionWage || 0).toFixed(2),
             imageKey,
           })
         : await createProductAction({
@@ -147,6 +152,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
             sku: sku.trim() || undefined,
             variantName: variantName.trim() || undefined,
             hpp: Number(hpp || 0).toFixed(2),
+            productionWage: Number(productionWage || 0).toFixed(2),
             initialStock: Number(initialStock || 0),
             imageKey: imageKey ?? undefined,
           })
@@ -222,6 +228,19 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
               id="p-hpp"
               value={hpp}
               onChange={(e) => setHpp(e.target.value)}
+              inputMode="numeric"
+              placeholder="0"
+            />
+          </div>
+        ) : null}
+
+        {canViewCost && type === 'finished' ? (
+          <div className="space-y-2">
+            <Label htmlFor="p-wage">Upah produksi / unit</Label>
+            <Input
+              id="p-wage"
+              value={productionWage}
+              onChange={(e) => setProductionWage(e.target.value)}
               inputMode="numeric"
               placeholder="0"
             />
