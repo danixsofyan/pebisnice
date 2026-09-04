@@ -15,6 +15,8 @@ import {
   Landmark,
   Contact,
   ArrowLeftRight,
+  ShoppingBag,
+  Truck,
   Settings,
 } from 'lucide-react'
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar'
@@ -55,6 +57,16 @@ const mainNavItems = [
     title: 'Transfer Stok',
     url: '/transfers',
     icon: ArrowLeftRight,
+  },
+  {
+    title: 'Pembelian',
+    url: '/purchases',
+    icon: ShoppingBag,
+  },
+  {
+    title: 'Supplier',
+    url: '/suppliers',
+    icon: Truck,
   },
   {
     title: 'Produksi',

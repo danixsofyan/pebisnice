@@ -9,6 +9,7 @@ export type MovementType =
   | 'initial'
   | 'transfer_out'
   | 'transfer_in'
+  | 'purchase'
 
 // Stock movement command; shaped per kind so the type forces correct input: sale needs a positive qty, adjustment a signed delta, opname a counted qty.
 export type StockMovementCommand =
@@ -20,6 +21,7 @@ export type StockMovementCommand =
   | { type: 'initial'; qty: number }
   | { type: 'transfer_out'; qty: number; referenceId?: string }
   | { type: 'transfer_in'; qty: number; referenceId?: string }
+  | { type: 'purchase'; qty: number; referenceId?: string }
 
 export interface PlannedStockMovement {
   movementType: MovementType
@@ -68,6 +70,7 @@ function resolveDelta(command: StockMovementCommand, currentQty: number): number
     case 'return':
     case 'cancellation':
     case 'transfer_in':
+    case 'purchase':
       assertPositiveInteger(command.qty, 'qty')
       return command.qty
 
@@ -106,7 +109,8 @@ function resolveReferenceId(command: StockMovementCommand): string | null {
     command.type === 'return' ||
     command.type === 'cancellation' ||
     command.type === 'transfer_out' ||
-    command.type === 'transfer_in'
+    command.type === 'transfer_in' ||
+    command.type === 'purchase'
   ) {
     return command.referenceId ?? null
   }

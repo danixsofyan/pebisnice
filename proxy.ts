@@ -23,6 +23,8 @@ const PROTECTED_ROUTES = [
   '/finance',
   '/customers',
   '/transfers',
+  '/suppliers',
+  '/purchases',
   '/onboarding',
   '/billing',
   '/admin',
