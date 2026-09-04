@@ -20,4 +20,14 @@ describe('parseCsv', () => {
   it('drops fully blank lines', () => {
     expect(parseCsv('a\n\n\nb')).toEqual([['a'], ['b']])
   })
+  it('treats CRLF and lone CR as row separators', () => {
+    expect(parseCsv('a,b\r\n1,2')).toEqual([
+      ['a', 'b'],
+      ['1', '2'],
+    ])
+    expect(parseCsv('a,b\r1,2')).toEqual([
+      ['a', 'b'],
+      ['1', '2'],
+    ])
+  })
 })

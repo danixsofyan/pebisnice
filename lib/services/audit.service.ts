@@ -1,7 +1,10 @@
 import { and, desc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { auditLogs, users } from '@/lib/db/schema'
+import { auditActionEnum } from '@/lib/db/schema/enums'
 import { requirePermission } from '@/lib/rbac'
+
+type AuditAction = (typeof auditActionEnum.enumValues)[number]
 
 export interface AuditFilter {
   action?: string
@@ -28,7 +31,10 @@ export class AuditService {
     await requirePermission(projectId, userId, 'project:edit')
 
     const conditions = [eq(auditLogs.projectId, projectId)]
-    if (filter.action) conditions.push(eq(auditLogs.action, filter.action as 'create'))
+    // Only push a known enum value; an unknown action would make Postgres reject the query.
+    if (filter.action && (auditActionEnum.enumValues as string[]).includes(filter.action)) {
+      conditions.push(eq(auditLogs.action, filter.action as AuditAction))
+    }
     if (filter.resource) conditions.push(eq(auditLogs.resource, filter.resource))
 
     return db

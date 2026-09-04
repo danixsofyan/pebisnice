@@ -11,6 +11,9 @@ import { handleActionError, ValidationError } from '@/lib/errors/app-error'
 import { parseCsv } from '@/lib/import/csv-parse'
 import { parseProductRows } from '@/lib/import/product-import'
 
+const MAX_IMPORT_BYTES = 2 * 1024 * 1024
+const MAX_IMPORT_ROWS = 1000
+
 const createProductSchema = z.object({
   branchId: z.string().uuid('Cabang tidak valid'),
   name: z.string().trim().min(1, 'Nama produk wajib diisi').max(150),
@@ -167,11 +170,17 @@ export async function importProductsAction(formData: FormData) {
       const file = formData.get('file')
       if (!branchId) throw new ValidationError('Cabang wajib dipilih')
       if (!(file instanceof File)) throw new ValidationError('Berkas CSV tidak ditemukan')
+      if (file.size > MAX_IMPORT_BYTES) {
+        throw new ValidationError('Berkas CSV terlalu besar (maks 2 MB)')
+      }
 
       const text = await file.text()
       const { rows, errors } = parseProductRows(parseCsv(text))
       if (rows.length === 0) {
         throw new ValidationError(errors[0]?.message ?? 'Tidak ada baris yang bisa diimpor')
+      }
+      if (rows.length > MAX_IMPORT_ROWS) {
+        throw new ValidationError(`Maksimum ${MAX_IMPORT_ROWS} baris per impor`)
       }
 
       const headersList = await headers()

@@ -33,7 +33,12 @@ export function parseCsv(text: string): string[][] {
       row = []
       cell = ''
     } else if (ch === '\r') {
-      // ignore; handled by the following \n
+      // CRLF: let the following \n end the row; lone CR (classic Mac) ends it here.
+      if (input[i + 1] === '\n') continue
+      row.push(cell)
+      rows.push(row)
+      row = []
+      cell = ''
     } else {
       cell += ch
     }

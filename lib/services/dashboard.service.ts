@@ -38,7 +38,9 @@ export class DashboardService {
         isNull(transactions.voidedAt),
         isNull(transactions.deletedAt),
         gte(transactions.orderDate, start),
-        lte(transactions.orderDate, end)
+        lte(transactions.orderDate, end),
+        // Keep these panels consistent with the branch-scoped KPIs above.
+        ...(branchId ? [eq(transactions.branchId, branchId)] : [])
       )
 
       const topProducts = await tx
