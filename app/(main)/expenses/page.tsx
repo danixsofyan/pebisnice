@@ -62,7 +62,17 @@ export default async function ExpensesPage() {
             Bulan ini · total {formatRupiahFromDecimal(String(total))}
           </p>
         </div>
-        {canManage ? <ExpenseForm branches={branches} today={today} /> : null}
+        <div className="flex items-center gap-2">
+          {items.length > 0 ? (
+            <a
+              href={`/api/v1/export/expenses?start=${start}&end=${end}`}
+              className="border-input hover:bg-muted/40 inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+            >
+              Export CSV
+            </a>
+          ) : null}
+          {canManage ? <ExpenseForm branches={branches} today={today} /> : null}
+        </div>
       </div>
 
       {items.length === 0 ? (

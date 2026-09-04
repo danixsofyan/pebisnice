@@ -39,11 +39,21 @@ export default async function TransactionsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold">Transaksi Kasir</h1>
-        <p className="text-muted-foreground text-sm">
-          {completed.length} transaksi selesai · {formatRupiahFromDecimal(String(totalNet))}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold">Transaksi Kasir</h1>
+          <p className="text-muted-foreground text-sm">
+            {completed.length} transaksi selesai · {formatRupiahFromDecimal(String(totalNet))}
+          </p>
+        </div>
+        {sales.length > 0 ? (
+          <a
+            href="/api/v1/export/transactions"
+            className="border-input hover:bg-muted/40 inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+          >
+            Export CSV
+          </a>
+        ) : null}
       </div>
 
       {sales.length === 0 ? (
