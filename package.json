@@ -16,7 +16,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:build-deploy": "tsx scripts/build-deploy-sql.ts"
+    "db:build-deploy": "tsx scripts/build-deploy-sql.ts",
+    "env:check": "tsx scripts/check-env.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
