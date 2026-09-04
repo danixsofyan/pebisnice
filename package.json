@@ -32,7 +32,7 @@
     "drizzle-orm": "^0.45.2",
     "exceljs": "^4.4.0",
     "file-type": "^22.0.2",
-    "isomorphic-dompurify": "^4.1.0",
+    "isomorphic-dompurify": "^3.19.0",
     "lru-cache": "^11.5.2",
     "lucide-react": "^1.40.0",
     "nanoid": "^6.0.1",

@@ -3,6 +3,7 @@ import NextAuth from 'next-auth'
 import { authConfig } from './auth.config'
 import { applySecurityHeaders, buildCsp, generateNonce } from '@/lib/security/headers'
 import { checkRateLimit } from '@/lib/security/rate-limiter'
+import { REQUEST_ID_HEADER } from '@/lib/observability/request-context'
 
 const { auth } = NextAuth(authConfig)
 
@@ -24,7 +25,21 @@ const PROTECTED_ROUTES = [
 const AUTH_ROUTES = ['/login']
 const PUBLIC_API_ROUTES = ['/api/v1/webhooks', '/api/health']
 
+/**
+ * Id korelasi untuk satu permintaan.
+ *
+ * Menghormati `x-request-id` yang sudah ada agar rantai dari proxy atau load
+ * balancer di depan tidak terputus; membuat yang baru bila belum ada.
+ */
+function resolveRequestId(request: NextRequest): string {
+  const incoming = request.headers.get(REQUEST_ID_HEADER)
+  if (incoming && /^[\w-]{8,128}$/.test(incoming)) return incoming
+
+  return crypto.randomUUID()
+}
+
 export async function proxy(request: NextRequest) {
+  const requestId = resolveRequestId(request)
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
     request.headers.get('x-real-ip') ??
@@ -37,6 +52,8 @@ export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('content-security-policy', csp)
   requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set(REQUEST_ID_HEADER, requestId)
+  requestHeaders.set('x-pathname', request.nextUrl.pathname)
   const forward = { request: { headers: requestHeaders } }
 
   const path = request.nextUrl.pathname
@@ -59,6 +76,7 @@ export async function proxy(request: NextRequest) {
     response.headers.set('Retry-After', String(resetAt))
     response.headers.set('X-RateLimit-Limit', String(rateLimitMax))
     response.headers.set('X-RateLimit-Remaining', '0')
+    response.headers.set(REQUEST_ID_HEADER, requestId)
     return applySecurityHeaders(response, csp)
   }
 
@@ -66,6 +84,7 @@ export async function proxy(request: NextRequest) {
   if (isPublicApi) {
     const response = NextResponse.next(forward)
     response.headers.set('X-RateLimit-Remaining', String(remaining))
+    response.headers.set(REQUEST_ID_HEADER, requestId)
     return applySecurityHeaders(response, csp)
   }
 
@@ -80,6 +99,7 @@ export async function proxy(request: NextRequest) {
     url.pathname = '/login'
     url.searchParams.set('redirect', encodeURIComponent(path))
     const redirect = NextResponse.redirect(url)
+    redirect.headers.set(REQUEST_ID_HEADER, requestId)
     return applySecurityHeaders(redirect, csp)
   }
 
@@ -87,6 +107,7 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     const redirect = NextResponse.redirect(url)
+    redirect.headers.set(REQUEST_ID_HEADER, requestId)
     return applySecurityHeaders(redirect, csp)
   }
 
@@ -94,11 +115,13 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = user ? '/dashboard' : '/login'
     const redirect = NextResponse.redirect(url)
+    redirect.headers.set(REQUEST_ID_HEADER, requestId)
     return applySecurityHeaders(redirect, csp)
   }
 
   const response = NextResponse.next(forward)
   response.headers.set('X-RateLimit-Remaining', String(remaining))
+  response.headers.set(REQUEST_ID_HEADER, requestId)
   return applySecurityHeaders(response, csp)
 }
 

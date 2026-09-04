@@ -1,3 +1,31 @@
+import { logger } from '@/lib/logging/logger'
+import { getRequestContext } from '@/lib/observability/request-context'
+
+/**
+ * Mencatat error tak terduga secara terstruktur dan mengembalikan requestId.
+ *
+ * Sengaja memuat nama, pesan, dan stack sebagai bidang terpisah — bukan satu
+ * string — supaya bisa dicari dan dikelompokkan di Vercel Logs.
+ */
+function logUnexpected(error: unknown, message: string): string {
+  const requestId = getRequestContext()?.requestId ?? 'unknown'
+
+  logger.error(
+    {
+      requestId,
+      err: {
+        name: error instanceof Error ? error.name : typeof error,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        cause: error instanceof Error && error.cause ? String(error.cause) : undefined,
+      },
+    },
+    message
+  )
+
+  return requestId
+}
+
 export class AppError extends Error {
   constructor(
     message: string,
@@ -44,9 +72,18 @@ export class RateLimitError extends AppError {
   }
 }
 
+/**
+ * Mengubah error menjadi hasil server action yang aman dikirim ke browser.
+ *
+ * Error operasional (validasi, izin, tidak ditemukan) memang untuk dibaca
+ * pengguna. Error tak terduga dicatat lengkap ke log dengan requestId, tetapi
+ * yang dikirim balik hanya pesan umum plus id itu — supaya pengguna punya
+ * sesuatu untuk disebutkan saat melapor tanpa membocorkan isi sistem.
+ */
 export function handleActionError(error: unknown): {
   success: false
   error: string
+  requestId?: string
   fieldErrors?: Record<string, string[]>
 } {
   if (error instanceof ValidationError) {
@@ -63,9 +100,13 @@ export function handleActionError(error: unknown): {
     return { success: false, error: error.message }
   }
 
-  console.error('[Unexpected Error]', error)
+  const requestId = logUnexpected(error, 'server action failed')
 
-  return { success: false, error: 'Terjadi kesalahan server. Tim kami sudah diberitahu.' }
+  return {
+    success: false,
+    error: `Terjadi kesalahan server. Sebutkan kode ini bila melapor: ${requestId}`,
+    requestId,
+  }
 }
 
 export function errorToResponse(error: unknown): Response {
@@ -73,6 +114,10 @@ export function errorToResponse(error: unknown): Response {
     return Response.json({ error: error.message, code: error.code }, { status: error.statusCode })
   }
 
-  console.error('[API Error]', error)
-  return Response.json({ error: 'Internal Server Error', code: 'INTERNAL_ERROR' }, { status: 500 })
+  const requestId = logUnexpected(error, 'api route failed')
+
+  return Response.json(
+    { error: 'Internal Server Error', code: 'INTERNAL_ERROR', requestId },
+    { status: 500 }
+  )
 }

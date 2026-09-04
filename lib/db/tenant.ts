@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { isValidUuid } from '@/lib/security/sanitizer'
+import { isValidUuid } from '@/lib/security/uuid'
 import { AppError } from '@/lib/errors/app-error'
 
 export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]

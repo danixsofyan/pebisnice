@@ -82,7 +82,7 @@ describe('tidak ada konfigurasi yang ditulis mati', () => {
     )
 
     // Disediakan runtime, bukan oleh kita.
-    const PROVIDED_BY_RUNTIME = new Set(['NODE_ENV'])
+    const PROVIDED_BY_RUNTIME = new Set(['NODE_ENV', 'VERCEL_ENV'])
 
     const used = new Set<string>()
     for (const file of SOURCE_FILES) {

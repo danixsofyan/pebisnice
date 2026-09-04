@@ -1,5 +1,7 @@
 import DOMPurify from 'isomorphic-dompurify'
 
+export { isValidUuid } from './uuid'
+
 const PLAIN_TEXT_CONFIG = {
   ALLOWED_TAGS: [],
   ALLOWED_ATTR: [],
@@ -37,6 +39,3 @@ export function sanitizeUrl(input: string): string | null {
   }
 }
 
-export function isValidUuid(id: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
-}
