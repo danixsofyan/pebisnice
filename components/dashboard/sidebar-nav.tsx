@@ -9,6 +9,7 @@ import {
   Boxes,
   Package,
   Wallet,
+  Coins,
   Users,
   Settings,
 } from 'lucide-react'
@@ -40,6 +41,11 @@ const mainNavItems = [
     title: 'Inventaris',
     url: '/inventory',
     icon: Package,
+  },
+  {
+    title: 'Pengeluaran',
+    url: '/expenses',
+    icon: Coins,
   },
   {
     title: 'Laporan Keuangan',
