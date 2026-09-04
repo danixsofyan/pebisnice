@@ -1,19 +1,11 @@
 import type { NextConfig } from 'next'
-import { storageHostname } from './lib/storage'
 
-// Host storage diturunkan dari NEXT_PUBLIC_STORAGE_BASE_URL lewat satu helper
-// bersama, supaya daftar host di sini tidak bisa berbeda dengan yang diizinkan
-// CSP di lib/security/headers.ts.
-const remoteImageHosts = ['lh3.googleusercontent.com', storageHostname()].filter(
-  (host): host is string => Boolean(host)
-)
-
+// Foto Google untuk avatar login. Berkas unggahan tidak lewat next/image dari
+// host luar — disajikan proxy satu-origin di app/api/v1/files, jadi tak ada
+// host penyedia storage yang perlu diizinkan.
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: remoteImageHosts.map((hostname) => ({
-      protocol: 'https' as const,
-      hostname,
-    })),
+    remotePatterns: [{ protocol: 'https', hostname: 'lh3.googleusercontent.com' }],
   },
 }
 

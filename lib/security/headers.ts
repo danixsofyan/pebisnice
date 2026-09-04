@@ -1,5 +1,4 @@
 import type { NextResponse } from 'next/server'
-import { storageHostname } from '@/lib/storage'
 
 export function generateNonce(): string {
   const array = new Uint8Array(16)
@@ -9,9 +8,6 @@ export function generateNonce(): string {
 
 export function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV === 'development'
-  const host = storageHostname()
-  const storageHost = host ? ` https://${host}` : ''
-
   const directives = [
     `default-src 'self'`,
 
@@ -25,7 +21,9 @@ export function buildCsp(nonce: string): string {
     `style-src 'self' 'unsafe-inline'`,
     `font-src 'self'`,
 
-    `img-src 'self' data: blob: https://lh3.googleusercontent.com${storageHost}`,
+    // Berkas unggahan disajikan proxy satu-origin (`/api/v1/files`), jadi
+    // tercakup 'self'; tidak ada host penyedia storage yang diizinkan di sini.
+    `img-src 'self' data: blob: https://lh3.googleusercontent.com`,
 
     `connect-src 'self'${isDev ? ' ws://localhost:*' : ''}`,
 

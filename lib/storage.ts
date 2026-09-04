@@ -1,52 +1,11 @@
 /**
- * Membangun URL objek publik untuk berkas yang diunggah pengguna.
- *
- * Yang disimpan di environment adalah base URL utuh, bukan sekadar nama host.
- * Sebelumnya kode menyusun sendiri `/storage/v1/object/public/...` — bentuk
- * jalur milik Supabase — sehingga pindah ke penyedia lain (Cloudflare R2,
- * MinIO, Wasabi) berarti menyunting kode, bukan mengubah konfigurasi. Dengan
- * base URL, perbedaan bentuk jalur antar penyedia hilang dari kode:
- *
- *   Supabase  https://<ref>.supabase.co/storage/v1/object/public
- *   R2        https://pub-<id>.r2.dev
- *   MinIO     https://minio.example.com/<bucket>
- *
- * Mengembalikan `null` bila variabelnya belum diisi, supaya pemanggil bisa
- * memilih tampilan pengganti alih-alih menampilkan gambar rusak.
- *
- * Aset dekoratif aplikasi TIDAK memakai ini — lihat `LOGIN_BACKGROUND`.
+ * Titik masuk lama untuk aset. Model URL publik sudah dibuang: bucket kini
+ * privat dan berkas unggahan hanya bisa dibaca lewat proxy beracuan-tenant di
+ * `app/api/v1/files/[...key]`. Lihat `lib/storage/object-key.ts` untuk membentuk
+ * URL proxy, dan `lib/storage/object-store.ts` untuk baca/tulis objek.
  */
-function resolveBase(): URL | null {
-  const base = process.env.NEXT_PUBLIC_STORAGE_BASE_URL
-  if (!base) return null
 
-  try {
-    return new URL(base)
-  } catch {
-    return null
-  }
-}
-
-export function publicStorageUrl(objectPath: string): string | null {
-  const base = resolveBase()
-  if (!base) return null
-
-  return `${base.href.replace(/\/+$/, '')}/${objectPath.replace(/^\/+/, '')}`
-}
-
-/**
- * Nama host dari base URL storage.
- *
- * `next.config.ts` dan CSP butuh host telanjang, bukan URL. Diturunkan dari
- * variabel yang sama agar keduanya tidak bisa berbeda.
- *
- * Nilai yang tidak sah diperlakukan sebagai belum diisi: build yang gagal
- * karena satu variabel salah ketik lebih merugikan daripada gambar yang tidak
- * tampil.
- */
-export function storageHostname(): string | null {
-  return resolveBase()?.hostname ?? null
-}
+export { fileProxyUrl } from '@/lib/storage/object-key'
 
 /**
  * Latar halaman login, disimpan di dalam repo.

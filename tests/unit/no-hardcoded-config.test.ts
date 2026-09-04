@@ -78,10 +78,12 @@ describe('tidak ada konfigurasi yang ditulis mati', () => {
     expect(reportRepository).toContain('filter.timezone')
   })
 
-  it('membangun URL storage dari environment, bukan konstanta', () => {
-    const storage = readFileSync(join(ROOT, 'lib/storage.ts'), 'utf8')
+  it('menyajikan berkas unggahan lewat proxy satu-origin, bukan URL publik', () => {
+    const key = readFileSync(join(ROOT, 'lib/storage/object-key.ts'), 'utf8')
 
-    expect(storage).toContain('NEXT_PUBLIC_STORAGE_BASE_URL')
+    // URL yang dilihat klien harus relatif ke aplikasi; host penyedia storage
+    // tidak boleh muncul di sisi klien sama sekali.
+    expect(key).toContain('/api/v1/files/')
   })
 
   it('tidak mengunci bentuk jalur milik satu penyedia storage', () => {

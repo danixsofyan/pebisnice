@@ -97,21 +97,6 @@ const CHECKS: Check[] = [
     note: 'openssl rand -hex 32; tanpa ini endpoint cron menolak semua request',
     validate: requireEntropy(32),
   },
-  {
-    name: 'NEXT_PUBLIC_STORAGE_BASE_URL',
-    required: false,
-    note: 'base URL utuh, tanpa garis miring di akhir',
-    validate: (value) => {
-      if (!/^https:\/\//.test(value)) return 'harus URL https://'
-      if (looksLikePlaceholder(value)) return 'masih berisi teks placeholder'
-      try {
-        new URL(value)
-      } catch {
-        return 'bukan URL yang sah'
-      }
-      return null
-    },
-  },
   { name: 'LOG_LEVEL', required: false, note: 'bawaan: info' },
   {
     name: 'STORAGE_ENDPOINT',
