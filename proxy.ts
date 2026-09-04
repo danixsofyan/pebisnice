@@ -20,6 +20,7 @@ const PROTECTED_ROUTES = [
   '/production',
   '/expenses',
   '/onboarding',
+  '/billing',
   '/products',
 ]
 const AUTH_ROUTES = ['/login']
