@@ -71,7 +71,7 @@ export default async function TransactionsPage() {
                 <th className="px-4 py-3 font-medium">Metode</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 text-right font-medium">Total</th>
-                {canVoid ? <th className="px-4 py-3 text-right font-medium">Aksi</th> : null}
+                <th className="px-4 py-3 text-right font-medium">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -89,11 +89,21 @@ export default async function TransactionsPage() {
                   <td className="px-4 py-3 text-right tabular-nums">
                     {formatRupiahFromDecimal(s.netAmount)}
                   </td>
-                  {canVoid ? (
-                    <td className="px-4 py-3 text-right">
-                      {s.status === 'completed' ? <VoidSaleButton transactionId={s.id} /> : null}
-                    </td>
-                  ) : null}
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <a
+                        href={`/receipt/${s.id}`}
+                        target="_blank"
+                        rel="noopener"
+                        className="border-input hover:bg-muted/40 inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium"
+                      >
+                        Struk
+                      </a>
+                      {canVoid && s.status === 'completed' ? (
+                        <VoidSaleButton transactionId={s.id} />
+                      ) : null}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

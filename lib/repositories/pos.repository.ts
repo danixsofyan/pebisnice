@@ -173,6 +173,18 @@ export class PosRepository {
       .orderBy(desc(transactions.orderDate))
       .limit(options.limit)
   }
+
+  async listReceiptItems(tx: Transaction, transactionId: string) {
+    return tx
+      .select({
+        productName: transactionItems.productName,
+        variantName: transactionItems.variantName,
+        qty: transactionItems.qty,
+        unitPrice: transactionItems.unitPrice,
+      })
+      .from(transactionItems)
+      .where(eq(transactionItems.transactionId, transactionId))
+  }
 }
 
 export const posRepository = new PosRepository()

@@ -239,6 +239,18 @@ export class PosService {
       })
     )
   }
+
+  /** Data struk satu transaksi kasir untuk dicetak. */
+  async getReceipt(projectId: string, userId: string, transactionId: string) {
+    await requirePermission(projectId, userId, 'project:view')
+
+    return withTenant(projectId, async (tx) => {
+      const header = await posRepository.findPosTransaction(tx, projectId, transactionId)
+      if (!header) throw new NotFoundError('Transaksi tidak ditemukan')
+      const items = await posRepository.listReceiptItems(tx, transactionId)
+      return { header, items }
+    })
+  }
 }
 
 export const posService = new PosService()
