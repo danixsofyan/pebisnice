@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { branches, projects, teamMembers } from '@/lib/db/schema'
 import { getUserFromSession } from '@/lib/auth-utils'
 import { canRoleViewCost, type TeamRole } from '@/lib/authz/permissions'
-import { NotFoundError } from '@/lib/errors/app-error'
+import { AuthError } from '@/lib/errors/app-error'
 
 export interface SessionContext {
   userId: string
@@ -23,7 +23,12 @@ export interface SessionContext {
  * yang perlu mengoper `projectId` dari client — nilai dari client tidak bisa
  * dipercaya untuk menentukan tenant.
  */
-export async function getSessionContext(): Promise<SessionContext> {
+/**
+ * Seperti `getSessionContext()` tetapi mengembalikan `null` bila pengguna
+ * belum tergabung di project manapun — dipakai halaman yang harus
+ * mengarahkan ke onboarding alih-alih melempar error.
+ */
+export async function findSessionContext(): Promise<SessionContext | null> {
   const user = await getUserFromSession()
 
   const rows = await db
@@ -55,7 +60,7 @@ export async function getSessionContext(): Promise<SessionContext> {
     .limit(1)
 
   const row = rows[0]
-  if (!row) throw new NotFoundError('Anda belum tergabung dalam project manapun.')
+  if (!row) return null
 
   const isOwner = row.ownerId === user.id
   const role: TeamRole = isOwner ? 'owner' : ((row.memberRole ?? 'cashier') as TeamRole)
@@ -68,6 +73,13 @@ export async function getSessionContext(): Promise<SessionContext> {
     branchId: isOwner ? null : row.memberBranchId,
     canViewCost: canRoleViewCost(role),
   }
+}
+
+/** Menuntut project aktif. Melempar bila belum ada. */
+export async function getSessionContext(): Promise<SessionContext> {
+  const context = await findSessionContext()
+  if (!context) throw new AuthError('Anda belum tergabung dalam project manapun.')
+  return context
 }
 
 /**
