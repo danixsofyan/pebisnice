@@ -6,6 +6,7 @@ import { formatRupiahFromDecimal } from '@/lib/formatters'
 import { fileProxyUrl } from '@/lib/storage'
 import { Button } from '@/components/ui/button'
 import { ProductForm } from '@/components/catalog/product-form'
+import { HppHistory } from '@/components/catalog/hpp-history'
 
 interface ProductsTableProps {
   items: ProductListItem[]
@@ -81,8 +82,11 @@ export function ProductsTable({ items, branchId, canViewCost, canManage }: Produ
                 <td className="text-muted-foreground px-4 py-3">{item.sku ?? '—'}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{item.stockQty}</td>
                 {canViewCost ? (
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {item.hpp ? formatRupiahFromDecimal(item.hpp) : '—'}
+                  <td className="px-4 py-3 text-right">
+                    <div className="tabular-nums">
+                      {item.hpp ? formatRupiahFromDecimal(item.hpp) : '—'}
+                    </div>
+                    <HppHistory variantId={item.variantId} />
                   </td>
                 ) : null}
                 {canManage ? (

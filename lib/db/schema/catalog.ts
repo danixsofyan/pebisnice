@@ -1,6 +1,7 @@
 import { boolean, index, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { actorColumns, tenantColumn } from './columns'
+import { users } from './auth'
 import { platformEnum, productTypeEnum } from './enums'
 import { lifecycleColumns, money, tz } from './primitives'
 
@@ -61,5 +62,28 @@ export const productVariants = pgTable(
       .where(sql`${t.deletedAt} is null`),
     index('variants_created_by_idx').on(t.createdBy),
     index('variants_updated_by_idx').on(t.updatedBy),
+  ]
+)
+
+// Append-only log of every HPP (cost) change, so past values and their effective dates are auditable. Reports read hpp_at_time on the sale line, not this; this is the change history and analytics source.
+export const productCostHistory = pgTable(
+  'product_cost_history',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ...tenantColumn,
+    productVariantId: uuid('product_variant_id')
+      .references(() => productVariants.id, { onDelete: 'cascade' })
+      .notNull(),
+    cost: money('cost').notNull(),
+    previousCost: money('previous_cost'),
+    effectiveFrom: tz('effective_from').defaultNow().notNull(),
+    changedBy: text('changed_by').references(() => users.id, { onDelete: 'set null' }),
+    note: text('note'),
+    createdAt: tz('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    index('cost_history_variant_idx').on(t.productVariantId, t.effectiveFrom),
+    index('cost_history_project_idx').on(t.projectId),
+    index('cost_history_changed_by_idx').on(t.changedBy),
   ]
 )

@@ -28,7 +28,7 @@ function tableByName(name: string): Table {
 const AUTH_TABLES = ['users', 'accounts', 'sessions', 'verificationTokens']
 
 // Ledger append-only: sengaja tanpa updated_at / deleted_at (db-standards.md §9).
-const IMMUTABLE_TABLES = ['auditLogs', 'inventoryMovements']
+const IMMUTABLE_TABLES = ['auditLogs', 'inventoryMovements', 'productCostHistory']
 
 // Baris anak yang ikut terhapus bersama induknya lewat ON DELETE CASCADE.
 const CHILD_TABLES = ['transactionFees', 'transactionItems', 'productionMaterials']
@@ -45,6 +45,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'inventory',
       'inventoryMovements',
       'plans',
+      'productCostHistory',
       'productVariants',
       'productionLogs',
       'productionMaterials',
@@ -136,6 +137,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'stores',
       'products',
       'productVariants',
+      'productCostHistory',
       'transactions',
       'transactionFees',
       'transactionItems',

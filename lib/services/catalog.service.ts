@@ -1,7 +1,7 @@
-import { and, asc, eq, isNull } from 'drizzle-orm'
-import { inventory, productVariants, products } from '@/lib/db/schema'
+import { and, asc, desc, eq, isNull } from 'drizzle-orm'
+import { inventory, productCostHistory, productVariants, products, users } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant'
-import { fromDecimalString, toDecimalString, type Money } from '@/lib/domain/money'
+import { fromDecimalString, toDecimalString, ZERO, type Money } from '@/lib/domain/money'
 import type { ParsedProductRow } from '@/lib/import/product-import'
 import { planStockMovement } from '@/lib/domain/inventory/stock-movement'
 import { inventoryRepository } from '@/lib/repositories/inventory.repository'
@@ -112,6 +112,16 @@ export class CatalogService {
       await inventoryRepository.appendMovement(tx, location, plan, userId)
     }
 
+    if (canViewCost && request.hpp > ZERO) {
+      await tx.insert(productCostHistory).values({
+        projectId: request.projectId,
+        productVariantId: variant!.id,
+        cost: toDecimalString(request.hpp),
+        previousCost: null,
+        changedBy: userId,
+      })
+    }
+
     return { product: product!, variant: variant! }
   }
 
@@ -197,8 +207,14 @@ export class CatalogService {
 
     const existing = await withTenant(request.projectId, (tx) =>
       tx
-        .select({ id: products.id, imageKey: products.imageKey })
+        .select({
+          id: products.id,
+          imageKey: products.imageKey,
+          variantId: productVariants.id,
+          hpp: productVariants.hpp,
+        })
         .from(products)
+        .leftJoin(productVariants, eq(productVariants.productId, products.id))
         .where(
           and(
             eq(products.id, request.productId),
@@ -211,6 +227,10 @@ export class CatalogService {
 
     const current = existing[0]
     if (!current) throw new NotFoundError('Produk tidak ditemukan')
+
+    // Log HPP only when the caller can set cost and the value actually changed.
+    const costChanged =
+      canViewCost && current.hpp !== null && fromDecimalString(current.hpp) !== request.hpp
 
     await withTenant(request.projectId, async (tx) => {
       await tx
@@ -230,6 +250,7 @@ export class CatalogService {
           variantName: request.variantName ? sanitizeText(request.variantName) : null,
           skuVariant: request.sku ? sanitizeText(request.sku) : null,
           ...(canViewCost ? { hpp: toDecimalString(request.hpp) } : {}),
+          ...(costChanged ? { hppUpdatedAt: new Date() } : {}),
           updatedBy: context.userId,
         })
         .where(
@@ -238,6 +259,16 @@ export class CatalogService {
             eq(productVariants.projectId, request.projectId)
           )
         )
+
+      if (costChanged && current.variantId) {
+        await tx.insert(productCostHistory).values({
+          projectId: request.projectId,
+          productVariantId: current.variantId,
+          cost: toDecimalString(request.hpp),
+          previousCost: current.hpp,
+          changedBy: context.userId,
+        })
+      }
     })
 
     // Outside the transaction: a failed object delete must not fail the save; at worst it becomes an orphan for the cron.
@@ -372,6 +403,44 @@ export class CatalogService {
     )
     return { created, failed }
   }
+
+  // HPP change history for one variant, newest first. Gated to cost:view since it exposes cost figures.
+  async costHistory(
+    projectId: string,
+    userId: string,
+    variantId: string
+  ): Promise<CostHistoryRow[]> {
+    await requirePermission(projectId, userId, COST_PERMISSION)
+
+    return withTenant(projectId, (tx) =>
+      tx
+        .select({
+          id: productCostHistory.id,
+          cost: productCostHistory.cost,
+          previousCost: productCostHistory.previousCost,
+          effectiveFrom: productCostHistory.effectiveFrom,
+          changedByEmail: users.email,
+        })
+        .from(productCostHistory)
+        .leftJoin(users, eq(users.id, productCostHistory.changedBy))
+        .where(
+          and(
+            eq(productCostHistory.projectId, projectId),
+            eq(productCostHistory.productVariantId, variantId)
+          )
+        )
+        .orderBy(desc(productCostHistory.effectiveFrom))
+        .limit(100)
+    )
+  }
+}
+
+export interface CostHistoryRow {
+  id: string
+  cost: string
+  previousCost: string | null
+  effectiveFrom: Date
+  changedByEmail: string | null
 }
 
 export const catalogService = new CatalogService()

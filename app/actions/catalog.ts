@@ -116,6 +116,34 @@ export async function updateProductAction(raw: unknown) {
   })
 }
 
+// Read the HPP change history for one variant. Gated to cost:view inside the service.
+export async function getCostHistoryAction(variantId: string) {
+  return withRequestScope('getCostHistoryAction', async () => {
+    try {
+      const context = await getSessionContext()
+      tagRequestActor(context.userId, context.projectId)
+
+      if (!z.string().uuid().safeParse(variantId).success) {
+        throw new ValidationError('Varian tidak valid')
+      }
+
+      const rows = await catalogService.costHistory(context.projectId, context.userId, variantId)
+      return {
+        success: true as const,
+        data: rows.map((r) => ({
+          id: r.id,
+          cost: r.cost,
+          previousCost: r.previousCost,
+          effectiveFrom: r.effectiveFrom.toISOString(),
+          changedByEmail: r.changedByEmail,
+        })),
+      }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
 /** Discard a photo uploaded but whose product was never saved. */
 export async function discardUnsavedImageAction(imageKey: string) {
   return withRequestScope('discardUnsavedImageAction', async () => {
