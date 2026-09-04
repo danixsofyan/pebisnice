@@ -20,6 +20,7 @@ const PROTECTED_ROUTES = [
   '/pos',
   '/production',
   '/expenses',
+  '/finance',
   '/onboarding',
   '/billing',
   '/admin',

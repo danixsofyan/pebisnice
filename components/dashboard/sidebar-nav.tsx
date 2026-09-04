@@ -12,6 +12,7 @@ import {
   Wallet,
   Coins,
   Users,
+  Landmark,
   Settings,
 } from 'lucide-react'
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar'
@@ -57,6 +58,11 @@ const mainNavItems = [
     title: 'Laporan Keuangan',
     url: '/reports',
     icon: Wallet,
+  },
+  {
+    title: 'Mutasi Bank',
+    url: '/finance',
+    icon: Landmark,
   },
   {
     title: 'Karyawan',

@@ -111,3 +111,9 @@ export const expenseCategoryEnum = pgEnum('expense_category', [
   'tax',
   'other',
 ])
+
+// Money in ('in' = credit/masuk) or out ('out' = debit/keluar) on a bank statement.
+export const mutationDirectionEnum = pgEnum('mutation_direction', ['in', 'out'])
+
+// How a mutation entered the system: statement import, an aggregator webhook, or hand-entered.
+export const mutationSourceEnum = pgEnum('mutation_source', ['import', 'moota', 'manual'])

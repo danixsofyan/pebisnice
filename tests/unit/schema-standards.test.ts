@@ -42,6 +42,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'cashSessions',
       'expenses',
       'fileUploads',
+      'financialMutations',
       'inventory',
       'inventoryMovements',
       'plans',
@@ -147,6 +148,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'productionMaterials',
       'teamMembers',
       'fileUploads',
+      'financialMutations',
     ]
 
     for (const tableName of tenantScoped) {
