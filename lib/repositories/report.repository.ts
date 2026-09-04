@@ -54,13 +54,30 @@ export class ReportRepository {
       SELECT
         COALESCE(SUM(s.net_amount) FILTER (WHERE s.channel = 'marketplace'), 0)::text
           AS marketplace_revenue,
-        COALESCE(SUM(s.net_amount) FILTER (WHERE s.channel = 'pos'), 0)::text
-          AS pos_revenue,
-        COALESCE((
-          SELECT SUM(i.hpp_at_time * i.qty)
-          FROM transaction_items i
-          WHERE i.transaction_id IN (SELECT id FROM scoped)
-        ), 0)::text AS cogs,
+        (
+          COALESCE(SUM(s.net_amount) FILTER (WHERE s.channel = 'pos'), 0)
+          - COALESCE((
+              SELECT SUM(r.refund_amount)
+              FROM sale_returns r
+              WHERE r.transaction_id IN (SELECT id FROM scoped) AND r.deleted_at IS NULL
+            ), 0)
+        )::text AS pos_revenue,
+        (
+          COALESCE((
+            SELECT SUM(i.hpp_at_time * i.qty)
+            FROM transaction_items i
+            WHERE i.transaction_id IN (SELECT id FROM scoped)
+          ), 0)
+          - COALESCE((
+              SELECT SUM(ri.qty * ti.hpp_at_time)
+              FROM sale_return_items ri
+              JOIN sale_returns r ON r.id = ri.return_id
+              JOIN transaction_items ti
+                ON ti.transaction_id = r.transaction_id
+                AND ti.product_variant_id = ri.product_variant_id
+              WHERE r.transaction_id IN (SELECT id FROM scoped) AND r.deleted_at IS NULL
+            ), 0)
+        )::text AS cogs,
         COALESCE(SUM(s.total_fees), 0)::text AS platform_fees
       FROM scoped s
     `)
@@ -128,22 +145,37 @@ export class ReportRepository {
       marketplace_revenue: string
       pos_revenue: string
     }>(sql`
+      WITH scoped AS (
+        SELECT t.id, t.channel, t.net_amount,
+               (t.order_date AT TIME ZONE ${filter.timezone})::date AS day
+        FROM transactions t
+        WHERE t.project_id = ${filter.projectId}
+          AND t.deleted_at IS NULL
+          AND t.voided_at IS NULL
+          AND t.status NOT IN ('cancelled', 'returned')
+          AND (t.order_date AT TIME ZONE ${filter.timezone})::date
+              BETWEEN ${filter.startDate}::date AND ${filter.endDate}::date
+          ${branchCondition}
+      ),
+      refunds AS (
+        SELECT s.day, SUM(r.refund_amount) AS refund
+        FROM sale_returns r
+        JOIN scoped s ON s.id = r.transaction_id
+        WHERE r.deleted_at IS NULL
+        GROUP BY s.day
+      )
       SELECT
-        (t.order_date AT TIME ZONE ${filter.timezone})::date::text AS day,
-        COALESCE(SUM(t.net_amount) FILTER (WHERE t.channel = 'marketplace'), 0)::text
+        s.day::text AS day,
+        COALESCE(SUM(s.net_amount) FILTER (WHERE s.channel = 'marketplace'), 0)::text
           AS marketplace_revenue,
-        COALESCE(SUM(t.net_amount) FILTER (WHERE t.channel = 'pos'), 0)::text
-          AS pos_revenue
-      FROM transactions t
-      WHERE t.project_id = ${filter.projectId}
-        AND t.deleted_at IS NULL
-        AND t.voided_at IS NULL
-        AND t.status NOT IN ('cancelled', 'returned')
-        AND (t.order_date AT TIME ZONE ${filter.timezone})::date
-            BETWEEN ${filter.startDate}::date AND ${filter.endDate}::date
-        ${branchCondition}
-      GROUP BY 1
-      ORDER BY 1
+        (
+          COALESCE(SUM(s.net_amount) FILTER (WHERE s.channel = 'pos'), 0)
+          - COALESCE(MAX(ref.refund), 0)
+        )::text AS pos_revenue
+      FROM scoped s
+      LEFT JOIN refunds ref ON ref.day = s.day
+      GROUP BY s.day
+      ORDER BY s.day
     `)
 
     const rows = execRows<{ day: string; marketplace_revenue: string; pos_revenue: string }>(result)
