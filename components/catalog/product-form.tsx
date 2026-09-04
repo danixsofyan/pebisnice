@@ -20,7 +20,7 @@ export interface EditableProduct {
   type: 'finished' | 'material'
   sku: string | null
   variantName: string | null
-  /** String desimal, atau null bila peran tak boleh melihat HPP. */
+  /** Decimal string, or null if the role can't see HPP. */
   hpp: string | null
   imageKey: string | null
 }
@@ -28,20 +28,13 @@ export interface EditableProduct {
 interface ProductFormProps {
   branchId: string
   canViewCost: boolean
-  /** Bila diisi, form berjalan dalam mode edit. */
+  /** If set, the form runs in edit mode. */
   product?: EditableProduct
-  /** Mode edit: dipanggil saat selesai atau batal, agar induk menutup form. */
+  /** Edit mode: called on done or cancel so the parent closes the form. */
   onClose?: () => void
 }
 
-/**
- * Form tambah/ubah produk.
- *
- * Field HPP hanya tampil untuk peran berhak — dan bila dikirim paksa pun,
- * service tetap mengabaikannya. Foto diunggah saat dipilih; kunci yang belum
- * jadi disimpan dibuang saat pengguna mengganti pilihan atau membatalkan, agar
- * tidak menjadi berkas yatim.
- */
+// Add/edit product form. The HPP field shows only for entitled roles, and is ignored by the service even if force-sent. Photos upload on pick; an unsaved key is discarded on replace or cancel so it doesn't orphan.
 export function ProductForm({ branchId, canViewCost, product, onClose }: ProductFormProps) {
   const router = useRouter()
   const isEdit = Boolean(product)
@@ -77,7 +70,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
     setError(null)
     setUploading(true)
     try {
-      // Buang unggahan sebelumnya yang belum tersimpan sebelum menaruh yang baru.
+      // Discard the previous unsaved upload before setting the new one.
       if (unsavedKey) await discardUnsavedImageAction(unsavedKey)
 
       const data = new FormData()
@@ -105,7 +98,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
   }
 
   async function discardPending() {
-    // Kunci yang diunggah sesi ini dan belum jadi foto tersimpan.
+    // A key uploaded this session that isn't yet a saved photo.
     if (unsavedKey && unsavedKey !== savedKey) {
       await discardUnsavedImageAction(unsavedKey)
     }
@@ -163,7 +156,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
         return
       }
 
-      // Tersimpan: kunci ini bukan lagi yatim.
+      // Saved: this key is no longer an orphan.
       setUnsavedKey(null)
 
       if (isEdit) {
@@ -253,7 +246,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
         <Label htmlFor="p-image">Foto (opsional)</Label>
         <div className="flex items-center gap-3">
           {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element -- pratinjau blob lokal / proxy dinamis, bukan aset next/image
+            // eslint-disable-next-line @next/next/no-img-element -- local blob preview / dynamic proxy, not a next/image asset
             <img
               src={preview}
               alt="Pratinjau foto produk"

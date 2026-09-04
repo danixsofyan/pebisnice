@@ -58,7 +58,7 @@ export default async function BillingPage() {
     )
   }
 
-  // Belum ada langganan atau sudah kedaluwarsa: tawarkan paket.
+  // No subscription or expired: offer plans.
   const plans = await subscriptionService.listActivePlans()
   const expired = billing.access === 'expired'
   const pendingPayment = await subscriptionPaymentService.hasPendingPayment(userId)

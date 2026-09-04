@@ -3,14 +3,7 @@ import { useSyncExternalStore } from 'react'
 const MOBILE_BREAKPOINT = 768
 const QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`
 
-/**
- * Berlangganan media query lewat `useSyncExternalStore`, bukan `useEffect`
- * yang memanggil `setState`.
- *
- * React 19 menandai pola setState-dalam-effect karena memicu render berantai;
- * media query adalah sumber data eksternal, dan inilah cara yang disediakan
- * React untuk membacanya tanpa render tambahan.
- */
+// Subscribe to a media query via useSyncExternalStore, not a setState-in-useEffect. React 19 flags setState-in-effect for cascading renders; a media query is external data, and this is React's way to read it without an extra render.
 function subscribe(onChange: () => void): () => void {
   const mediaQuery = window.matchMedia(QUERY)
   mediaQuery.addEventListener('change', onChange)
@@ -21,7 +14,7 @@ function getSnapshot(): boolean {
   return window.matchMedia(QUERY).matches
 }
 
-/** Server tidak tahu lebar layar; anggap desktop agar tidak salah render. */
+/** The server can't know screen width; assume desktop to avoid a wrong render. */
 function getServerSnapshot(): boolean {
   return false
 }

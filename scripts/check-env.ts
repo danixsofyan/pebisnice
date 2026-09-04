@@ -1,15 +1,6 @@
 import { config as loadEnv } from 'dotenv'
 
-/**
- * Memeriksa kelengkapan dan kewajaran variabel lingkungan.
- *
- * Dibuat setelah menemukan `AUTH_SECRET` di produksi masih berisi teks
- * placeholder — nilai yang bisa ditebak berarti cookie sesi bisa dipalsukan,
- * dan tidak ada satupun yang memberi tahu. Pemeriksaan ini membuat kondisi
- * seperti itu terlihat, bukan diam.
- *
- * Jalankan: pnpm env:check
- */
+// Check env vars for completeness and sanity. Added after AUTH_SECRET sat as placeholder text in production, a guessable value meaning forgeable session cookies with nothing warning. This makes that condition visible, not silent. Run: pnpm env:check
 
 loadEnv({ path: ['.env.local', '.env'] })
 
@@ -22,7 +13,7 @@ interface Check {
   validate?: (value: string) => string | null
 }
 
-/** Pola yang menandakan nilai belum benar-benar diisi. */
+/** Patterns that mark a value as not really filled in. */
 const PLACEHOLDER_PATTERNS = [
   /ganti/i,
   /your[_-]/i,
@@ -111,8 +102,7 @@ const CHECKS: Check[] = [
   {
     name: 'STORAGE_REGION',
     required: false,
-    // Cloudflare R2 memakai nilai literal `auto`, jadi bentuk region AWS tidak
-    // boleh dipaksakan di sini.
+    // Cloudflare R2 uses the literal value 'auto', so an AWS region shape can't be forced here.
     note: 'mis. ap-southeast-1, atau auto untuk Cloudflare R2',
     validate: (value) =>
       /^[a-z0-9-]+$/.test(value) ? null : 'hanya huruf kecil, angka, dan tanda hubung',
@@ -157,7 +147,7 @@ const CHECKS: Check[] = [
   },
 ]
 
-/** Variabel yang harus terisi bersama-sama, atau kosong semuanya. */
+/** Vars that must be filled together, or all empty. */
 const GROUPS: Array<{ label: string; members: string[] }> = [
   {
     label: 'Storage',
@@ -198,10 +188,7 @@ const results = CHECKS.map((check) => {
   return { name: check.name, severity: 'ok' as Severity, message: 'ok' }
 })
 
-/**
- * Konfigurasi yang terisi separuh lebih berbahaya daripada yang kosong: fitur
- * tampak aktif tapi gagal saat dipakai.
- */
+// Half-filled config is worse than empty: a feature looks active but fails when used.
 const groupProblems = GROUPS.flatMap((group) => {
   const filled = group.members.filter((name) => (process.env[name] ?? '').trim().length > 0)
   if (filled.length === 0 || filled.length === group.members.length) return []

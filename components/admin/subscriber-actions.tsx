@@ -6,10 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { grantAccessDaysAction, setSubscriptionStatusAction } from '@/app/actions/admin'
 
-/**
- * Aksi admin per pelanggan: menambah hari akses dan membatalkan/mengaktifkan
- * langganan. Dipakai di dalam baris tabel.
- */
+// Per-subscriber admin actions: add access days and cancel/reactivate; used inside a table row.
 export function SubscriberActions({ userId, status }: { userId: string; status: string | null }) {
   const router = useRouter()
   const [days, setDays] = useState('14')

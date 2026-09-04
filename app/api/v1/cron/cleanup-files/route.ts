@@ -3,11 +3,7 @@ import { fileCleanupService } from '@/lib/services/file-cleanup.service'
 import { isAuthorizedCronRequest } from '@/lib/security/cron-auth'
 import { logger } from '@/lib/logging/logger'
 
-/**
- * Membersihkan foto produk yatim, jaring pengaman untuk kasus yang tak bisa
- * ditangani sisi klien (mis. tab ditutup setelah unggah tetapi sebelum simpan).
- * Dijaga `CRON_SECRET`, sama seperti endpoint cron lainnya.
- */
+// Sweep orphaned product photos, a backstop for cases the client can't handle (e.g. a tab closed after upload but before save). Guarded by CRON_SECRET like the other cron endpoints.
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request)) {
     return new NextResponse(null, { status: 401 })

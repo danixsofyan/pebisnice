@@ -6,10 +6,7 @@ import { Button } from '@/components/ui/button'
 import { removeMemberAction, setMemberStatusAction, updateMemberAction } from '@/app/actions/team'
 import { ASSIGNABLE_ROLE_OPTIONS } from './role-labels'
 
-/**
- * Aksi per anggota: ubah peran/cabang (tersimpan otomatis saat diubah),
- * nonaktifkan/aktifkan, dan hapus.
- */
+// Per-member actions: change role/branch (auto-saved on change), disable/enable, and remove.
 export function MemberActions({
   memberId,
   role,

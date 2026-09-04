@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 
-/** Tombol cetak, disembunyikan saat pencetakan berlangsung. */
+/** Print button, hidden while printing. */
 export function ReceiptPrintButton() {
   return (
     <div className="mt-4 flex justify-center print:hidden">

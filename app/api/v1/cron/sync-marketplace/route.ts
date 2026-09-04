@@ -12,16 +12,13 @@ const SYNC_INTERVAL_MS = 5 * 60 * 60 * 1000
 
 type Store = typeof stores.$inferSelect
 
-// Belum ada connector marketplace yang terpasang. Store dengan platform yang
-// tidak terdaftar di sini dilewati dan dilaporkan sebagai `unsupported`, bukan
-// dihitung sebagai sync yang berhasil.
+// No marketplace connector is installed yet. Stores whose platform isn't listed here are skipped and reported as unsupported, not counted as a successful sync.
 const MARKETPLACE_CONNECTORS = new Map<
   Store['platform'],
   (store: Store) => Promise<NewTransaction[]>
 >()
 
-// `stores` dilindungi RLS, jadi tidak bisa dipindai lintas project dalam satu
-// query. Cron menelusuri project satu per satu dengan tenant ter-set.
+// stores is RLS-protected, so it can't be scanned across projects in one query; the cron walks projects one by one with the tenant set.
 async function findStoresDueForSync(): Promise<Store[]> {
   const activeProjects = await db
     .select({ id: projects.id })

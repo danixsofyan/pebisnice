@@ -22,17 +22,13 @@ const INTERVAL_LABEL: Record<PlanCard['interval'], string> = {
   yearly: '/tahun',
 }
 
-/**
- * Kartu pilihan paket. Trial langsung aktif dan mengantar ke onboarding.
- * Paket berbayar menunggu integrasi pembayaran — tombolnya dinonaktifkan
- * dengan keterangan, bukan disembunyikan, agar alur terlihat utuh.
- */
+// Plan choice cards. Trial activates at once and leads to onboarding. Paid plans await payment integration, so the button is disabled with a note rather than hidden, keeping the flow visible.
 export function PlanCards({
   plans,
   hadSubscription,
 }: {
   plans: PlanCard[]
-  /** Bila sudah pernah berlangganan, opsi trial tidak lagi berlaku. */
+  /** Once subscribed before, the trial option no longer applies. */
   hadSubscription: boolean
 }) {
   const router = useRouter()
@@ -62,7 +58,7 @@ export function PlanCards({
         setBusyPlan(null)
         return
       }
-      // Menuju halaman pembayaran Midtrans; webhook yang mengaktifkan langganan.
+      // Off to the Midtrans payment page; the webhook activates the subscription.
       window.location.href = result.data.redirectUrl
     })
   }

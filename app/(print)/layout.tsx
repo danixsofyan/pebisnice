@@ -1,10 +1,7 @@
 import { redirect } from 'next/navigation'
 import { resolveSessionState } from '@/lib/auth/session-context'
 
-/**
- * Cangkang halaman cetak: tanpa sidebar/chrome agar `window.print()` hanya
- * mencetak isinya. Tetap butuh sesi dengan project aktif.
- */
+// Print page shell: no sidebar/chrome so window.print() prints only its content. Still requires a session with an active project.
 export default async function PrintLayout({ children }: { children: React.ReactNode }) {
   const state = await resolveSessionState()
   if (state.status === 'unauthenticated') redirect('/login')

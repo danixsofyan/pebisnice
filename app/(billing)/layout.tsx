@@ -1,11 +1,7 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 
-/**
- * Cangkang halaman tagihan. Hanya menuntut login — sengaja TIDAK di belakang
- * gerbang langganan, karena justru di sinilah pengguna tanpa langganan atau
- * yang sudah kedaluwarsa harus bisa masuk untuk memilih/memperpanjang paket.
- */
+// Billing pages shell. Requires login only, deliberately NOT behind the subscription gate, since this is exactly where users without a subscription or with an expired one must get in to pick or renew a plan.
 export default async function BillingLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')

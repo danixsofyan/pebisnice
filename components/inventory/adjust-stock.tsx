@@ -7,10 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { adjustStockAction } from '@/app/actions/inventory'
 
-/**
- * Penyesuaian stok satu varian. Dua mode: "penyesuaian" (selisih +/-, mis.
- * barang rusak) dan "stok opname" (menetapkan jumlah hasil hitung fisik).
- */
+// Stock adjustment for one variant. Two modes: "adjustment" (signed +/-, e.g. damaged goods) and "opname" (set to the physical count).
 export function AdjustStock({
   branchId,
   productVariantId,

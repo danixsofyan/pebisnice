@@ -17,10 +17,7 @@ interface MaterialRow {
   qty: string
 }
 
-/**
- * Form catat produksi: satu produk jadi, beberapa bahan yang dipakai. Stok
- * bahan berkurang dan stok produk jadi bertambah dalam satu transaksi server.
- */
+// Production form: one finished good, several materials used. Material stock goes down and finished stock up in one server transaction.
 export function ProductionForm({
   branchId,
   finishedOptions,

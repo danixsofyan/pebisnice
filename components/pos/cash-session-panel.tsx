@@ -14,13 +14,7 @@ interface ClosingResult {
   isBalanced: boolean
 }
 
-/**
- * Buka dan tutup shift kasir.
- *
- * Saat menutup, kasir hanya menyetor hasil hitung fisik. Saldo yang diharapkan
- * dan selisihnya dihitung server dari transaksi tunai yang tercatat — angka
- * dari browser tidak dipakai.
- */
+// Open and close a cashier shift. On close, the cashier only submits the physical count; the expected balance and difference are computed server-side from recorded cash transactions, not the browser's numbers.
 export function CashSessionPanel({
   branchId,
   branchName,

@@ -32,11 +32,7 @@ interface Receipt {
   changeAmount: string
 }
 
-/**
- * Layar kasir. Angka yang ditampilkan di sini hanya untuk pratinjau — seluruh
- * perhitungan yang tersimpan dihitung ulang di server oleh `priceCart()`,
- * sehingga nilai dari browser tidak bisa memengaruhi apa yang dicatat.
- */
+// Cashier screen. Numbers shown here are preview only; every saved figure is recomputed server-side by priceCart(), so browser values can't affect what's recorded.
 export function PosTerminal({
   branchId,
   branchName,

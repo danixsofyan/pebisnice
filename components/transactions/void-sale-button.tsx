@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { voidSaleAction } from '@/app/actions/pos'
 
-/** Membatalkan transaksi kasir: mengembalikan stok dan menandai void. */
+/** Void a cashier sale: return stock and mark it void. */
 export function VoidSaleButton({ transactionId }: { transactionId: string }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()

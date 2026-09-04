@@ -61,13 +61,6 @@ export async function createProductAction(raw: unknown) {
   })
 }
 
-/**
- * Mengunggah foto produk lebih dulu, terpisah dari penyimpanan produk.
- *
- * Menerima `FormData` karena berkas biner tidak bisa lewat argumen JSON server
- * action. Mengembalikan kunci objek; form menyimpannya lalu menyertakannya saat
- * membuat produk.
- */
 const updateProductSchema = z.object({
   productId: z.string().uuid('Produk tidak valid'),
   name: z.string().trim().min(1, 'Nama produk wajib diisi').max(150),
@@ -118,7 +111,7 @@ export async function updateProductAction(raw: unknown) {
   })
 }
 
-/** Membuang foto yang terunggah tetapi produknya batal disimpan. */
+/** Discard a photo uploaded but whose product was never saved. */
 export async function discardUnsavedImageAction(imageKey: string) {
   return withRequestScope('discardUnsavedImageAction', async () => {
     try {
@@ -134,6 +127,7 @@ export async function discardUnsavedImageAction(imageKey: string) {
   })
 }
 
+// Upload the product photo first, separate from saving the product. Takes FormData because binary can't pass as a JSON server-action argument; returns the object key the form then references when creating the product.
 export async function uploadProductImageAction(formData: FormData) {
   return withRequestScope('uploadProductImageAction', async () => {
     try {

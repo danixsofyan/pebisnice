@@ -2,14 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { subscriptionPaymentService } from '@/lib/services/subscription-payment.service'
 import { logger } from '@/lib/logging/logger'
 
-/**
- * Notifikasi pembayaran Midtrans — sumber kebenaran status.
- *
- * Tidak ada auth header di sini; keaslian dibuktikan oleh signature_key di
- * dalam payload, yang diverifikasi service. Balasan HTTP dipilih agar Midtrans
- * berhenti mengulang untuk kejadian yang sudah tertangani, dan mengulang hanya
- * saat memang perlu.
- */
+// Midtrans payment notification, the source of truth for status. No auth header here; authenticity is proven by signature_key inside the payload, verified by the service. HTTP replies are chosen so Midtrans stops retrying handled events and retries only when it should.
 export async function POST(request: NextRequest) {
   let payload: Record<string, unknown>
   try {
@@ -23,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     if (result.ok) return NextResponse.json({ received: true })
 
-    // Tanda tangan salah → 403; order tak dikenal → 404; jumlah tak cocok → 422.
+    // Bad signature -> 403; unknown order -> 404; amount mismatch -> 422.
     const code = result.reason === 'signature' ? 403 : result.reason === 'unknown_order' ? 404 : 422
     return new NextResponse(null, { status: code })
   } catch (error) {
@@ -31,7 +24,7 @@ export async function POST(request: NextRequest) {
       { err: error instanceof Error ? error.message : String(error) },
       'midtrans webhook failed'
     )
-    // 500 agar Midtrans mengulang; kegagalan sementara tidak menghilangkan event.
+    // 500 so Midtrans retries; a transient failure doesn't lose the event.
     return new NextResponse(null, { status: 500 })
   }
 }

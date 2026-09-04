@@ -28,12 +28,7 @@ const PROTECTED_ROUTES = [
 const AUTH_ROUTES = ['/login']
 const PUBLIC_API_ROUTES = ['/api/v1/webhooks', '/api/health']
 
-/**
- * Id korelasi untuk satu permintaan.
- *
- * Menghormati `x-request-id` yang sudah ada agar rantai dari proxy atau load
- * balancer di depan tidak terputus; membuat yang baru bila belum ada.
- */
+// Correlation id for one request. Honors an existing x-request-id so a chain from a fronting proxy or load balancer isn't broken; creates a new one if absent.
 function resolveRequestId(request: NextRequest): string {
   const incoming = request.headers.get(REQUEST_ID_HEADER)
   if (incoming && /^[\w-]{8,128}$/.test(incoming)) return incoming

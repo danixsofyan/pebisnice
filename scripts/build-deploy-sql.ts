@@ -2,14 +2,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-/**
- * Menggabungkan seluruh migration menjadi satu berkas siap tempel ke SQL
- * editor Supabase, lengkap dengan langkah baseline.
- *
- * Dibuat karena database produksi dibangun lewat `drizzle-kit push` sehingga
- * belum punya tabel `__drizzle_migrations` — `pnpm db:migrate` tidak bisa
- * dipakai apa adanya.
- */
+// Merge all migrations into one file to paste into the Supabase SQL editor, baseline step included. Built because the production database was set up via drizzle-kit push, so it lacks the __drizzle_migrations table and pnpm db:migrate can't be used as-is.
 
 const MIGRATIONS_DIR = join(process.cwd(), 'supabase', 'migrations')
 const OUTPUT = join(process.cwd(), 'supabase', 'deploy.sql')
@@ -78,14 +71,7 @@ END;
 $baseline$;
 `
 
-/**
- * Mencatat migration ke tabel pelacak drizzle.
- *
- * Tanpa ini, `pnpm db:migrate` berikutnya akan mengira belum ada migration
- * yang diterapkan dan mencoba menjalankan ulang semuanya. Bentuk tabel dan
- * cara hash-nya mengikuti `drizzle-orm/pg-core/dialect`: sha256 dari isi
- * berkas apa adanya, dan `created_at` dari kolom `when` di journal.
- */
+// Record migrations in drizzle's tracking table. Without it, the next pnpm db:migrate would think none were applied and re-run everything. The table shape and hashing follow drizzle-orm/pg-core/dialect: sha256 of the raw file content, and created_at from the journal's when column.
 function buildMigrationLedger(entries: JournalEntry[]): string {
   const rows = entries
     .map((entry) => {

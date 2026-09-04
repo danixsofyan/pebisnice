@@ -10,7 +10,7 @@ export default async function ChoosePlanPage() {
   if (!userId) redirect('/login')
 
   const billing = await resolveBillingState(userId)
-  // Sudah berlangganan aktif — tak ada yang perlu dipilih.
+  // Already actively subscribed, nothing to choose.
   if (billing.access === 'active') redirect('/dashboard')
 
   const plans = await subscriptionService.listActivePlans()

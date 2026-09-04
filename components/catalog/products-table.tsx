@@ -14,10 +14,7 @@ interface ProductsTableProps {
   canManage: boolean
 }
 
-/**
- * Tabel produk dengan edit di tempat. Baris yang sedang diubah diganti oleh
- * form edit selebar tabel, agar konteks daftar tetap terlihat.
- */
+// Product table with in-place edit. The row being edited is replaced by a full-width edit form so the list context stays visible.
 export function ProductsTable({ items, branchId, canViewCost, canManage }: ProductsTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const columnCount = 4 + (canViewCost ? 1 : 0) + (canManage ? 1 : 0)
@@ -61,7 +58,7 @@ export function ProductsTable({ items, branchId, canViewCost, canManage }: Produ
               <tr key={item.variantId} className="border-border border-t">
                 <td className="px-4 py-3">
                   {item.imageKey ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- disajikan proxy dinamis satu-origin, bukan aset next/image
+                    // eslint-disable-next-line @next/next/no-img-element -- served by a same-origin dynamic proxy, not a next/image asset
                     <img
                       src={fileProxyUrl(item.imageKey)}
                       alt={item.name}

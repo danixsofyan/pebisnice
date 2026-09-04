@@ -4,20 +4,7 @@ import { getObject } from '@/lib/storage/object-store'
 import { objectKeyFromSegments } from '@/lib/storage/object-key'
 import { logger } from '@/lib/logging/logger'
 
-/**
- * Proxy baca berkas dari bucket privat.
- *
- * Bucket tidak punya URL publik; ini satu-satunya jalan browser mengambil
- * berkas unggahan. Tiga lapis pemeriksaan sebelum satu byte pun dikirim:
- *
- *   1. harus login,
- *   2. harus punya project aktif,
- *   3. kunci objek harus berprefiks project pemohon.
- *
- * Lapis ke-3 yang membuat menebak kunci milik project lain tidak berguna:
- * meski nama objeknya benar, prefiksnya tidak akan cocok dan jawabannya 404 —
- * sengaja disamakan dengan "tidak ada" agar tak membocorkan keberadaannya.
- */
+// Read a file from the private bucket. The bucket has no public URL; this is the only way the browser fetches an upload. Three checks before a single byte is sent: must be logged in, must have an active project, and the object key must be prefixed with the requesting project. The third makes guessing another project's key useless: even with the right object name the prefix won't match and the answer is 404, deliberately the same as absent so existence isn't leaked.
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ key: string[] }> }
@@ -40,7 +27,7 @@ export async function GET(
 
   const headers = new Headers({
     'Content-Type': object.contentType,
-    // Privat: boleh disimpan cache browser pengguna, tak boleh cache bersama.
+    // Private: may sit in the user's browser cache, never a shared cache.
     'Cache-Control': object.cacheControl ?? 'private, max-age=31536000, immutable',
     'Content-Disposition': 'inline',
     'X-Content-Type-Options': 'nosniff',

@@ -8,7 +8,7 @@ export default async function OnboardingPage() {
 
   if (state.status === 'unauthenticated') redirect('/login')
 
-  // Tak boleh onboarding tanpa langganan aktif — pilih/atur paket lebih dulu.
+  // No onboarding without an active subscription; pick/arrange a plan first.
   const userId = state.status === 'ready' ? state.context.userId : state.userId
   const billing = await resolveBillingState(userId)
   if (billing.access === 'none') redirect('/billing/plans')

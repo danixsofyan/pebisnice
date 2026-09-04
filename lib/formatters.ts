@@ -1,9 +1,4 @@
-/**
- * Memformat string dari kolom NUMERIC(18,2) menjadi Rupiah.
- *
- * Menerima string, bukan number, supaya nilai besar tidak kehilangan presisi
- * saat melewati float — sejalan dengan lib/domain/money.ts.
- */
+// Format a NUMERIC(18,2) string as Rupiah. Takes a string, not a number, so large values don't lose precision through a float, matching lib/domain/money.ts.
 export function formatRupiahFromDecimal(value: string): string {
   const negative = value.startsWith('-')
   const [whole = '0'] = value.replace('-', '').split('.')

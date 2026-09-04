@@ -9,10 +9,7 @@ import { getRequestOrigin } from '@/lib/http/origin'
 import { tagRequestActor, withRequestScope } from '@/lib/observability/with-request-scope'
 import { handleActionError, ValidationError } from '@/lib/errors/app-error'
 
-/**
- * Memulai masa coba lalu mengantar ke onboarding. Kelayakan (belum punya
- * langganan) diperiksa di service, bukan di klien.
- */
+// Start a trial, then send to onboarding. Eligibility (no existing subscription) is checked in the service, not the client.
 export async function startTrialAction() {
   return withRequestScope('startTrialAction', async () => {
     try {
@@ -31,11 +28,7 @@ export async function startTrialAction() {
 
 const checkoutSchema = z.object({ planId: z.string().uuid('Paket tidak valid') })
 
-/**
- * Membuat sesi pembayaran Snap untuk paket berbayar dan mengembalikan URL
- * redirect. Klien mengarahkan browser ke sana; aktivasi terjadi lewat webhook,
- * bukan dari kepulangan pengguna.
- */
+// Create a Snap payment session for a paid plan and return the redirect URL. The client sends the browser there; activation happens via the webhook, not the user's return.
 export async function createCheckoutAction(raw: unknown) {
   return withRequestScope('createCheckoutAction', async () => {
     try {

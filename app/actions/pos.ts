@@ -80,8 +80,7 @@ export async function createSaleAction(raw: unknown) {
       revalidatePath('/pos')
       revalidatePath('/transactions')
 
-      // Angka dikirim sebagai string desimal — bigint tidak bisa diserialisasi
-      // melewati batas server/client.
+      // Numbers go as decimal strings; bigint can't be serialized across the server/client boundary.
       return {
         success: true as const,
         data: {

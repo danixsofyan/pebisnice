@@ -19,13 +19,7 @@ const createFirstProjectSchema = z.object({
   description: z.string().trim().max(500).optional(),
 })
 
-/**
- * Membuat project pertama pengguna beserta cabang "Pusat".
- *
- * Menolak bila pengguna sudah punya project — halaman onboarding hanya untuk
- * yang benar-benar belum punya, dan pengecekannya di server supaya tidak bisa
- * dilewati dari client.
- */
+// Create the user's first project with its "Pusat" branch. Rejects if the user already has a project; onboarding is only for those who truly don't, checked server-side so it can't be bypassed from the client.
 export async function createFirstProjectAction(raw: unknown) {
   return withRequestScope('createFirstProjectAction', async () => {
     try {

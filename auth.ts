@@ -15,8 +15,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   }),
   ...authConfig,
   events: {
-    // Undangan tim yang menunggu ditautkan ke akun begitu orangnya login.
-    // Kegagalan di sini tak boleh menghalangi login, jadi ditangkap dan dicatat.
+    // Pending team invites link to the account on sign-in. A failure here must not block login, so it's caught and logged.
     async signIn({ user }) {
       if (!user?.id || !user.email) return
       try {

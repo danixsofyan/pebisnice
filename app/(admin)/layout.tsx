@@ -2,13 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { resolveAdminState } from '@/lib/auth/admin'
 
-/**
- * Cangkang dashboard admin platform.
- *
- * Bukan admin → `notFound()`, bukan redirect: keberadaan area ini tidak perlu
- * dibocorkan ke pengguna biasa. Sengaja di luar gerbang langganan — admin tak
- * harus berlangganan.
- */
+// Platform admin dashboard shell. Non-admin gets notFound(), not a redirect: this area's existence shouldn't leak to regular users. Deliberately outside the subscription gate, admins need no plan.
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { isAdmin } = await resolveAdminState()
   if (!isAdmin) notFound()

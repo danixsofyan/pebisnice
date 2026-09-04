@@ -3,14 +3,7 @@ import { DashboardLayout } from '@/components/dashboard/dashboard-layout'
 import { resolveSessionState } from '@/lib/auth/session-context'
 import { resolveBillingState } from '@/lib/auth/billing-state'
 
-/**
- * Cangkang seluruh halaman aplikasi.
- *
- * Gerbang berlapis, urutannya menentukan ke mana pengunjung diarahkan: belum
- * login → login, belum berlangganan → pilih paket, langganan habis → halaman
- * tagihan, belum punya bisnis → onboarding. Sebelumnya "belum login" melempar
- * error dan berujung layar 500, bukan mengarah ke tempat yang benar.
- */
+// Whole-app page shell. Layered gate whose order decides the redirect: not logged in -> login, no subscription -> plans, subscription expired -> billing, no business yet -> onboarding. Previously 'not logged in' threw into a 500 instead of going to the right place.
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const state = await resolveSessionState()
 

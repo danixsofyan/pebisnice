@@ -51,11 +51,7 @@ export async function requirePermission(
   if (!ok) throw new ForbiddenError('Anda tidak memiliki izin untuk melakukan tindakan ini.')
 }
 
-/**
- * Memastikan pengguna boleh menyentuh cabang tertentu. Pemilik project selalu
- * boleh; anggota tim hanya boleh bila `branch_id`-nya NULL (seluruh cabang)
- * atau cocok dengan cabang yang dituju.
- */
+// Ensure a user may touch a given branch. The project owner always may; a team member may only if their branch_id is NULL (all branches) or matches the target branch.
 export async function requireBranchAccess(
   projectId: string,
   userId: string,

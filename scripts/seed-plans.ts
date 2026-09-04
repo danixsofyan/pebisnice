@@ -2,13 +2,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { plans } from '@/lib/db/schema'
 
-/**
- * Mengisi paket bawaan. Idempoten: menyisip bila kode belum ada, memperbarui
- * bila sudah — jadi aman dijalankan berulang. Angka di sini hanya titik awal;
- * harga dan lama trial dimaksudkan diubah lewat DB, bukan lewat deploy.
- *
- * Jalankan: pnpm tsx scripts/seed-plans.ts
- */
+// Seed default plans. Idempotent: insert if the code is new, update if it exists, so it's safe to re-run. The numbers here are only a starting point; price and trial length are meant to change via the DB, not a deploy. Run: pnpm tsx scripts/seed-plans.ts
 const DEFAULT_PLANS = [
   {
     code: 'trial',
