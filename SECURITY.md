@@ -51,22 +51,18 @@ pelanggan dalam skala besar.
 
 ## Perlu tindakan
 
-### 1. Aktifkan RLS secara nyata (prioritas tertinggi)
-Kebijakan RLS sudah ada TETAPI inert: aplikasi terhubung sebagai role `postgres`
-yang mem-bypass RLS. Isolasi tenant kini bertumpu pada lapisan aplikasi saja.
-Untuk menjadikan RLS sebagai lapis pertahanan kedua, buat role terbatas:
+### 1. Aktifkan RLS secara nyata — tinggal ganti DATABASE_URL
+Role terbatas `pebisnice_app` (NOBYPASSRLS) sudah dibuat di produksi berikut
+seluruh grant dan policy pendukung (lihat `supabase/rls-role.sql`). Sudah diuji
+end-to-end sebagai role tersebut: login/penemuan tenant, tulis bisnis lewat
+`withTenant`, insert audit, dan cron pembersih — semua jalan; tabel bisnis
+terisolasi (tanpa konteks 0 baris, konteks salah 0 baris). Aplikasi produksi
+saat ini MASIH memakai role `postgres` (bypass RLS), jadi policy belum aktif.
 
-```sql
-CREATE ROLE pebisnice_app WITH LOGIN PASSWORD '<kuat>' NOBYPASSRLS;
-GRANT USAGE ON SCHEMA public TO pebisnice_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO pebisnice_app;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO pebisnice_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO pebisnice_app;
-```
-Lalu ganti `DATABASE_URL` agar terhubung sebagai role ini, dan uji seluruh alur
-sebelum dipromosikan. Harus diuji hati-hati; salah privilege dapat menghentikan
-aplikasi.
+Untuk mengaktifkan: ganti `DATABASE_URL` di Vercel agar terhubung sebagai
+`pebisnice_app` (username pooler `pebisnice_app.<ref>`), lalu redeploy. Untuk
+membatalkan, kembalikan `DATABASE_URL` yang lama. Tidak ada perubahan skema, jadi
+rollback instan.
 
 ### 2. Operasional
 - Rotasi berkala `AUTH_SECRET`, `CRON_SECRET`, kredensial DB & storage.
