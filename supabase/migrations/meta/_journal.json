@@ -139,7 +139,21 @@
       "idx": 19,
       "version": "7",
       "when": 1788563999916,
-      "tag": "0019_po_qty_received",
+      "tag": "0020_supplier_pii_enc",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1788564334418,
+      "tag": "0020_supplier_enc_add",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1788564354144,
+      "tag": "0021_supplier_plaintext_drop",
       "breakpoints": true
     }
   ]

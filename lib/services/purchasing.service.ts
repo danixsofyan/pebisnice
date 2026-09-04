@@ -14,6 +14,7 @@ import { withTenant } from '@/lib/db/tenant'
 import { inventoryRepository } from '@/lib/repositories/inventory.repository'
 import { auditRepository } from '@/lib/repositories/audit.repository'
 import { planStockMovement } from '@/lib/domain/inventory/stock-movement'
+import { decryptToken, encryptToken } from '@/lib/encryption'
 import { fromDecimalString, toDecimalString } from '@/lib/domain/money'
 import { requireBranchAccess, requirePermission } from '@/lib/rbac'
 import { sanitizeText } from '@/lib/security/sanitizer'
@@ -46,11 +47,12 @@ export class PurchasingService {
     await requirePermission(projectId, context.userId, MANAGE)
     if (!input.name.trim()) throw new ValidationError('Nama supplier wajib diisi')
 
+    const enc = (v: string | null) => (v && v.trim() ? encryptToken(v.trim()) : null)
     const values = {
       name: sanitizeText(input.name),
-      phone: input.phone ? sanitizeText(input.phone) : null,
-      email: input.email ? sanitizeText(input.email) : null,
-      address: input.address ? sanitizeText(input.address) : null,
+      phoneEnc: enc(input.phone),
+      emailEnc: enc(input.email),
+      addressEnc: enc(input.address),
       note: input.note ? sanitizeText(input.note) : null,
       updatedBy: context.userId,
     }
@@ -84,13 +86,13 @@ export class PurchasingService {
 
   async listSuppliers(projectId: string, userId: string) {
     await requirePermission(projectId, userId, MANAGE)
-    return withTenant(projectId, (tx) =>
+    const rows = await withTenant(projectId, (tx) =>
       tx
         .select({
           id: suppliers.id,
           name: suppliers.name,
-          phone: suppliers.phone,
-          email: suppliers.email,
+          phoneEnc: suppliers.phoneEnc,
+          emailEnc: suppliers.emailEnc,
           note: suppliers.note,
         })
         .from(suppliers)
@@ -98,6 +100,13 @@ export class PurchasingService {
         .orderBy(suppliers.name)
         .limit(500)
     )
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      phone: r.phoneEnc ? decryptToken(r.phoneEnc) : null,
+      email: r.emailEnc ? decryptToken(r.emailEnc) : null,
+      note: r.note,
+    }))
   }
 
   // Create an ordered PO; no stock moves until it is received.

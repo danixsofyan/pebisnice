@@ -13,9 +13,10 @@ export const suppliers = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     ...tenantColumn,
     name: text('name').notNull(),
-    phone: text('phone'),
-    email: text('email'),
-    address: text('address'),
+    // PII encrypted at rest (UU PDP), like customers; name/note stay plaintext.
+    phoneEnc: text('phone_enc'),
+    emailEnc: text('email_enc'),
+    addressEnc: text('address_enc'),
     note: text('note'),
     ...actorColumns,
     ...lifecycleColumns,
