@@ -105,6 +105,12 @@ export default async function ReportsPage({
         <button className="bg-primary text-primary-foreground h-9 rounded-md px-4 text-sm">
           Terapkan
         </button>
+        <a
+          href={`/api/v1/export/report-pdf?start=${start}&end=${end}`}
+          className="border-input hover:bg-muted/40 inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+        >
+          Export PDF
+        </a>
       </form>
 
       <div className="border-border divide-border overflow-hidden rounded-xl border">

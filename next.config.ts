@@ -1,10 +1,12 @@
 import type { NextConfig } from 'next'
 
-// Foto Google untuk avatar login. Berkas unggahan tidak lewat next/image dari
-// host luar — disajikan proxy satu-origin di app/api/v1/files, jadi tak ada
-// host penyedia storage yang perlu diizinkan.
+// Google avatar for the login page. Uploads don't go through next/image from an
+// external host (served by the same-origin proxy in app/api/v1/files), so no
+// storage host needs allowing. pdfkit stays external so its font files ship via
+// file tracing instead of being bundled.
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  serverExternalPackages: ['pdfkit'],
   images: {
     remotePatterns: [{ protocol: 'https', hostname: 'lh3.googleusercontent.com' }],
   },
