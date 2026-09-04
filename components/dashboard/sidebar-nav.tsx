@@ -8,6 +8,7 @@ import {
   ReceiptText,
   Boxes,
   Package,
+  Factory,
   Wallet,
   Coins,
   Users,
@@ -41,6 +42,11 @@ const mainNavItems = [
     title: 'Inventaris',
     url: '/inventory',
     icon: Package,
+  },
+  {
+    title: 'Produksi',
+    url: '/production',
+    icon: Factory,
   },
   {
     title: 'Pengeluaran',
