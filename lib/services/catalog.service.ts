@@ -1,7 +1,8 @@
 import { and, asc, eq, isNull } from 'drizzle-orm'
 import { inventory, productVariants, products } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant'
-import { toDecimalString, type Money } from '@/lib/domain/money'
+import { fromDecimalString, toDecimalString, type Money } from '@/lib/domain/money'
+import type { ParsedProductRow } from '@/lib/import/product-import'
 import { planStockMovement } from '@/lib/domain/inventory/stock-movement'
 import { inventoryRepository } from '@/lib/repositories/inventory.repository'
 import { auditRepository } from '@/lib/repositories/audit.repository'
@@ -306,6 +307,49 @@ export class CatalogService {
       hpp: canViewCost ? row.hpp : null,
       imageKey: row.imageKey,
     }))
+  }
+
+  // Import many products from parsed CSV rows. Permission and branch are checked
+  // once; each row is created independently so one failure doesn't abort the rest.
+  async bulkImport(
+    request: { projectId: string; branchId: string; rows: ParsedProductRow[] },
+    context: CatalogContext
+  ): Promise<{ created: number; failed: Array<{ name: string; error: string }> }> {
+    await requirePermission(request.projectId, context.userId, 'product:manage')
+    await requireBranchAccess(request.projectId, context.userId, request.branchId)
+
+    let created = 0
+    const failed: Array<{ name: string; error: string }> = []
+    for (const row of request.rows) {
+      try {
+        await this.createProduct(
+          {
+            projectId: request.projectId,
+            branchId: request.branchId,
+            name: row.name,
+            type: row.type,
+            sku: row.sku,
+            variantName: row.variantName,
+            hpp: fromDecimalString(row.hpp),
+            initialStock: row.initialStock,
+            imageKey: null,
+          },
+          context
+        )
+        created++
+      } catch (error) {
+        failed.push({
+          name: row.name,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
+
+    logger.info(
+      { projectId: request.projectId, created, failed: failed.length },
+      'product bulk import'
+    )
+    return { created, failed }
   }
 }
 

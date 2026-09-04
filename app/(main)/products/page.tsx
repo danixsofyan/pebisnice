@@ -2,6 +2,7 @@ import { getAccessibleBranches, getSessionContext } from '@/lib/auth/session-con
 import { catalogService } from '@/lib/services/catalog.service'
 import { hasRolePermission } from '@/lib/authz/permissions'
 import { ProductForm } from '@/components/catalog/product-form'
+import { ImportProducts } from '@/components/catalog/import-products'
 import { ProductsTable } from '@/components/catalog/products-table'
 
 export default async function ProductsPage() {
@@ -32,7 +33,12 @@ export default async function ProductsPage() {
             {items.length} varian · stok cabang {branch.name}
           </p>
         </div>
-        {canManage ? <ProductForm branchId={branch.id} canViewCost={context.canViewCost} /> : null}
+        {canManage ? (
+          <div className="flex flex-wrap items-start gap-2">
+            <ImportProducts branchId={branch.id} />
+            <ProductForm branchId={branch.id} canViewCost={context.canViewCost} />
+          </div>
+        ) : null}
       </div>
 
       {items.length === 0 ? (

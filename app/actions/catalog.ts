@@ -8,6 +8,8 @@ import { getSessionContext } from '@/lib/auth/session-context'
 import { fromDecimalString } from '@/lib/domain/money'
 import { tagRequestActor, withRequestScope } from '@/lib/observability/with-request-scope'
 import { handleActionError, ValidationError } from '@/lib/errors/app-error'
+import { parseCsv } from '@/lib/import/csv-parse'
+import { parseProductRows } from '@/lib/import/product-import'
 
 const createProductSchema = z.object({
   branchId: z.string().uuid('Cabang tidak valid'),
@@ -147,6 +149,51 @@ export async function uploadProductImageAction(formData: FormData) {
       )
 
       return { success: true as const, data: { imageKey: key } }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
+// Import products from an uploaded CSV. Parsing and validation are pure; each
+// valid row is created, and per-row parse/create errors are returned together.
+export async function importProductsAction(formData: FormData) {
+  return withRequestScope('importProductsAction', async () => {
+    try {
+      const context = await getSessionContext()
+      tagRequestActor(context.userId, context.projectId)
+
+      const branchId = String(formData.get('branchId') ?? '')
+      const file = formData.get('file')
+      if (!branchId) throw new ValidationError('Cabang wajib dipilih')
+      if (!(file instanceof File)) throw new ValidationError('Berkas CSV tidak ditemukan')
+
+      const text = await file.text()
+      const { rows, errors } = parseProductRows(parseCsv(text))
+      if (rows.length === 0) {
+        throw new ValidationError(errors[0]?.message ?? 'Tidak ada baris yang bisa diimpor')
+      }
+
+      const headersList = await headers()
+      const result = await catalogService.bulkImport(
+        { projectId: context.projectId, branchId, rows },
+        {
+          userId: context.userId,
+          ip: headersList.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown',
+          userAgent: headersList.get('user-agent') ?? 'unknown',
+        }
+      )
+
+      revalidatePath('/products')
+      revalidatePath('/inventory')
+      return {
+        success: true as const,
+        data: {
+          created: result.created,
+          parseErrors: errors,
+          failed: result.failed,
+        },
+      }
     } catch (error) {
       return handleActionError(error)
     }
