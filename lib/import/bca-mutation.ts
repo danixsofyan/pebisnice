@@ -58,13 +58,24 @@ function parseDate(raw: string, fallbackYear: number): string | null {
 export function parseBcaMutations(records: CsvRecord[], year: number): MutationImportResult {
   if (records.length === 0) return { rows: [], errors: [{ line: 0, message: 'Berkas kosong' }] }
 
-  const header = records[0]!.cells.map((h) => h.trim().toLowerCase())
+  // Real BCA exports (and the HTML ".xls") often carry preamble rows — account number, period,
+  // opening balance — before the column header. Scan for the header row rather than assuming it's
+  // the first, so those files parse without hand-editing.
+  let headerRow = -1
   const index = {} as Record<Col, number>
-  for (const key of COLS) index[key] = header.indexOf(key)
-  if (index.mutasi === -1) {
-    index.mutasi = AMOUNT_ALIASES.map((a) => header.indexOf(a)).find((i) => i >= 0) ?? -1
+  for (let r = 0; r < records.length; r++) {
+    const cells = records[r]!.cells.map((h) => h.trim().toLowerCase())
+    const tanggal = cells.indexOf('tanggal')
+    let mutasi = cells.indexOf('mutasi')
+    if (mutasi === -1) mutasi = AMOUNT_ALIASES.map((a) => cells.indexOf(a)).find((i) => i >= 0) ?? -1
+    if (tanggal >= 0 && mutasi >= 0) {
+      headerRow = r
+      for (const key of COLS) index[key] = cells.indexOf(key)
+      index.mutasi = mutasi
+      break
+    }
   }
-  if (index.tanggal === -1 || index.mutasi === -1) {
+  if (headerRow === -1) {
     return {
       rows: [],
       errors: [{ line: records[0]!.line, message: 'Header wajib memuat kolom Tanggal dan Mutasi' }],
@@ -74,7 +85,7 @@ export function parseBcaMutations(records: CsvRecord[], year: number): MutationI
   const rows: ParsedMutation[] = []
   const errors: MutationParseError[] = []
 
-  for (let i = 1; i < records.length; i++) {
+  for (let i = headerRow + 1; i < records.length; i++) {
     const cells = records[i]!.cells
     const line = records[i]!.line
     const get = (key: Col) => (index[key] >= 0 ? (cells[index[key]] ?? '').trim() : '')

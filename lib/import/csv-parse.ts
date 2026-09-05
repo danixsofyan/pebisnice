@@ -6,7 +6,9 @@ export interface CsvRecord {
   line: number
 }
 
-export function parseCsvRecords(text: string): CsvRecord[] {
+// BCA and other bank exports vary the field separator (comma, semicolon, or tab). The delimiter is
+// sniffed by the caller and passed in; it defaults to comma for plain CSV.
+export function parseCsvRecords(text: string, delimiter = ','): CsvRecord[] {
   const input = text.replace(/^﻿/, '')
   const records: CsvRecord[] = []
   let row: string[] = []
@@ -40,7 +42,7 @@ export function parseCsvRecords(text: string): CsvRecord[] {
     }
     if (ch === '"') {
       inQuotes = true
-    } else if (ch === ',') {
+    } else if (ch === delimiter) {
       row.push(cell)
       cell = ''
     } else if (ch === '\n' || (ch === '\r' && input[i + 1] !== '\n')) {

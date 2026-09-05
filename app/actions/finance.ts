@@ -7,10 +7,10 @@ import { financeService } from '@/lib/services/finance.service'
 import { getSessionContext } from '@/lib/auth/session-context'
 import { tagRequestActor, withRequestScope } from '@/lib/observability/with-request-scope'
 import { handleActionError, ValidationError } from '@/lib/errors/app-error'
-import { parseCsvRecords } from '@/lib/import/csv-parse'
+import { extractStatementRecords, STATEMENT_MAX_BYTES } from '@/lib/import/statement-file'
 import { parseBcaMutations } from '@/lib/import/bca-mutation'
 
-const MAX_IMPORT_BYTES = 2 * 1024 * 1024
+const MAX_IMPORT_BYTES = STATEMENT_MAX_BYTES
 const MAX_IMPORT_ROWS = 5000
 
 async function actorMeta() {
@@ -21,7 +21,8 @@ async function actorMeta() {
   }
 }
 
-// Import a BCA statement CSV. Parsing is pure; duplicate rows are skipped by the service.
+// Import a BCA statement (CSV/TXT or the HTML ".xls" from KlikBCA/myBCA). Binary spreadsheets are
+// rejected by the extractor; parsing is pure and duplicate rows are skipped by the service.
 export async function importMutationsAction(formData: FormData) {
   return withRequestScope('importMutationsAction', async () => {
     try {
@@ -32,11 +33,14 @@ export async function importMutationsAction(formData: FormData) {
       const yearRaw = Number(formData.get('year'))
       const year = Number.isInteger(yearRaw) && yearRaw > 2000 ? yearRaw : new Date().getFullYear()
       const file = formData.get('file')
-      if (!(file instanceof File)) throw new ValidationError('Berkas CSV tidak ditemukan')
+      if (!(file instanceof File)) throw new ValidationError('Berkas tidak ditemukan')
       if (file.size > MAX_IMPORT_BYTES)
         throw new ValidationError('Berkas terlalu besar (maks 2 MB)')
 
-      const { rows, errors } = parseBcaMutations(parseCsvRecords(await file.text()), year)
+      const extract = extractStatementRecords(new Uint8Array(await file.arrayBuffer()))
+      if (!extract.ok) throw new ValidationError(extract.reason)
+
+      const { rows, errors } = parseBcaMutations(extract.records, year)
       if (rows.length === 0) {
         throw new ValidationError(errors[0]?.message ?? 'Tidak ada mutasi yang bisa diimpor')
       }

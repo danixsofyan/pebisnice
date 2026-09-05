@@ -59,8 +59,9 @@ export function ImportMutations() {
         </button>
       </div>
       <p className="text-muted-foreground text-xs">
-        Unggah CSV hasil unduh KlikBCA (kolom Tanggal, Keterangan, Mutasi, Saldo). Baris duplikat
-        otomatis dilewati, jadi aman diimpor ulang.
+        Unggah hasil unduh mutasi KlikBCA/myBCA — CSV, TXT, atau berkas .xls (kolom Tanggal,
+        Keterangan, Mutasi, Saldo). Baris duplikat otomatis dilewati, jadi aman diimpor ulang.
+        Untuk .xlsx, simpan dulu sebagai CSV. Maksimum 2 MB.
       </p>
       <label className="flex items-center gap-2 text-sm">
         Tahun mutasi
@@ -76,7 +77,7 @@ export function ImportMutations() {
       <input
         ref={inputRef}
         type="file"
-        accept=".csv,.txt,text/csv"
+        accept=".csv,.txt,.xls,text/csv,application/vnd.ms-excel"
         onChange={onFile}
         disabled={isPending}
         className="text-sm"
