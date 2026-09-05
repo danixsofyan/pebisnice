@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, isNull, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import {
   branches,
@@ -7,6 +7,7 @@ import {
   productVariants,
   purchaseOrderItems,
   purchaseOrders,
+  purchasePayments,
   purchaseReturnItems,
   purchaseReturns,
   suppliers,
@@ -24,6 +25,18 @@ import { NotFoundError, ValidationError } from '@/lib/errors/app-error'
 import { logger } from '@/lib/logging/logger'
 
 const MANAGE: Parameters<typeof requirePermission>[2] = 'inventory:adjust'
+const FINANCE: Parameters<typeof requirePermission>[2] = 'expense:manage'
+type PayMethod = 'cash' | 'transfer' | 'qris' | 'card' | 'other'
+
+export interface PayableRow {
+  id: string
+  supplier: string | null
+  orderDate: Date
+  status: string
+  total: string
+  paid: string
+  outstanding: string
+}
 
 export interface PurchasingContext {
   userId: string
@@ -470,6 +483,112 @@ export class PurchasingService {
       'purchase returned to supplier'
     )
     return { refundAmount: toDecimalString(refund) }
+  }
+
+  // Record a supplier payment against a PO (utang). Rejects overpayment. Gated expense:manage.
+  async payPurchase(
+    projectId: string,
+    purchaseOrderId: string,
+    input: { amount: string; method: PayMethod | null; note: string | null },
+    context: PurchasingContext
+  ): Promise<void> {
+    await requirePermission(projectId, context.userId, FINANCE)
+    const pay = fromDecimalString(input.amount)
+    if (pay <= 0n) throw new ValidationError('Jumlah bayar harus lebih dari 0')
+
+    await withTenant(projectId, async (tx) => {
+      const [po] = await tx
+        .select({ total: purchaseOrders.totalAmount, status: purchaseOrders.status })
+        .from(purchaseOrders)
+        .where(and(eq(purchaseOrders.id, purchaseOrderId), eq(purchaseOrders.projectId, projectId)))
+        .limit(1)
+      if (!po) throw new NotFoundError('PO tidak ditemukan')
+      if (po.status === 'cancelled') throw new ValidationError('PO sudah dibatalkan')
+
+      const [paidRow] = await tx
+        .select({ paid: sql<string>`coalesce(sum(${purchasePayments.amount}), 0)` })
+        .from(purchasePayments)
+        .where(eq(purchasePayments.purchaseOrderId, purchaseOrderId))
+      const outstanding = fromDecimalString(po.total) - fromDecimalString(paidRow?.paid ?? '0')
+      if (pay > outstanding) {
+        throw new ValidationError(`Melebihi sisa hutang (${toDecimalString(outstanding)})`)
+      }
+
+      await tx.insert(purchasePayments).values({
+        projectId,
+        purchaseOrderId,
+        amount: input.amount,
+        method: input.method,
+        note: input.note ? sanitizeText(input.note) : null,
+        createdBy: context.userId,
+      })
+    })
+
+    await auditRepository.log({
+      action: 'update',
+      resource: 'purchase_order',
+      resourceId: purchaseOrderId,
+      userId: context.userId,
+      projectId,
+      ipAddress: context.ip,
+      userAgent: context.userAgent,
+      metadata: { type: 'payment', amount: input.amount },
+    })
+  }
+
+  // Payables: non-cancelled POs with total, paid, and outstanding. Gated expense:manage.
+  async listPayables(projectId: string, userId: string): Promise<PayableRow[]> {
+    await requirePermission(projectId, userId, FINANCE)
+    return withTenant(projectId, async (tx) => {
+      const rows = await tx
+        .select({
+          id: purchaseOrders.id,
+          supplier: suppliers.name,
+          orderDate: purchaseOrders.orderDate,
+          status: purchaseOrders.status,
+          total: purchaseOrders.totalAmount,
+          paid: sql<string>`coalesce((select sum(pp.amount) from purchase_payments pp where pp.purchase_order_id = ${purchaseOrders.id}), 0)`,
+        })
+        .from(purchaseOrders)
+        .leftJoin(suppliers, eq(suppliers.id, purchaseOrders.supplierId))
+        .where(
+          and(
+            eq(purchaseOrders.projectId, projectId),
+            isNull(purchaseOrders.deletedAt),
+            ne(purchaseOrders.status, 'cancelled')
+          )
+        )
+        .orderBy(desc(purchaseOrders.orderDate))
+        .limit(300)
+      return rows.map((r) => ({
+        id: r.id,
+        supplier: r.supplier,
+        orderDate: r.orderDate,
+        status: r.status,
+        total: r.total,
+        paid: r.paid,
+        outstanding: toDecimalString(fromDecimalString(r.total) - fromDecimalString(r.paid)),
+      }))
+    })
+  }
+
+  async payablesTotal(projectId: string, userId: string): Promise<string> {
+    await requirePermission(projectId, userId, FINANCE)
+    return withTenant(projectId, async (tx) => {
+      const [row] = await tx
+        .select({
+          total: sql<string>`coalesce(sum(${purchaseOrders.totalAmount}), 0) - coalesce((select sum(pp.amount) from purchase_payments pp join purchase_orders o on o.id = pp.purchase_order_id where o.project_id = ${projectId} and o.deleted_at is null and o.status <> 'cancelled'), 0)`,
+        })
+        .from(purchaseOrders)
+        .where(
+          and(
+            eq(purchaseOrders.projectId, projectId),
+            isNull(purchaseOrders.deletedAt),
+            ne(purchaseOrders.status, 'cancelled')
+          )
+        )
+      return row?.total ?? '0'
+    })
   }
 
   async listOrders(projectId: string, userId: string) {

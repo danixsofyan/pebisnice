@@ -197,6 +197,13 @@
       "when": 1788583742476,
       "tag": "0027_receivables",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1788584136836,
+      "tag": "0028_purchase_payments",
+      "breakpoints": true
     }
   ]
 }

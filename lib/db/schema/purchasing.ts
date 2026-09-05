@@ -1,9 +1,10 @@
 import { index, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { branches } from './branches'
+import { users } from './auth'
 import { productVariants } from './catalog'
 import { actorColumns, tenantColumn } from './columns'
-import { purchaseStatusEnum } from './enums'
+import { paymentMethodEnum, purchaseStatusEnum } from './enums'
 import { lifecycleColumns, money, tz } from './primitives'
 
 // Supplier directory. Contact is business info, kept plaintext for lookup.
@@ -128,5 +129,26 @@ export const purchaseReturnItems = pgTable(
   (t) => [
     index('purchase_return_items_return_idx').on(t.returnId),
     index('purchase_return_items_project_idx').on(t.projectId),
+  ]
+)
+
+// Supplier payment against a purchase order (utang). Outstanding = po.total_amount - sum(payments).
+export const purchasePayments = pgTable(
+  'purchase_payments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ...tenantColumn,
+    purchaseOrderId: uuid('purchase_order_id')
+      .references(() => purchaseOrders.id, { onDelete: 'cascade' })
+      .notNull(),
+    amount: money('amount').notNull(),
+    method: paymentMethodEnum('method'),
+    note: text('note'),
+    paidAt: tz('paid_at').defaultNow().notNull(),
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (t) => [
+    index('purchase_payments_po_idx').on(t.purchaseOrderId),
+    index('purchase_payments_project_idx').on(t.projectId),
   ]
 )

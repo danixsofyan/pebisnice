@@ -42,6 +42,7 @@ const CHILD_TABLES = [
   'orderLinks',
   'purchaseReturnItems',
   'receivablePayments',
+  'purchasePayments',
 ]
 
 describe('kepatuhan skema terhadap db-standards.md', () => {
@@ -69,6 +70,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'projects',
       'purchaseOrderItems',
       'purchaseOrders',
+      'purchasePayments',
       'purchaseReturnItems',
       'purchaseReturns',
       'receivablePayments',
@@ -189,6 +191,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'purchaseReturnItems',
       'receivables',
       'receivablePayments',
+      'purchasePayments',
     ]
 
     for (const tableName of tenantScoped) {
