@@ -15,6 +15,7 @@ import {
   Landmark,
   HandCoins,
   Receipt,
+  Ticket,
   Contact,
   ArrowLeftRight,
   ShoppingBag,
@@ -105,6 +106,11 @@ const mainNavItems = [
     title: 'Hutang Supplier',
     url: '/payables',
     icon: Receipt,
+  },
+  {
+    title: 'Voucher',
+    url: '/promotions',
+    icon: Ticket,
   },
   {
     title: 'Karyawan',

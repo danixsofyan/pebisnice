@@ -68,6 +68,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'productionMaterials',
       'products',
       'projects',
+      'promotions',
       'purchaseOrderItems',
       'purchaseOrders',
       'purchasePayments',
@@ -192,6 +193,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'receivables',
       'receivablePayments',
       'purchasePayments',
+      'promotions',
     ]
 
     for (const tableName of tenantScoped) {

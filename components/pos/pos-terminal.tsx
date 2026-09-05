@@ -5,7 +5,7 @@ import { Minus, Plus, Search, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createSaleAction } from '@/app/actions/pos'
+import { createSaleAction, validateVoucherAction } from '@/app/actions/pos'
 import { formatRupiahFromDecimal } from '@/lib/formatters'
 import type { SellableItem } from '@/lib/repositories/pos-catalog.repository'
 
@@ -46,6 +46,10 @@ export function PosTerminal({
   const [cart, setCart] = useState<CartEntry[]>([])
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [paidAmount, setPaidAmount] = useState('')
+  const [voucherInput, setVoucherInput] = useState('')
+  const [voucher, setVoucher] = useState<{ code: string; discountAmount: string } | null>(null)
+  const [voucherError, setVoucherError] = useState<string | null>(null)
+  const [voucherPending, startVoucherTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -66,6 +70,39 @@ export function PosTerminal({
     0
   )
   const subtotal = (subtotalCents / 100).toFixed(2)
+
+  const discountCents = voucher ? Math.round(Number(voucher.discountAmount) * 100) : 0
+  const totalCents = Math.max(0, subtotalCents - discountCents)
+  const total = (totalCents / 100).toFixed(2)
+
+  function applyVoucher() {
+    setVoucherError(null)
+    const code = voucherInput.trim()
+    if (!code) return
+    if (subtotalCents === 0) {
+      setVoucherError('Tambahkan produk lebih dulu')
+      return
+    }
+    if (cart.some((entry) => !entry.unitPrice)) {
+      setVoucherError('Isi harga setiap item lebih dulu')
+      return
+    }
+    startVoucherTransition(async () => {
+      const res = await validateVoucherAction({ code, subtotal })
+      if (!res.success) {
+        setVoucher(null)
+        setVoucherError(res.error)
+        return
+      }
+      setVoucher(res.data)
+    })
+  }
+
+  function clearVoucher() {
+    setVoucher(null)
+    setVoucherInput('')
+    setVoucherError(null)
+  }
 
   function addItem(item: SellableItem) {
     setError(null)
@@ -118,7 +155,8 @@ export function PosTerminal({
         })),
         discount: { type: 'none' },
         paymentMethod,
-        paidAmount: Number(paidAmount || subtotal).toFixed(2),
+        paidAmount: Number(paidAmount || total).toFixed(2),
+        voucherCode: voucher?.code,
       })
 
       if (!result.success) {
@@ -129,6 +167,7 @@ export function PosTerminal({
       setReceipt(result.data)
       setCart([])
       setPaidAmount('')
+      clearVoucher()
     })
   }
 
@@ -263,9 +302,58 @@ export function PosTerminal({
           </ul>
         )}
 
-        <div className="flex justify-between border-t pt-3 text-sm font-bold">
-          <span>Subtotal</span>
+        <div className="flex justify-between border-t pt-3 text-sm">
+          <span className="text-muted-foreground">Subtotal</span>
           <span>{formatRupiahFromDecimal(subtotal)}</span>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="voucher-code">Voucher</Label>
+          {voucher ? (
+            <div className="border-border flex items-center justify-between rounded-md border border-dashed px-3 py-2 text-sm">
+              <span className="font-mono font-medium">{voucher.code}</span>
+              <button
+                type="button"
+                onClick={clearVoucher}
+                className="text-muted-foreground hover:text-foreground text-xs"
+              >
+                Hapus
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                id="voucher-code"
+                value={voucherInput}
+                onChange={(event) => setVoucherInput(event.target.value.toUpperCase())}
+                placeholder="Kode voucher"
+                className="h-9 flex-1 font-mono"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={applyVoucher}
+                disabled={voucherPending || !voucherInput.trim()}
+              >
+                {voucherPending ? '…' : 'Pakai'}
+              </Button>
+            </div>
+          )}
+          {voucherError ? <p className="text-destructive text-xs">{voucherError}</p> : null}
+        </div>
+
+        {voucher ? (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Diskon voucher</span>
+            <span className="text-emerald-500">
+              −{formatRupiahFromDecimal(voucher.discountAmount)}
+            </span>
+          </div>
+        ) : null}
+
+        <div className="flex justify-between border-t pt-3 text-base font-bold">
+          <span>Total</span>
+          <span>{formatRupiahFromDecimal(total)}</span>
         </div>
 
         <div className="space-y-2">
@@ -291,7 +379,7 @@ export function PosTerminal({
             value={paidAmount}
             onChange={(event) => setPaidAmount(event.target.value)}
             inputMode="numeric"
-            placeholder={subtotal}
+            placeholder={total}
           />
         </div>
 

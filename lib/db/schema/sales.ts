@@ -23,6 +23,7 @@ export const transactions = pgTable(
       onDelete: 'restrict',
     }),
     customerId: uuid('customer_id').references(() => customers.id, { onDelete: 'set null' }),
+    promotionId: uuid('promotion_id'),
     paymentMethod: paymentMethodEnum('payment_method'),
     orderId: text('order_id').notNull(),
     orderDate: tz('order_date').notNull(),

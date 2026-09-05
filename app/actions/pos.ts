@@ -3,11 +3,13 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { posService } from '@/lib/services/pos.service'
+import { promoService } from '@/lib/services/promo.service'
 import { cashSessionService } from '@/lib/services/cash-session.service'
 import { getSessionContext } from '@/lib/auth/session-context'
 import { fromDecimalString, toDecimalString } from '@/lib/domain/money'
 import { percentToBasisPoints } from '@/lib/domain/money'
 import type { CartDiscount } from '@/lib/domain/pos/cart'
+import type { Transaction } from '@/lib/db/tenant'
 import {
   closeSessionSchema,
   createSaleSchema,
@@ -58,9 +60,32 @@ export async function createSaleAction(raw: unknown) {
         discount: { type: string; amount?: string; percent?: number }
         paymentMethod: 'cash' | 'transfer' | 'qris' | 'card' | 'other'
         paidAmount: string
+        voucherCode?: string
       }>(createSaleSchema, raw)
 
       const meta = await requestMeta()
+
+      // A voucher is re-validated server-side against the server-computed subtotal (never the
+      // client's numbers) and overrides any manual discount. used_count is bumped in the same
+      // transaction as the sale so a redemption can't be lost or double-counted.
+      let discount = toDiscount(input.discount)
+      let redeem: ((tx: Transaction, transactionId: string) => Promise<void>) | undefined
+      const voucherCode = input.voucherCode?.trim()
+      if (voucherCode) {
+        const subtotal = input.lines.reduce(
+          (sum, line) => sum + fromDecimalString(line.unitPrice) * BigInt(line.qty),
+          0n
+        )
+        const promo = await promoService.validate(
+          context.projectId,
+          context.userId,
+          voucherCode,
+          subtotal
+        )
+        discount = { type: 'nominal', amount: promo.discountAmount }
+        redeem = (tx, transactionId) =>
+          promoService.redeem(tx, context.projectId, promo.promotionId, transactionId)
+      }
 
       const result = await posService.createSale(
         {
@@ -71,11 +96,12 @@ export async function createSaleAction(raw: unknown) {
             qty: line.qty,
             unitPrice: fromDecimalString(line.unitPrice),
           })),
-          discount: toDiscount(input.discount),
+          discount,
           paymentMethod: input.paymentMethod,
           paidAmount: fromDecimalString(input.paidAmount),
         },
-        { userId: context.userId, ...meta }
+        { userId: context.userId, ...meta },
+        redeem ? { afterInsert: redeem } : undefined
       )
 
       revalidatePath('/pos')
@@ -92,6 +118,37 @@ export async function createSaleAction(raw: unknown) {
           total: toDecimalString(result.cart.total),
           paidAmount: toDecimalString(result.cart.total + result.changeAmount),
           changeAmount: toDecimalString(result.changeAmount),
+        },
+      }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
+// Cashier previews a voucher before checkout: same server-side validation as createSaleAction, so
+// the discount shown is exactly the one that will be applied. The final redemption still happens
+// atomically inside createSaleAction — this is a read-only preview.
+export async function validateVoucherAction(raw: unknown) {
+  return withRequestScope('validateVoucherAction', async () => {
+    try {
+      const context = await getSessionContext()
+      tagRequestActor(context.userId, context.projectId)
+      const input = parseOrThrow<{ code: string; subtotal: string }>(
+        z.object({ code: z.string().trim().min(1).max(64), subtotal: z.string() }),
+        raw
+      )
+      const promo = await promoService.validate(
+        context.projectId,
+        context.userId,
+        input.code,
+        fromDecimalString(input.subtotal)
+      )
+      return {
+        success: true as const,
+        data: {
+          code: promo.code,
+          discountAmount: toDecimalString(promo.discountAmount),
         },
       }
     } catch (error) {

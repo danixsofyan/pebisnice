@@ -25,6 +25,7 @@ export const createSaleSchema = z.object({
   discount: discountSchema,
   paymentMethod: z.enum(['cash', 'transfer', 'qris', 'card', 'other']),
   paidAmount: MONEY,
+  voucherCode: z.string().trim().max(64).optional(),
 })
 
 export const voidSaleSchema = z.object({
