@@ -63,3 +63,49 @@ export async function adjustStockAction(raw: unknown) {
     }
   })
 }
+
+const opnameSchema = z.object({
+  branchId: z.string().uuid('Cabang tidak valid'),
+  reason: z.string().trim().max(200).optional(),
+  counts: z
+    .array(
+      z.object({
+        productVariantId: z.string().uuid(),
+        countedQty: z.number().int().min(0, 'Tidak boleh negatif'),
+      })
+    )
+    .min(1, 'Isi minimal satu hitungan'),
+})
+
+export async function recordOpnameAction(raw: unknown) {
+  return withRequestScope('recordOpnameAction', async () => {
+    try {
+      const context = await getSessionContext()
+      tagRequestActor(context.userId, context.projectId)
+
+      const parsed = opnameSchema.safeParse(raw)
+      if (!parsed.success) {
+        throw new ValidationError('Validasi gagal', parsed.error.flatten().fieldErrors)
+      }
+
+      const meta = await readRequestMeta()
+      const results = await inventoryService.recordOpname(
+        context.projectId,
+        {
+          branchId: parsed.data.branchId,
+          reason: parsed.data.reason ?? '',
+          counts: parsed.data.counts,
+        },
+        { userId: context.userId, ip: meta.ip, userAgent: meta.userAgent }
+      )
+
+      revalidatePath('/inventory')
+      revalidatePath('/products')
+      revalidatePath('/pos')
+
+      return { success: true as const, data: { adjusted: results.length } }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}

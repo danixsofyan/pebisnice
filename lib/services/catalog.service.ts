@@ -21,6 +21,7 @@ export interface CreateProductRequest {
   projectId: string
   branchId: string
   name: string
+  category: string | null
   type: ProductType
   sku: string | null
   variantName: string | null
@@ -39,6 +40,7 @@ export interface UpdateProductRequest {
   projectId: string
   productId: string
   name: string
+  category: string | null
   type: ProductType
   sku: string | null
   variantName: string | null
@@ -62,6 +64,7 @@ export interface ProductListItem {
   productId: string
   variantId: string
   name: string
+  category: string | null
   type: ProductType
   sku: string | null
   variantName: string | null
@@ -89,6 +92,7 @@ export class CatalogService {
       .values({
         projectId: request.projectId,
         name: sanitizeText(request.name),
+        category: request.category ? sanitizeText(request.category) : null,
         type: request.type,
         sku: request.sku ? sanitizeText(request.sku) : null,
         imageKey: request.imageKey,
@@ -251,6 +255,7 @@ export class CatalogService {
         .update(products)
         .set({
           name: sanitizeText(request.name),
+          category: request.category ? sanitizeText(request.category) : null,
           type: request.type,
           sku: request.sku ? sanitizeText(request.sku) : null,
           imageKey: request.imageKey,
@@ -329,6 +334,7 @@ export class CatalogService {
           productId: products.id,
           variantId: productVariants.id,
           name: products.name,
+          category: products.category,
           type: products.type,
           sku: productVariants.skuVariant,
           variantName: productVariants.variantName,
@@ -362,6 +368,7 @@ export class CatalogService {
       productId: row.productId,
       variantId: row.variantId,
       name: row.name,
+      category: row.category,
       type: row.type,
       sku: row.sku,
       variantName: row.variantName,
@@ -391,6 +398,7 @@ export class CatalogService {
         projectId: request.projectId,
         branchId: request.branchId,
         name: row.name,
+        category: null,
         type: row.type,
         sku: row.sku,
         variantName: row.variantName,

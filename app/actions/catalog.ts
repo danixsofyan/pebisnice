@@ -17,6 +17,7 @@ const MAX_IMPORT_ROWS = 1000
 const createProductSchema = z.object({
   branchId: z.string().uuid('Cabang tidak valid'),
   name: z.string().trim().min(1, 'Nama produk wajib diisi').max(150),
+  category: z.string().trim().max(60).optional(),
   type: z.enum(['finished', 'material']),
   sku: z.string().trim().max(60).optional(),
   variantName: z.string().trim().max(100).optional(),
@@ -50,6 +51,7 @@ export async function createProductAction(raw: unknown) {
           projectId: context.projectId,
           branchId: parsed.data.branchId,
           name: parsed.data.name,
+          category: parsed.data.category ?? null,
           type: parsed.data.type,
           sku: parsed.data.sku ?? null,
           variantName: parsed.data.variantName ?? null,
@@ -79,6 +81,7 @@ export async function createProductAction(raw: unknown) {
 const updateProductSchema = z.object({
   productId: z.string().uuid('Produk tidak valid'),
   name: z.string().trim().min(1, 'Nama produk wajib diisi').max(150),
+  category: z.string().trim().max(60).optional(),
   type: z.enum(['finished', 'material']),
   sku: z.string().trim().max(60).optional(),
   variantName: z.string().trim().max(100).optional(),
@@ -111,6 +114,7 @@ export async function updateProductAction(raw: unknown) {
           projectId: context.projectId,
           productId: parsed.data.productId,
           name: parsed.data.name,
+          category: parsed.data.category ?? null,
           type: parsed.data.type,
           sku: parsed.data.sku ?? null,
           variantName: parsed.data.variantName ?? null,

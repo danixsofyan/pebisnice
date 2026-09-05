@@ -1,0 +1,2 @@
+ALTER TABLE "products" ADD COLUMN "category" text;--> statement-breakpoint
+CREATE INDEX "products_category_idx" ON "products" USING btree ("project_id","category") WHERE "products"."deleted_at" is null;

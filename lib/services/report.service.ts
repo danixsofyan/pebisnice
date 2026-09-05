@@ -1,6 +1,12 @@
 import { and, desc, eq, gte, isNull, lte, ne, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { projects, transactionItems, transactions } from '@/lib/db/schema'
+import {
+  inventoryMovements,
+  projects,
+  transactionItems,
+  transactions,
+  users,
+} from '@/lib/db/schema'
 import { reportRepository, type PeriodFilter } from '@/lib/repositories/report.repository'
 import { withTenant } from '@/lib/db/tenant'
 import { calculateProfitLoss, type ProfitLossReport } from '@/lib/domain/finance/profit-loss'
@@ -212,6 +218,50 @@ export class ReportService {
         .limit(200)
     })
   }
+
+  // Stock card: every movement of one variant at one branch, newest first, with the running
+  // balance already stored on each row. Gated report:view.
+  async stockCard(
+    projectId: string,
+    userId: string,
+    filter: { branchId: string; variantId: string; startDate?: string; endDate?: string }
+  ): Promise<StockCardRow[]> {
+    await requirePermission(projectId, userId, 'report:view')
+    await requireBranchAccess(projectId, userId, filter.branchId)
+
+    return withTenant(projectId, (tx) => {
+      const conditions = [
+        eq(inventoryMovements.branchId, filter.branchId),
+        eq(inventoryMovements.productVariantId, filter.variantId),
+      ]
+      if (filter.startDate) {
+        conditions.push(
+          gte(inventoryMovements.createdAt, new Date(`${filter.startDate}T00:00:00.000Z`))
+        )
+      }
+      if (filter.endDate) {
+        conditions.push(
+          lte(inventoryMovements.createdAt, new Date(`${filter.endDate}T23:59:59.999Z`))
+        )
+      }
+      return tx
+        .select({
+          id: inventoryMovements.id,
+          movementType: inventoryMovements.movementType,
+          qty: inventoryMovements.qty,
+          quantityAfter: inventoryMovements.quantityAfter,
+          referenceId: inventoryMovements.referenceId,
+          note: inventoryMovements.note,
+          actorEmail: users.email,
+          createdAt: inventoryMovements.createdAt,
+        })
+        .from(inventoryMovements)
+        .leftJoin(users, eq(users.id, inventoryMovements.createdBy))
+        .where(and(...conditions))
+        .orderBy(desc(inventoryMovements.createdAt))
+        .limit(500)
+    })
+  }
 }
 
 export interface SalesByProductRow {
@@ -219,6 +269,17 @@ export interface SalesByProductRow {
   qty: number
   revenue: string
   orders: number
+}
+
+export interface StockCardRow {
+  id: string
+  movementType: string
+  qty: number
+  quantityAfter: number
+  referenceId: string | null
+  note: string | null
+  actorEmail: string | null
+  createdAt: Date
 }
 
 export const reportService = new ReportService()

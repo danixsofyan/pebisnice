@@ -8,6 +8,7 @@ const TABS = [
   { href: '/reports', label: 'Laba-Rugi' },
   { href: '/reports/shifts', label: 'Shift Kasir' },
   { href: '/reports/products', label: 'Produk Terlaris' },
+  { href: '/reports/stock-card', label: 'Kartu Stok' },
 ]
 
 export function ReportsTabs() {

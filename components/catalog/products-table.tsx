@@ -45,6 +45,7 @@ export function ProductsTable({ items, branchId, canViewCost, canManage }: Produ
                     product={{
                       productId: item.productId,
                       name: item.name,
+                      category: item.category,
                       type: item.type,
                       sku: item.sku,
                       variantName: item.variantName,

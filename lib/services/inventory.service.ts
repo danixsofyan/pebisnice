@@ -7,7 +7,16 @@ import {
 import { withTenant, type Transaction } from '@/lib/db/tenant'
 import { auditRepository } from '@/lib/repositories/audit.repository'
 import { requireBranchAccess, requirePermission } from '@/lib/rbac'
+import { ValidationError } from '@/lib/errors/app-error'
 import { logger } from '@/lib/logging/logger'
+
+export interface OpnameResultRow {
+  productVariantId: string
+  before: number
+  counted: number
+  after: number
+  delta: number
+}
 
 export interface StockMovementContext {
   userId: string
@@ -63,6 +72,64 @@ export class InventoryService {
     )
 
     return plan
+  }
+
+  // Physical stock count (opname): set each variant's balance to the counted quantity in one
+  // transaction, recording the difference as an 'opname' movement. Items whose count already
+  // matches are skipped (no noise movement). Gated inventory:adjust.
+  async recordOpname(
+    projectId: string,
+    request: {
+      branchId: string
+      reason: string
+      counts: Array<{ productVariantId: string; countedQty: number }>
+    },
+    context: StockMovementContext
+  ): Promise<OpnameResultRow[]> {
+    await requirePermission(projectId, context.userId, 'inventory:adjust')
+    await requireBranchAccess(projectId, context.userId, request.branchId)
+    if (request.counts.length === 0) throw new ValidationError('Isi minimal satu hitungan')
+    const reason = request.reason.trim() || 'Stok opname'
+
+    const results = await withTenant(projectId, async (tx) => {
+      const out: OpnameResultRow[] = []
+      for (const c of request.counts) {
+        const location = {
+          projectId,
+          branchId: request.branchId,
+          productVariantId: c.productVariantId,
+        }
+        const currentQty = await inventoryRepository.lockBalance(tx, location)
+        if (c.countedQty === currentQty) continue // no change, no movement
+        const planned = planStockMovement(
+          { type: 'opname', countedQty: c.countedQty, reason },
+          currentQty
+        )
+        await inventoryRepository.setBalance(tx, location, planned.quantityAfter, context.userId)
+        await inventoryRepository.appendMovement(tx, location, planned, context.userId)
+        out.push({
+          productVariantId: c.productVariantId,
+          before: currentQty,
+          counted: c.countedQty,
+          after: planned.quantityAfter,
+          delta: planned.delta,
+        })
+      }
+      return out
+    })
+
+    await auditRepository.log({
+      action: 'update',
+      resource: 'inventory',
+      resourceId: request.branchId,
+      userId: context.userId,
+      projectId,
+      ipAddress: context.ip,
+      userAgent: context.userAgent,
+      metadata: { type: 'opname', branchId: request.branchId, adjusted: results.length, reason },
+    })
+    logger.info({ projectId, branchId: request.branchId, adjusted: results.length }, 'stock opname')
+    return results
   }
 
   // Compare the fast balance with the ledger sum; a mismatch means a movement bypassed applyStockMovement().

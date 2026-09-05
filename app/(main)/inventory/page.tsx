@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { getAccessibleBranches, getSessionContext } from '@/lib/auth/session-context'
 import { catalogService } from '@/lib/services/catalog.service'
 import { hasRolePermission } from '@/lib/authz/permissions'
@@ -23,13 +24,25 @@ export default async function InventoryPage() {
   const canManage = hasRolePermission(context.role, 'product:manage')
   const lowStock = items.filter((i) => i.stockQty <= 5).length
 
+  const canAdjust = hasRolePermission(context.role, 'inventory:adjust')
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold">Inventaris</h1>
-        <p className="text-muted-foreground text-sm">
-          Cabang {branch.name} · {items.length} varian · {lowStock} stok menipis (≤5)
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold">Inventaris</h1>
+          <p className="text-muted-foreground text-sm">
+            Cabang {branch.name} · {items.length} varian · {lowStock} stok menipis (≤5)
+          </p>
+        </div>
+        {canAdjust ? (
+          <Link
+            href="/inventory/opname"
+            className="border-input hover:bg-muted/40 inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+          >
+            Stok Opname
+          </Link>
+        ) : null}
       </div>
 
       {items.length === 0 ? (

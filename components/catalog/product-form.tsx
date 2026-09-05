@@ -17,6 +17,7 @@ import { fileProxyUrl } from '@/lib/storage'
 export interface EditableProduct {
   productId: string
   name: string
+  category: string | null
   type: 'finished' | 'material'
   sku: string | null
   variantName: string | null
@@ -46,6 +47,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
 
   const [open, setOpen] = useState(isEdit)
   const [name, setName] = useState(product?.name ?? '')
+  const [category, setCategory] = useState(product?.category ?? '')
   const [type, setType] = useState<'finished' | 'material'>(product?.type ?? 'finished')
   const [sku, setSku] = useState(product?.sku ?? '')
   const [variantName, setVariantName] = useState(product?.variantName ?? '')
@@ -112,6 +114,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
 
   function resetCreateForm() {
     setName('')
+    setCategory('')
     setSku('')
     setVariantName('')
     setHpp('')
@@ -142,6 +145,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
         ? await updateProductAction({
             productId: product!.productId,
             name,
+            category: category.trim() || undefined,
             type,
             sku: sku.trim() || undefined,
             variantName: variantName.trim() || undefined,
@@ -153,6 +157,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
         : await createProductAction({
             branchId,
             name,
+            category: category.trim() || undefined,
             type,
             sku: sku.trim() || undefined,
             variantName: variantName.trim() || undefined,
@@ -196,6 +201,16 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
             onChange={(e) => setName(e.target.value)}
             required
             autoFocus
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="p-category">Kategori (opsional)</Label>
+          <Input
+            id="p-category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="Minuman, Makanan"
           />
         </div>
 

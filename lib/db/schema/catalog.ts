@@ -15,6 +15,8 @@ export const products = pgTable(
     platform: platformEnum('platform'),
     sku: text('sku'),
     name: text('name').notNull(),
+    // Free-text grouping (e.g. Minuman, Makanan) for catalog/menu/report filtering.
+    category: text('category'),
     // Photo object key in the private bucket, <projectId>/products/<id>.<ext>. Not a URL: files are read only via the tenant-scoped proxy.
     imageKey: text('image_key'),
     isArchived: boolean('is_archived').default(false).notNull(),
@@ -27,6 +29,9 @@ export const products = pgTable(
       .where(sql`${t.deletedAt} is null`),
     index('products_type_idx')
       .on(t.projectId, t.type)
+      .where(sql`${t.deletedAt} is null`),
+    index('products_category_idx')
+      .on(t.projectId, t.category)
       .where(sql`${t.deletedAt} is null`),
     index('products_created_by_idx').on(t.createdBy),
     index('products_updated_by_idx').on(t.updatedBy),
