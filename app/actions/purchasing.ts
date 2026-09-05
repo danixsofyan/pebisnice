@@ -121,6 +121,59 @@ const receiveSchema = z.object({
     .min(1, 'Isi jumlah diterima'),
 })
 
+export async function getReturnableToSupplierAction(purchaseOrderId: string) {
+  return withRequestScope('getReturnableToSupplierAction', async () => {
+    try {
+      if (!z.string().uuid().safeParse(purchaseOrderId).success)
+        throw new ValidationError('PO tidak valid')
+      const context = await getSessionContext()
+      tagRequestActor(context.userId, context.projectId)
+      const items = await purchasingService.listReturnableToSupplier(
+        context.projectId,
+        context.userId,
+        purchaseOrderId
+      )
+      return { success: true as const, data: items }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
+const returnSupplierSchema = z.object({
+  purchaseOrderId: z.string().uuid('PO tidak valid'),
+  reason: z.string().trim().max(200).optional(),
+  items: z
+    .array(z.object({ itemId: z.string().uuid(), qty: z.number().int().min(1) }))
+    .min(1, 'Pilih minimal satu barang'),
+})
+
+export async function returnToSupplierAction(raw: unknown) {
+  return withRequestScope('returnToSupplierAction', async () => {
+    try {
+      const parsed = returnSupplierSchema.safeParse(raw)
+      if (!parsed.success) {
+        throw new ValidationError('Validasi gagal', parsed.error.flatten().fieldErrors)
+      }
+      const { projectId, actor } = await ctx()
+      await purchasingService.returnToSupplier(
+        projectId,
+        {
+          purchaseOrderId: parsed.data.purchaseOrderId,
+          reason: parsed.data.reason ?? '',
+          items: parsed.data.items,
+        },
+        actor
+      )
+      revalidatePath('/purchases')
+      revalidatePath('/inventory')
+      return { success: true as const }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
 export async function receiveOrderAction(raw: unknown) {
   return withRequestScope('receiveOrderAction', async () => {
     try {

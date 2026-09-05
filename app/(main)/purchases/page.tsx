@@ -6,6 +6,7 @@ import { hasRolePermission } from '@/lib/authz/permissions'
 import { formatRupiahFromDecimal } from '@/lib/formatters'
 import { PurchaseOrderForm } from '@/components/purchasing/purchase-order-form'
 import { ReceiveOrderButton } from '@/components/purchasing/receive-order-button'
+import { ReturnSupplierButton } from '@/components/purchasing/return-supplier-button'
 
 const STATUS: Record<string, string> = {
   ordered: 'Dipesan',
@@ -97,6 +98,9 @@ export default async function PurchasesPage() {
                   </td>
                   <td className="relative px-4 py-3 text-right">
                     {o.status === 'ordered' ? <ReceiveOrderButton purchaseOrderId={o.id} /> : null}
+                    {o.status === 'received' ? (
+                      <ReturnSupplierButton purchaseOrderId={o.id} />
+                    ) : null}
                   </td>
                 </tr>
               ))}

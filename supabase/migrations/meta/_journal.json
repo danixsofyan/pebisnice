@@ -183,6 +183,13 @@
       "when": 1788571313338,
       "tag": "0025_product_category",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1788583402708,
+      "tag": "0026_purchase_returns",
+      "breakpoints": true
     }
   ]
 }

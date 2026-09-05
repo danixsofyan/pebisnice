@@ -42,6 +42,7 @@ export const movementTypeEnum = pgEnum('movement_type', [
   'transfer_out',
   'transfer_in',
   'purchase',
+  'purchase_return',
 ])
 
 // Purchase order lifecycle: ordered -> received (goods in) or cancelled.

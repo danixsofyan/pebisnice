@@ -7,6 +7,8 @@ import {
   productVariants,
   purchaseOrderItems,
   purchaseOrders,
+  purchaseReturnItems,
+  purchaseReturns,
   suppliers,
   users,
 } from '@/lib/db/schema'
@@ -312,6 +314,162 @@ export class PurchasingService {
       metadata: { type: 'receive', lines: receipts.length },
     })
     logger.info({ projectId, purchaseOrderId }, 'purchase order received')
+  }
+
+  // Received PO lines still returnable to the supplier (received minus already returned).
+  async listReturnableToSupplier(
+    projectId: string,
+    userId: string,
+    purchaseOrderId: string
+  ): Promise<Array<{ itemId: string; productName: string; returnable: number; unitCost: string }>> {
+    await requirePermission(projectId, userId, MANAGE)
+    return withTenant(projectId, (tx) =>
+      tx
+        .select({
+          itemId: purchaseOrderItems.id,
+          productName: products.name,
+          variantName: productVariants.variantName,
+          unitCost: purchaseOrderItems.unitCost,
+          returnable: sql<number>`(${purchaseOrderItems.qtyReceived} - ${purchaseOrderItems.qtyReturned})::int`,
+        })
+        .from(purchaseOrderItems)
+        .innerJoin(productVariants, eq(productVariants.id, purchaseOrderItems.productVariantId))
+        .innerJoin(products, eq(products.id, productVariants.productId))
+        .where(
+          and(
+            eq(purchaseOrderItems.purchaseOrderId, purchaseOrderId),
+            eq(purchaseOrderItems.projectId, projectId)
+          )
+        )
+    ).then((rows) =>
+      rows
+        .filter((r) => r.returnable > 0)
+        .map((r) => ({
+          itemId: r.itemId,
+          productName: r.variantName ? `${r.productName} · ${r.variantName}` : r.productName,
+          returnable: r.returnable,
+          unitCost: r.unitCost,
+        }))
+    )
+  }
+
+  // Return received goods to the supplier: stock out per line (capped at received-minus-returned),
+  // bump qty_returned, and record the refund. All in one transaction. Gated inventory:adjust.
+  async returnToSupplier(
+    projectId: string,
+    request: {
+      purchaseOrderId: string
+      reason: string
+      items: Array<{ itemId: string; qty: number }>
+    },
+    context: PurchasingContext
+  ): Promise<{ refundAmount: string }> {
+    await requirePermission(projectId, context.userId, MANAGE)
+    if (request.items.length === 0) throw new ValidationError('Pilih minimal satu barang')
+
+    const refund = await withTenant(projectId, async (tx) => {
+      const [po] = await tx
+        .select({
+          id: purchaseOrders.id,
+          branchId: purchaseOrders.branchId,
+          supplierId: purchaseOrders.supplierId,
+        })
+        .from(purchaseOrders)
+        .where(
+          and(
+            eq(purchaseOrders.id, request.purchaseOrderId),
+            eq(purchaseOrders.projectId, projectId)
+          )
+        )
+        .limit(1)
+      if (!po) throw new NotFoundError('PO tidak ditemukan')
+
+      const items = await tx
+        .select({
+          id: purchaseOrderItems.id,
+          productVariantId: purchaseOrderItems.productVariantId,
+          qtyReceived: purchaseOrderItems.qtyReceived,
+          qtyReturned: purchaseOrderItems.qtyReturned,
+          unitCost: purchaseOrderItems.unitCost,
+        })
+        .from(purchaseOrderItems)
+        .where(eq(purchaseOrderItems.purchaseOrderId, request.purchaseOrderId))
+      const byId = new Map(items.map((i) => [i.id, i]))
+
+      let total = 0n
+      const lines: Array<{ productVariantId: string; qty: number; unitCost: string }> = []
+      for (const req of request.items) {
+        const item = byId.get(req.itemId)
+        if (!item) throw new ValidationError('Barang bukan bagian dari PO ini')
+        const returnable = item.qtyReceived - item.qtyReturned
+        if (req.qty <= 0 || req.qty > returnable) {
+          throw new ValidationError(`Qty retur melebihi sisa diterima (${returnable})`)
+        }
+        total += fromDecimalString(item.unitCost) * BigInt(req.qty)
+        lines.push({
+          productVariantId: item.productVariantId,
+          qty: req.qty,
+          unitCost: item.unitCost,
+        })
+
+        const location = {
+          projectId,
+          branchId: po.branchId,
+          productVariantId: item.productVariantId,
+        }
+        const currentQty = await inventoryRepository.lockBalance(tx, location)
+        const plan = planStockMovement(
+          { type: 'purchase_return', qty: req.qty, referenceId: request.purchaseOrderId },
+          currentQty
+        )
+        await inventoryRepository.setBalance(tx, location, plan.quantityAfter, context.userId)
+        await inventoryRepository.appendMovement(tx, location, plan, context.userId)
+
+        await tx
+          .update(purchaseOrderItems)
+          .set({ qtyReturned: item.qtyReturned + req.qty })
+          .where(eq(purchaseOrderItems.id, item.id))
+      }
+
+      const [ret] = await tx
+        .insert(purchaseReturns)
+        .values({
+          projectId,
+          purchaseOrderId: request.purchaseOrderId,
+          branchId: po.branchId,
+          refundAmount: toDecimalString(total),
+          reason: request.reason.trim() || null,
+          createdBy: context.userId,
+          updatedBy: context.userId,
+        })
+        .returning({ id: purchaseReturns.id })
+      await tx.insert(purchaseReturnItems).values(
+        lines.map((l) => ({
+          projectId,
+          returnId: ret!.id,
+          productVariantId: l.productVariantId,
+          qty: l.qty,
+          unitCost: l.unitCost,
+        }))
+      )
+      return total
+    })
+
+    await auditRepository.log({
+      action: 'update',
+      resource: 'purchase_order',
+      resourceId: request.purchaseOrderId,
+      userId: context.userId,
+      projectId,
+      ipAddress: context.ip,
+      userAgent: context.userAgent,
+      metadata: { type: 'return_to_supplier', refund: toDecimalString(refund) },
+    })
+    logger.info(
+      { projectId, purchaseOrderId: request.purchaseOrderId },
+      'purchase returned to supplier'
+    )
+    return { refundAmount: toDecimalString(refund) }
   }
 
   async listOrders(projectId: string, userId: string) {

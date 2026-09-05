@@ -76,11 +76,57 @@ export const purchaseOrderItems = pgTable(
       .notNull(),
     qty: integer('qty').notNull(),
     qtyReceived: integer('qty_received').default(0).notNull(),
+    qtyReturned: integer('qty_returned').default(0).notNull(),
     unitCost: money('unit_cost').notNull(),
   },
   (t) => [
     index('po_items_po_idx').on(t.purchaseOrderId),
     index('po_items_project_idx').on(t.projectId),
     index('po_items_variant_idx').on(t.productVariantId),
+  ]
+)
+
+// A return of received goods to the supplier: stock out, with the credited refund recorded.
+export const purchaseReturns = pgTable(
+  'purchase_returns',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ...tenantColumn,
+    purchaseOrderId: uuid('purchase_order_id')
+      .references(() => purchaseOrders.id, { onDelete: 'restrict' })
+      .notNull(),
+    branchId: uuid('branch_id')
+      .references(() => branches.id, { onDelete: 'restrict' })
+      .notNull(),
+    refundAmount: money('refund_amount').notNull(),
+    reason: text('reason'),
+    ...actorColumns,
+    ...lifecycleColumns,
+  },
+  (t) => [
+    index('purchase_returns_po_idx').on(t.purchaseOrderId),
+    index('purchase_returns_project_idx').on(t.projectId),
+    index('purchase_returns_created_by_idx').on(t.createdBy),
+    index('purchase_returns_updated_by_idx').on(t.updatedBy),
+  ]
+)
+
+export const purchaseReturnItems = pgTable(
+  'purchase_return_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ...tenantColumn,
+    returnId: uuid('return_id')
+      .references(() => purchaseReturns.id, { onDelete: 'cascade' })
+      .notNull(),
+    productVariantId: uuid('product_variant_id')
+      .references(() => productVariants.id, { onDelete: 'restrict' })
+      .notNull(),
+    qty: integer('qty').notNull(),
+    unitCost: money('unit_cost').notNull(),
+  },
+  (t) => [
+    index('purchase_return_items_return_idx').on(t.returnId),
+    index('purchase_return_items_project_idx').on(t.projectId),
   ]
 )
