@@ -48,6 +48,7 @@ export function ProductsTable({ items, branchId, canViewCost, canManage }: Produ
                       category: item.category,
                       type: item.type,
                       sku: item.sku,
+                      barcode: item.barcode,
                       variantName: item.variantName,
                       hpp: item.hpp,
                       productionWage: item.productionWage,

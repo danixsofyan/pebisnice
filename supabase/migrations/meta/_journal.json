@@ -218,6 +218,13 @@
       "when": 1788591232810,
       "tag": "0030_loyalty",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1788591997801,
+      "tag": "0031_barcode",
+      "breakpoints": true
     }
   ]
 }

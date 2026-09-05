@@ -52,6 +52,8 @@ export const productVariants = pgTable(
       .notNull(),
     platformVariantId: text('platform_variant_id'),
     skuVariant: text('sku_variant'),
+    // Retail barcode (EAN/UPC or custom) scanned at POS; unique per project when set.
+    barcode: text('barcode'),
     variantName: text('variant_name'),
     hpp: money('hpp').default('0').notNull(),
     hppUpdatedAt: tz('hpp_updated_at').defaultNow(),
@@ -71,6 +73,9 @@ export const productVariants = pgTable(
       .where(sql`${t.deletedAt} is null`),
     index('variants_created_by_idx').on(t.createdBy),
     index('variants_updated_by_idx').on(t.updatedBy),
+    uniqueIndex('variants_project_barcode_unique')
+      .on(t.projectId, t.barcode)
+      .where(sql`${t.barcode} is not null and ${t.deletedAt} is null`),
   ]
 )
 

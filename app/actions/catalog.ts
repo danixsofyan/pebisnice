@@ -20,6 +20,7 @@ const createProductSchema = z.object({
   category: z.string().trim().max(60).optional(),
   type: z.enum(['finished', 'material']),
   sku: z.string().trim().max(60).optional(),
+  barcode: z.string().trim().max(64).optional(),
   variantName: z.string().trim().max(100).optional(),
   hpp: z.string().regex(/^\d+(\.\d{1,2})?$/, 'HPP harus angka'),
   productionWage: z
@@ -54,6 +55,7 @@ export async function createProductAction(raw: unknown) {
           category: parsed.data.category ?? null,
           type: parsed.data.type,
           sku: parsed.data.sku ?? null,
+          barcode: parsed.data.barcode ?? null,
           variantName: parsed.data.variantName ?? null,
           hpp: fromDecimalString(parsed.data.hpp),
           productionWage: fromDecimalString(parsed.data.productionWage ?? '0'),
@@ -84,6 +86,7 @@ const updateProductSchema = z.object({
   category: z.string().trim().max(60).optional(),
   type: z.enum(['finished', 'material']),
   sku: z.string().trim().max(60).optional(),
+  barcode: z.string().trim().max(64).optional(),
   variantName: z.string().trim().max(100).optional(),
   hpp: z.string().regex(/^\d+(\.\d{1,2})?$/, 'HPP harus angka'),
   productionWage: z
@@ -117,6 +120,7 @@ export async function updateProductAction(raw: unknown) {
           category: parsed.data.category ?? null,
           type: parsed.data.type,
           sku: parsed.data.sku ?? null,
+          barcode: parsed.data.barcode ?? null,
           variantName: parsed.data.variantName ?? null,
           hpp: fromDecimalString(parsed.data.hpp),
           productionWage: fromDecimalString(parsed.data.productionWage ?? '0'),

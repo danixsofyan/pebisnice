@@ -20,6 +20,7 @@ export interface EditableProduct {
   category: string | null
   type: 'finished' | 'material'
   sku: string | null
+  barcode: string | null
   variantName: string | null
   /** Decimal string, or null if the role can't see HPP. */
   hpp: string | null
@@ -50,6 +51,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
   const [category, setCategory] = useState(product?.category ?? '')
   const [type, setType] = useState<'finished' | 'material'>(product?.type ?? 'finished')
   const [sku, setSku] = useState(product?.sku ?? '')
+  const [barcode, setBarcode] = useState(product?.barcode ?? '')
   const [variantName, setVariantName] = useState(product?.variantName ?? '')
   const [hpp, setHpp] = useState(product?.hpp ?? '')
   const [productionWage, setProductionWage] = useState(product?.productionWage ?? '')
@@ -148,6 +150,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
             category: category.trim() || undefined,
             type,
             sku: sku.trim() || undefined,
+            barcode: barcode.trim() || undefined,
             variantName: variantName.trim() || undefined,
             hpp: Number(hpp || 0).toFixed(2),
             productionWage: Number(productionWage || 0).toFixed(2),
@@ -160,6 +163,7 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
             category: category.trim() || undefined,
             type,
             sku: sku.trim() || undefined,
+            barcode: barcode.trim() || undefined,
             variantName: variantName.trim() || undefined,
             hpp: Number(hpp || 0).toFixed(2),
             productionWage: Number(productionWage || 0).toFixed(2),
@@ -230,6 +234,20 @@ export function ProductForm({ branchId, canViewCost, product, onClose }: Product
         <div className="space-y-2">
           <Label htmlFor="p-sku">SKU (opsional)</Label>
           <Input id="p-sku" value={sku} onChange={(e) => setSku(e.target.value)} />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="p-barcode">Barcode (opsional)</Label>
+          <Input
+            id="p-barcode"
+            value={barcode}
+            onChange={(e) => setBarcode(e.target.value)}
+            inputMode="numeric"
+            placeholder="8991234567890"
+          />
+          <p className="text-muted-foreground text-xs">
+            Dipindai di kasir untuk menambah produk ke keranjang.
+          </p>
         </div>
 
         <div className="space-y-2">

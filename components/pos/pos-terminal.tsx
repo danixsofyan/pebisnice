@@ -77,11 +77,27 @@ export function PosTerminal({
     if (!needle) return items
 
     return items.filter((item) =>
-      [item.productName, item.variantName, item.sku]
+      [item.productName, item.variantName, item.sku, item.barcode]
         .filter(Boolean)
         .some((field) => field!.toLowerCase().includes(needle))
     )
   }, [items, keyword])
+
+  // Barcode scanners type the code then emit Enter. On Enter, if the keyword exactly matches one
+  // item's barcode, add it and clear the box so the next scan starts fresh.
+  function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== 'Enter') return
+    event.preventDefault()
+    const code = keyword.trim()
+    if (!code) return
+    const match =
+      items.find((item) => item.barcode === code) ??
+      (visibleItems.length === 1 ? visibleItems[0] : undefined)
+    if (match) {
+      addItem(match)
+      setKeyword('')
+    }
+  }
 
   const subtotalCents = cart.reduce(
     (total, entry) => total + Math.round(Number(entry.unitPrice || 0) * 100) * entry.qty,
@@ -249,7 +265,8 @@ export function PosTerminal({
           <Input
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
-            placeholder="Cari produk atau SKU"
+            onKeyDown={handleSearchKeyDown}
+            placeholder="Cari / scan produk, SKU, barcode"
             className="pl-9"
             autoFocus
           />

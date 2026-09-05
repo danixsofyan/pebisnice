@@ -8,6 +8,7 @@ export interface SellableItem {
   productName: string
   variantName: string | null
   sku: string | null
+  barcode: string | null
   stockQty: number
 }
 
@@ -27,6 +28,7 @@ export class PosCatalogRepository {
           productName: products.name,
           variantName: productVariants.variantName,
           sku: productVariants.skuVariant,
+          barcode: productVariants.barcode,
           stockQty: sql<number>`coalesce(${inventory.stockQty}, 0)`,
         })
         .from(productVariants)
@@ -51,7 +53,8 @@ export class PosCatalogRepository {
               : or(
                   ilike(products.name, pattern),
                   ilike(productVariants.variantName, pattern),
-                  ilike(productVariants.skuVariant, pattern)
+                  ilike(productVariants.skuVariant, pattern),
+                  ilike(productVariants.barcode, pattern)
                 )
           )
         )

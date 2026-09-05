@@ -1,0 +1,2 @@
+ALTER TABLE "product_variants" ADD COLUMN "barcode" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "variants_project_barcode_unique" ON "product_variants" USING btree ("project_id","barcode") WHERE "product_variants"."barcode" is not null and "product_variants"."deleted_at" is null;

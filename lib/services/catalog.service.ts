@@ -24,6 +24,7 @@ export interface CreateProductRequest {
   category: string | null
   type: ProductType
   sku: string | null
+  barcode: string | null
   variantName: string | null
   /** Initial HPP; applied only if the caller has cost:view. */
   hpp: Money
@@ -43,6 +44,7 @@ export interface UpdateProductRequest {
   category: string | null
   type: ProductType
   sku: string | null
+  barcode: string | null
   variantName: string | null
   /** New HPP; applied only if the caller has cost:view. */
   hpp: Money
@@ -67,6 +69,7 @@ export interface ProductListItem {
   category: string | null
   type: ProductType
   sku: string | null
+  barcode: string | null
   variantName: string | null
   stockQty: number
   /** Set only for roles with cost:view. */
@@ -108,6 +111,7 @@ export class CatalogService {
         productId: product!.id,
         variantName: request.variantName ? sanitizeText(request.variantName) : null,
         skuVariant: request.sku ? sanitizeText(request.sku) : null,
+        barcode: request.barcode ? sanitizeText(request.barcode) : null,
         hpp: canViewCost ? toDecimalString(request.hpp) : '0',
         productionWage: canViewCost ? toDecimalString(request.productionWage) : '0',
         price: toDecimalString(request.price),
@@ -268,6 +272,7 @@ export class CatalogService {
         .set({
           variantName: request.variantName ? sanitizeText(request.variantName) : null,
           skuVariant: request.sku ? sanitizeText(request.sku) : null,
+          barcode: request.barcode ? sanitizeText(request.barcode) : null,
           ...(canViewCost
             ? {
                 hpp: toDecimalString(request.hpp),
@@ -337,6 +342,7 @@ export class CatalogService {
           category: products.category,
           type: products.type,
           sku: productVariants.skuVariant,
+          barcode: productVariants.barcode,
           variantName: productVariants.variantName,
           stockQty: inventory.stockQty,
           hpp: productVariants.hpp,
@@ -371,6 +377,7 @@ export class CatalogService {
       category: row.category,
       type: row.type,
       sku: row.sku,
+      barcode: row.barcode,
       variantName: row.variantName,
       stockQty: row.stockQty ?? 0,
       hpp: canViewCost ? row.hpp : null,
@@ -401,6 +408,7 @@ export class CatalogService {
         category: null,
         type: row.type,
         sku: row.sku,
+        barcode: null,
         variantName: row.variantName,
         hpp: fromDecimalString(row.hpp),
         productionWage: ZERO,
