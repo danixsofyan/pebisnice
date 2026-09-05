@@ -23,9 +23,18 @@ describe('toCsv', () => {
     expect(toCsv(['x', 'y'], [[null, undefined]])).toBe('﻿x,y\r\n,')
   })
 
-  it('menghindari suntikan formula dibiarkan apa adanya kecuali ada pemisah', () => {
-    // Bukan tujuan util ini untuk sanitasi formula; hanya memastikan escaping benar.
-    expect(toCsv(['x'], [['=1+1']])).toContain('=1+1')
+  it('menetralkan sel yang bisa dieksekusi sebagai formula (CSV injection)', () => {
+    expect(toCsv(['x'], [['=1+1']])).toContain("'=1+1")
+    expect(toCsv(['x'], [['+SUM(A1)']])).toContain("'+SUM(A1)")
+    expect(toCsv(['x'], [['@SUM(A1)']])).toContain("'@SUM(A1)")
+    expect(toCsv(['x'], [['=HYPERLINK("http://evil")']])).toContain('"\'=HYPERLINK(""http://evil"")"')
+    expect(toCsv(['x'], [['-2+3']])).toContain("'-2+3")
+  })
+
+  it('membiarkan angka biasa termasuk negatif tetap numerik', () => {
+    expect(toCsv(['x'], [['-500']])).toBe('﻿x\r\n-500')
+    expect(toCsv(['x'], [['-1000.50']])).toBe('﻿x\r\n-1000.50')
+    expect(toCsv(['x'], [[1234]])).toBe('﻿x\r\n1234')
   })
 })
 
