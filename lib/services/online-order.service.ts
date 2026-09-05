@@ -27,6 +27,19 @@ import { logger } from '@/lib/logging/logger'
 const MAX_ITEMS = 50
 const MAX_QTY = 1000
 
+// URL-safe slug from a store name: lowercase, accents stripped, non-alphanumerics collapsed to
+// single dashes, trimmed, capped so the public link stays short.
+export function slugify(text: string): string {
+  return text
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
+    .replace(/-+$/g, '')
+}
+
 export interface OrderContext {
   userId: string
   ip: string
@@ -52,30 +65,49 @@ export class OnlineOrderService {
     return row ?? null
   }
 
-  // The branch's short order slug, creating one on first use. Gated pos:operate.
+  // The branch's short order slug, derived from the store (and branch) name, creating one on
+  // first use. Slugs are globally unique across tenants, so collisions get a short random
+  // suffix (random, not sequential, to avoid probing other tenants' slugs). Gated pos:operate.
   async getOrCreateLink(projectId: string, userId: string, branchId: string): Promise<string> {
     await requirePermission(projectId, userId, 'pos:operate')
-    const [existing] = await db
-      .select({ slug: orderLinks.slug })
-      .from(orderLinks)
-      .where(eq(orderLinks.branchId, branchId))
-      .limit(1)
-    if (existing) return existing.slug
 
-    const slug = randomBytes(5).toString('hex')
-    const [row] = await db
-      .insert(orderLinks)
-      .values({ slug, projectId, branchId })
-      .onConflictDoNothing({ target: orderLinks.branchId })
-      .returning({ slug: orderLinks.slug })
-    if (row) return row.slug
-    // Lost a race: another request created it first.
-    const [now] = await db
-      .select({ slug: orderLinks.slug })
-      .from(orderLinks)
-      .where(eq(orderLinks.branchId, branchId))
-      .limit(1)
-    return now!.slug
+    const readBranchSlug = async () => {
+      const [row] = await db
+        .select({ slug: orderLinks.slug })
+        .from(orderLinks)
+        .where(eq(orderLinks.branchId, branchId))
+        .limit(1)
+      return row?.slug ?? null
+    }
+
+    const existing = await readBranchSlug()
+    if (existing) return existing
+
+    const [names] = await withTenant(projectId, (tx) =>
+      tx
+        .select({ project: projects.name, branch: branches.name })
+        .from(branches)
+        .innerJoin(projects, eq(projects.id, branches.projectId))
+        .where(and(eq(branches.id, branchId), eq(branches.projectId, projectId)))
+        .limit(1)
+    )
+    if (!names) throw new NotFoundError('Cabang tidak ditemukan')
+
+    const base = slugify(names.project) || 'toko'
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const candidate = attempt === 0 ? base : `${base}-${randomBytes(2).toString('hex')}`
+      const [row] = await db
+        .insert(orderLinks)
+        .values({ slug: candidate, projectId, branchId })
+        .onConflictDoNothing()
+        .returning({ slug: orderLinks.slug })
+      if (row) return row.slug
+      // A conflict: either this branch already got a link (race), or the slug is taken.
+      const branchSlug = await readBranchSlug()
+      if (branchSlug) return branchSlug
+      // else slug collision with another tenant/branch — retry with a new suffix.
+    }
+    throw new ValidationError('Gagal membuat link, coba lagi')
   }
 
   // Existing order-link slugs for a project, keyed by branch, for the settings screen.
@@ -323,96 +355,126 @@ export class OnlineOrderService {
   ): Promise<void> {
     await requirePermission(projectId, context.userId, 'pos:operate')
 
-    const order = await withTenant(projectId, async (tx) => {
-      const [head] = await tx
-        .select({
+    // Atomically claim the order: only one concurrent request can flip pending -> accepted, so
+    // two staff hitting "Terima" at once can't both create a sale (double stock decrement).
+    const claimed = await withTenant(projectId, (tx) =>
+      tx
+        .update(onlineOrders)
+        .set({ status: 'accepted' })
+        .where(
+          and(
+            eq(onlineOrders.id, orderId),
+            eq(onlineOrders.projectId, projectId),
+            eq(onlineOrders.status, 'pending')
+          )
+        )
+        .returning({
           id: onlineOrders.id,
           branchId: onlineOrders.branchId,
-          status: onlineOrders.status,
           customerName: onlineOrders.customerName,
           customerPhoneEnc: onlineOrders.customerPhoneEnc,
         })
-        .from(onlineOrders)
-        .where(and(eq(onlineOrders.id, orderId), eq(onlineOrders.projectId, projectId)))
-        .limit(1)
-      if (!head) throw new NotFoundError('Pesanan tidak ditemukan')
-      if (head.status !== 'pending') throw new ValidationError('Pesanan sudah diproses')
-
-      const items = await tx
-        .select({
-          productVariantId: onlineOrderItems.productVariantId,
-          qty: onlineOrderItems.qty,
-          unitPrice: onlineOrderItems.unitPrice,
-        })
-        .from(onlineOrderItems)
-        .where(eq(onlineOrderItems.orderId, orderId))
-      return { head, items }
-    })
-
-    const lines = order.items
-      .filter((i) => i.productVariantId)
-      .map((i) => ({
-        productVariantId: i.productVariantId!,
-        qty: i.qty,
-        unitPrice: fromDecimalString(i.unitPrice),
-      }))
-    if (lines.length === 0) throw new ValidationError('Pesanan tidak punya item valid')
-
-    // Creates the sale and decrements stock; throws if no open cash session or stock is short.
-    const sale = await posService.createSale(
-      {
-        projectId,
-        branchId: order.head.branchId,
-        lines,
-        discount: { type: 'none' },
-        paymentMethod,
-        paidAmount: lines.reduce((sum, l) => sum + l.unitPrice * BigInt(l.qty), ZERO),
-      },
-      context
     )
+    if (claimed.length === 0) throw new ValidationError('Pesanan sudah diproses atau tidak ada')
+    const head = claimed[0]!
 
-    const phone = order.head.customerPhoneEnc ? decryptToken(order.head.customerPhoneEnc) : null
-    let customerId: string | null = null
-    if (phone) {
-      const existing = await customerService.findByPhone(projectId, context.userId, phone)
-      customerId = existing
-        ? existing.id
-        : (
-            await customerService.create(
-              projectId,
-              {
-                name: order.head.customerName,
-                phone,
-                email: null,
-                address: null,
-                note: 'Dari pesanan online',
-              },
-              context
-            )
-          ).id
-    }
+    try {
+      const items = await withTenant(projectId, (tx) =>
+        tx
+          .select({
+            productVariantId: onlineOrderItems.productVariantId,
+            qty: onlineOrderItems.qty,
+            unitPrice: onlineOrderItems.unitPrice,
+          })
+          .from(onlineOrderItems)
+          .where(eq(onlineOrderItems.orderId, orderId))
+      )
+      const lines = items
+        .filter((i) => i.productVariantId)
+        .map((i) => ({
+          productVariantId: i.productVariantId!,
+          qty: i.qty,
+          unitPrice: fromDecimalString(i.unitPrice),
+        }))
+      if (lines.length === 0) throw new ValidationError('Pesanan tidak punya item valid')
 
-    await withTenant(projectId, async (tx) => {
-      if (customerId) {
-        await tx.update(transactions).set({ customerId }).where(eq(transactions.id, sale.header.id))
+      // Marks the sale paid in full (paidAmount = total, no cashier cash input). Decrements
+      // stock and validates the open cash session; throws if short, which reverts the claim.
+      const sale = await posService.createSale(
+        {
+          projectId,
+          branchId: head.branchId,
+          lines,
+          discount: { type: 'none' },
+          paymentMethod,
+          paidAmount: lines.reduce((sum, l) => sum + l.unitPrice * BigInt(l.qty), ZERO),
+        },
+        context
+      )
+
+      const phone = head.customerPhoneEnc ? decryptToken(head.customerPhoneEnc) : null
+      let customerId: string | null = null
+      if (phone) {
+        const existing = await customerService.findByPhone(projectId, context.userId, phone)
+        customerId = existing
+          ? existing.id
+          : (
+              await customerService.create(
+                projectId,
+                {
+                  name: head.customerName,
+                  phone,
+                  email: null,
+                  address: null,
+                  note: 'Dari pesanan online',
+                },
+                context
+              )
+            ).id
       }
-      await tx
-        .update(onlineOrders)
-        .set({ status: 'accepted', transactionId: sale.header.id })
-        .where(eq(onlineOrders.id, orderId))
-    })
 
-    await auditRepository.log({
-      action: 'update',
-      resource: 'online_order',
-      resourceId: orderId,
-      userId: context.userId,
-      projectId,
-      ipAddress: context.ip,
-      userAgent: context.userAgent,
-      metadata: { status: 'accepted', transactionId: sale.header.id },
-    })
-    logger.info({ projectId, orderId, transactionId: sale.header.id }, 'online order accepted')
+      await withTenant(projectId, async (tx) => {
+        if (customerId) {
+          await tx
+            .update(transactions)
+            .set({ customerId })
+            .where(eq(transactions.id, sale.header.id))
+        }
+        await tx
+          .update(onlineOrders)
+          .set({ transactionId: sale.header.id })
+          .where(eq(onlineOrders.id, orderId))
+      })
+
+      await auditRepository.log({
+        action: 'update',
+        resource: 'online_order',
+        resourceId: orderId,
+        userId: context.userId,
+        projectId,
+        ipAddress: context.ip,
+        userAgent: context.userAgent,
+        metadata: { status: 'accepted', transactionId: sale.header.id },
+      })
+      logger.info({ projectId, orderId, transactionId: sale.header.id }, 'online order accepted')
+      return
+    } catch (error) {
+      // Release the claim so it can be retried (e.g. after opening a shift or restocking). Only
+      // reverts our own un-finalized claim, never one that already produced a sale.
+      await withTenant(projectId, (tx) =>
+        tx
+          .update(onlineOrders)
+          .set({ status: 'pending' })
+          .where(
+            and(
+              eq(onlineOrders.id, orderId),
+              eq(onlineOrders.status, 'accepted'),
+              isNull(onlineOrders.transactionId)
+            )
+          )
+      )
+      throw error
+    }
   }
 }
 
