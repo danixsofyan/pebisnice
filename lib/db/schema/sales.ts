@@ -24,6 +24,10 @@ export const transactions = pgTable(
     }),
     customerId: uuid('customer_id').references(() => customers.id, { onDelete: 'set null' }),
     promotionId: uuid('promotion_id'),
+    // Client-generated id for a POS sale, set when the sale was queued offline. A partial unique
+    // index makes replaying the offline queue idempotent: a second sync of the same sale conflicts
+    // instead of double-recording.
+    clientRequestId: uuid('client_request_id'),
     paymentMethod: paymentMethodEnum('payment_method'),
     orderId: text('order_id').notNull(),
     orderDate: tz('order_date').notNull(),
@@ -68,6 +72,9 @@ export const transactions = pgTable(
     uniqueIndex('tx_project_order_unique')
       .on(t.projectId, t.orderId)
       .where(sql`${t.deletedAt} is null and ${t.channel} = 'pos'`),
+    uniqueIndex('tx_client_request_unique')
+      .on(t.projectId, t.clientRequestId)
+      .where(sql`${t.clientRequestId} is not null`),
   ]
 )
 

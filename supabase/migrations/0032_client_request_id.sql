@@ -1,0 +1,2 @@
+ALTER TABLE "transactions" ADD COLUMN "client_request_id" uuid;--> statement-breakpoint
+CREATE UNIQUE INDEX "tx_client_request_unique" ON "transactions" USING btree ("project_id","client_request_id") WHERE "transactions"."client_request_id" is not null;

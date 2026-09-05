@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createSaleAction, validateVoucherAction } from '@/app/actions/pos'
+import { enqueueSale, type QueuedSalePayload } from '@/lib/offline/sale-queue'
 import { formatRupiahFromDecimal } from '@/lib/formatters'
 import type { SellableItem } from '@/lib/repositories/pos-catalog.repository'
 
@@ -187,6 +188,37 @@ export function PosTerminal({
     setCart((current) => current.filter((entry) => entry.item.productVariantId !== variantId))
   }
 
+  function resetAfterSale() {
+    setCart([])
+    setPaidAmount('')
+    clearVoucher()
+    setCustomerId('')
+    setRedeemPoints('')
+  }
+
+  // Offline fallback: queue a plain sale (no voucher/points — those need the server) and show a
+  // provisional receipt. It syncs automatically when the connection returns.
+  async function queueOffline(payload: QueuedSalePayload) {
+    const paid = Number(payload.paidAmount)
+    const subtotalNum = subtotalCents / 100
+    try {
+      await enqueueSale({
+        clientRequestId: payload.clientRequestId,
+        payload,
+        total: subtotal,
+      })
+      setReceipt({
+        orderCode: 'OFFLINE — menunggu sinkron',
+        total: subtotal,
+        paidAmount: payload.paidAmount,
+        changeAmount: Math.max(0, paid - subtotalNum).toFixed(2),
+      })
+      resetAfterSale()
+    } catch {
+      setError('Gagal menyimpan transaksi offline di perangkat ini')
+    }
+  }
+
   function submit() {
     setError(null)
 
@@ -199,33 +231,54 @@ export function PosTerminal({
       return
     }
 
-    startTransition(async () => {
-      const result = await createSaleAction({
-        branchId,
-        lines: cart.map((entry) => ({
-          productVariantId: entry.item.productVariantId,
-          qty: entry.qty,
-          unitPrice: Number(entry.unitPrice).toFixed(2),
-        })),
-        discount: { type: 'none' },
-        paymentMethod,
-        paidAmount: Number(paidAmount || total).toFixed(2),
-        voucherCode: voucher?.code,
-        customerId: customerId || undefined,
-        redeemPoints: effectivePoints > 0 ? effectivePoints : undefined,
+    const clientRequestId = crypto.randomUUID()
+    const lines = cart.map((entry) => ({
+      productVariantId: entry.item.productVariantId,
+      qty: entry.qty,
+      unitPrice: Number(entry.unitPrice).toFixed(2),
+    }))
+    // Offline sales are always plain (subtotal, no discounts): vouchers/points can't be validated
+    // without the server.
+    const offlinePayload: QueuedSalePayload = {
+      branchId,
+      lines,
+      paymentMethod,
+      paidAmount: Number(paidAmount || subtotal).toFixed(2),
+      clientRequestId,
+    }
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      startTransition(() => {
+        void queueOffline(offlinePayload)
       })
+      return
+    }
 
-      if (!result.success) {
-        setError(result.error)
-        return
+    startTransition(async () => {
+      try {
+        const result = await createSaleAction({
+          branchId,
+          lines,
+          discount: { type: 'none' },
+          paymentMethod,
+          paidAmount: Number(paidAmount || total).toFixed(2),
+          voucherCode: voucher?.code,
+          customerId: customerId || undefined,
+          redeemPoints: effectivePoints > 0 ? effectivePoints : undefined,
+          clientRequestId,
+        })
+
+        if (!result.success) {
+          setError(result.error)
+          return
+        }
+
+        setReceipt(result.data)
+        resetAfterSale()
+      } catch {
+        // The request never reached the server (network dropped). Queue it and retry later.
+        await queueOffline(offlinePayload)
       }
-
-      setReceipt(result.data)
-      setCart([])
-      setPaidAmount('')
-      clearVoucher()
-      setCustomerId('')
-      setRedeemPoints('')
     })
   }
 

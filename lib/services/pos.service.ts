@@ -6,7 +6,7 @@ import {
   transactionItems,
   transactions,
 } from '@/lib/db/schema'
-import { posRepository, type PaymentMethod } from '@/lib/repositories/pos.repository'
+import { posRepository, type PaymentMethod, type PosTransaction } from '@/lib/repositories/pos.repository'
 import { cashSessionRepository } from '@/lib/repositories/cash-session.repository'
 import { inventoryRepository } from '@/lib/repositories/inventory.repository'
 import { auditRepository } from '@/lib/repositories/audit.repository'
@@ -35,12 +35,24 @@ export interface CreateSaleRequest {
   paymentMethod: PaymentMethod
   paidAmount: Money
   customerId?: string | null
+  /** Set for sales replayed from the offline queue; makes createSale idempotent. */
+  clientRequestId?: string | null
 }
 
 export interface PosContext {
   userId: string
   ip: string
   userAgent: string
+}
+
+// Postgres unique-violation SQLSTATE, surfaced by postgres-js on the error's `code`.
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === '23505'
+  )
 }
 
 function todayStamp(now: Date): string {
@@ -61,7 +73,69 @@ export class PosService {
       throw new ValidationError('Keranjang tidak boleh kosong', { lines: ['Minimal satu item'] })
     }
 
-    const result = await withTenant(request.projectId, async (tx) => {
+    // Idempotency for offline-queue replay: if this client request already produced a sale, return
+    // it without inserting again. The unique index below is the real guard against the race where
+    // two syncs run at once; this pre-check just avoids the wasted work in the common case.
+    const idempotencyKey = request.clientRequestId ?? null
+    if (idempotencyKey) {
+      const existing = await withTenant(request.projectId, (tx) =>
+        posRepository.findByClientRequestId(tx, request.projectId, idempotencyKey)
+      )
+      if (existing) return this.duplicateResult(existing)
+    }
+
+    let result
+    try {
+      result = await this.insertSale(request, context, opts)
+    } catch (error) {
+      if (idempotencyKey && isUniqueViolation(error)) {
+        const existing = await withTenant(request.projectId, (tx) =>
+          posRepository.findByClientRequestId(tx, request.projectId, idempotencyKey)
+        )
+        if (existing) return this.duplicateResult(existing)
+      }
+      throw error
+    }
+
+    await auditRepository.log({
+      action: 'create',
+      resource: 'pos_transaction',
+      resourceId: result.header.id,
+      userId: context.userId,
+      projectId: request.projectId,
+      ipAddress: context.ip,
+      userAgent: context.userAgent,
+      metadata: {
+        orderCode: result.header.orderId,
+        branchId: request.branchId,
+        paymentMethod: request.paymentMethod,
+        lineCount: result.cart.lines.length,
+      },
+    })
+
+    logger.info(
+      { projectId: request.projectId, transactionId: result.header.id },
+      'POS sale created'
+    )
+
+    return result
+  }
+
+  private duplicateResult(header: PosTransaction) {
+    return {
+      header,
+      cart: null,
+      changeAmount: fromDecimalString(header.changeAmount ?? '0'),
+      duplicate: true as const,
+    }
+  }
+
+  private async insertSale(
+    request: CreateSaleRequest,
+    context: PosContext,
+    opts?: { afterInsert?: (tx: Transaction, transactionId: string) => Promise<void> }
+  ) {
+    return withTenant(request.projectId, async (tx) => {
       const session = await cashSessionRepository.findOpenByBranch(tx, request.branchId)
       if (!session) {
         throw new ValidationError('Belum ada sesi kasir yang dibuka untuk cabang ini', {
@@ -120,6 +194,7 @@ export class PosService {
         paidAmount: request.paidAmount,
         changeAmount,
         customerId: request.customerId ?? null,
+        clientRequestId: request.clientRequestId ?? null,
         actorId: context.userId,
       })
 
@@ -144,31 +219,8 @@ export class PosService {
       // online order) commit atomically with it — no crash window between the two.
       if (opts?.afterInsert) await opts.afterInsert(tx, header.id)
 
-      return { header, cart, changeAmount }
+      return { header, cart, changeAmount, duplicate: false as const }
     })
-
-    await auditRepository.log({
-      action: 'create',
-      resource: 'pos_transaction',
-      resourceId: result.header.id,
-      userId: context.userId,
-      projectId: request.projectId,
-      ipAddress: context.ip,
-      userAgent: context.userAgent,
-      metadata: {
-        orderCode: result.header.orderId,
-        branchId: request.branchId,
-        paymentMethod: request.paymentMethod,
-        lineCount: result.cart.lines.length,
-      },
-    })
-
-    logger.info(
-      { projectId: request.projectId, transactionId: result.header.id },
-      'POS sale created'
-    )
-
-    return result
   }
 
   // Void a cashier sale and return its stock. A reason is required, enforced here and by a database CHECK.

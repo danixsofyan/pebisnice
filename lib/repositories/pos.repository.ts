@@ -20,6 +20,7 @@ export interface CreatePosTransactionInput {
   paidAmount: Money
   changeAmount: Money
   customerId?: string | null
+  clientRequestId?: string | null
   actorId: string
 }
 
@@ -37,6 +38,7 @@ export class PosRepository {
         branchId: input.branchId,
         cashSessionId: input.cashSessionId,
         customerId: input.customerId ?? null,
+        clientRequestId: input.clientRequestId ?? null,
         paymentMethod: input.paymentMethod,
         orderId: input.orderCode,
         orderDate: new Date(),
@@ -70,6 +72,27 @@ export class PosRepository {
     )
 
     return created
+  }
+
+  // Look up a sale by its client-generated request id, for idempotent replay of the offline queue.
+  // Not filtered by deleted_at: a voided/removed sale still counts as recorded, so a re-sync must
+  // not re-create it.
+  async findByClientRequestId(
+    tx: Transaction,
+    projectId: string,
+    clientRequestId: string
+  ): Promise<PosTransaction | null> {
+    const rows = await tx
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.projectId, projectId),
+          eq(transactions.clientRequestId, clientRequestId)
+        )
+      )
+      .limit(1)
+    return rows[0] ?? null
   }
 
   async findPosTransaction(

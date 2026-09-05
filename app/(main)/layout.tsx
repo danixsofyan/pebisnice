@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { DashboardLayout } from '@/components/dashboard/dashboard-layout'
+import { OfflineSync } from '@/components/pos/offline-sync'
 import { resolveSessionState } from '@/lib/auth/session-context'
 import { resolveBillingState } from '@/lib/auth/billing-state'
 
@@ -17,5 +18,10 @@ export default async function MainLayout({ children }: { children: React.ReactNo
 
   if (state.status === 'no-project') redirect('/onboarding')
 
-  return <DashboardLayout>{children}</DashboardLayout>
+  return (
+    <>
+      <OfflineSync />
+      <DashboardLayout>{children}</DashboardLayout>
+    </>
+  )
 }

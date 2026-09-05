@@ -28,6 +28,7 @@ export const createSaleSchema = z.object({
   voucherCode: z.string().trim().max(64).optional(),
   customerId: UUID.optional(),
   redeemPoints: z.number().int().nonnegative().max(100_000_000).optional(),
+  clientRequestId: UUID.optional(),
 })
 
 export const voidSaleSchema = z.object({

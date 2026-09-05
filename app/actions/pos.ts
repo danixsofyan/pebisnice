@@ -64,6 +64,7 @@ export async function createSaleAction(raw: unknown) {
         voucherCode?: string
         customerId?: string
         redeemPoints?: number
+        clientRequestId?: string
       }>(createSaleSchema, raw)
 
       const meta = await requestMeta()
@@ -151,6 +152,7 @@ export async function createSaleAction(raw: unknown) {
           paymentMethod: input.paymentMethod,
           paidAmount: fromDecimalString(input.paidAmount),
           customerId: customerId ?? null,
+          clientRequestId: input.clientRequestId ?? null,
         },
         { userId: context.userId, ...meta },
         afterInsert ? { afterInsert } : undefined
@@ -159,17 +161,21 @@ export async function createSaleAction(raw: unknown) {
       revalidatePath('/pos')
       revalidatePath('/transactions')
 
-      // Numbers go as decimal strings; bigint can't be serialized across the server/client boundary.
+      // Read the receipt straight off the stored header so an idempotent replay (result.duplicate)
+      // returns the same numbers as the original sale. Amounts are decimal strings; bigint can't
+      // cross the server/client boundary.
+      const header = result.header
       return {
         success: true as const,
         data: {
-          transactionId: result.header.id,
-          orderCode: result.header.orderId,
-          subtotal: toDecimalString(result.cart.subtotal),
-          discountAmount: toDecimalString(result.cart.discountAmount),
-          total: toDecimalString(result.cart.total),
-          paidAmount: toDecimalString(result.cart.total + result.changeAmount),
-          changeAmount: toDecimalString(result.changeAmount),
+          transactionId: header.id,
+          orderCode: header.orderId,
+          subtotal: header.grossAmount,
+          discountAmount: header.discountAmount,
+          total: header.netAmount,
+          paidAmount: header.paidAmount ?? header.netAmount,
+          changeAmount: header.changeAmount ?? '0',
+          duplicate: result.duplicate,
         },
       }
     } catch (error) {
