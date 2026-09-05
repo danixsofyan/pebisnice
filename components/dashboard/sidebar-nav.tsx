@@ -13,6 +13,7 @@ import {
   Coins,
   Users,
   Landmark,
+  HandCoins,
   Contact,
   ArrowLeftRight,
   ShoppingBag,
@@ -93,6 +94,11 @@ const mainNavItems = [
     title: 'Mutasi Bank',
     url: '/finance',
     icon: Landmark,
+  },
+  {
+    title: 'Piutang',
+    url: '/receivables',
+    icon: HandCoins,
   },
   {
     title: 'Karyawan',

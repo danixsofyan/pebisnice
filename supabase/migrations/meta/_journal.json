@@ -190,6 +190,13 @@
       "when": 1788583402708,
       "tag": "0026_purchase_returns",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1788583742476,
+      "tag": "0027_receivables",
+      "breakpoints": true
     }
   ]
 }
