@@ -12,7 +12,7 @@ import { inventoryRepository } from '@/lib/repositories/inventory.repository'
 import { auditRepository } from '@/lib/repositories/audit.repository'
 import { productRepository } from '@/lib/repositories/product.repository'
 import { branchRepository } from '@/lib/repositories/branch.repository'
-import { withTenant } from '@/lib/db/tenant'
+import { withTenant, type Transaction } from '@/lib/db/tenant'
 import { fromDecimalString, toDecimalString, type Money } from '@/lib/domain/money'
 import { calculateChange, priceCart, type CartDiscount } from '@/lib/domain/pos/cart'
 import { planStockMovement } from '@/lib/domain/inventory/stock-movement'
@@ -47,8 +47,12 @@ function todayStamp(now: Date): string {
 }
 
 export class PosService {
-  // Create a cashier sale. Header, lines, and per-variant stock decrements all run in one transaction; if any variant is short the whole sale aborts. HPP is read server-side, so the cashier can't influence COGS.
-  async createSale(request: CreateSaleRequest, context: PosContext) {
+  // Create a cashier sale. Header, lines, and per-variant stock decrements all run in one transaction; if any variant is short the whole sale aborts. HPP is read server-side, so the cashier can't influence COGS. opts.afterInsert runs inside that same transaction (e.g. to finalize an online order atomically with the sale).
+  async createSale(
+    request: CreateSaleRequest,
+    context: PosContext,
+    opts?: { afterInsert?: (tx: Transaction, transactionId: string) => Promise<void> }
+  ) {
     await requirePermission(request.projectId, context.userId, 'pos:operate')
     await requireBranchAccess(request.projectId, context.userId, request.branchId)
 
@@ -133,6 +137,10 @@ export class PosService {
         await inventoryRepository.setBalance(tx, location, plan.quantityAfter, context.userId)
         await inventoryRepository.appendMovement(tx, location, plan, context.userId)
       }
+
+      // Runs in the same transaction as the sale, so linked side effects (e.g. finalizing an
+      // online order) commit atomically with it — no crash window between the two.
+      if (opts?.afterInsert) await opts.afterInsert(tx, header.id)
 
       return { header, cart, changeAmount }
     })

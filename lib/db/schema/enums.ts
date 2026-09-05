@@ -50,6 +50,7 @@ export const purchaseStatusEnum = pgEnum('purchase_status', ['ordered', 'receive
 // Public (WhatsApp) order lifecycle: pending -> accepted (converted to a POS sale) or rejected.
 export const onlineOrderStatusEnum = pgEnum('online_order_status', [
   'pending',
+  'processing',
   'accepted',
   'rejected',
 ])

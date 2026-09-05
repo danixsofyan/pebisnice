@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm'
+import { and, desc, eq, gt, inArray, isNull, lt } from 'drizzle-orm'
 import {
   branches,
   inventory,
@@ -26,6 +26,8 @@ import { logger } from '@/lib/logging/logger'
 
 const MAX_ITEMS = 50
 const MAX_QTY = 1000
+// A claim older than this with no sale is treated as abandoned (crash mid-accept) and reclaimed.
+const STALE_CLAIM_MS = 2 * 60 * 1000
 
 // URL-safe slug from a store name: lowercase, accents stripped, non-alphanumerics collapsed to
 // single dashes, trimmed, capped so the public link stays short.
@@ -286,6 +288,7 @@ export class OnlineOrderService {
 
   async listPending(projectId: string, userId: string) {
     await requirePermission(projectId, userId, 'pos:operate')
+    await this.reclaimStale(projectId)
     const orders = await withTenant(projectId, (tx) =>
       tx
         .select({
@@ -354,13 +357,14 @@ export class OnlineOrderService {
     context: OrderContext
   ): Promise<void> {
     await requirePermission(projectId, context.userId, 'pos:operate')
+    await this.reclaimStale(projectId)
 
-    // Atomically claim the order: only one concurrent request can flip pending -> accepted, so
-    // two staff hitting "Terima" at once can't both create a sale (double stock decrement).
+    // Atomically claim the order into 'processing' — only one concurrent request wins, so two
+    // staff hitting "Terima" at once can't both create a sale (double stock decrement).
     const claimed = await withTenant(projectId, (tx) =>
       tx
         .update(onlineOrders)
-        .set({ status: 'accepted' })
+        .set({ status: 'processing', claimedAt: new Date() })
         .where(
           and(
             eq(onlineOrders.id, orderId),
@@ -398,20 +402,7 @@ export class OnlineOrderService {
         }))
       if (lines.length === 0) throw new ValidationError('Pesanan tidak punya item valid')
 
-      // Marks the sale paid in full (paidAmount = total, no cashier cash input). Decrements
-      // stock and validates the open cash session; throws if short, which reverts the claim.
-      const sale = await posService.createSale(
-        {
-          projectId,
-          branchId: head.branchId,
-          lines,
-          discount: { type: 'none' },
-          paymentMethod,
-          paidAmount: lines.reduce((sum, l) => sum + l.unitPrice * BigInt(l.qty), ZERO),
-        },
-        context
-      )
-
+      // Upsert the customer before the sale so we can link it inside the sale's transaction.
       const phone = head.customerPhoneEnc ? decryptToken(head.customerPhoneEnc) : null
       let customerId: string | null = null
       if (phone) {
@@ -433,18 +424,34 @@ export class OnlineOrderService {
             ).id
       }
 
-      await withTenant(projectId, async (tx) => {
-        if (customerId) {
-          await tx
-            .update(transactions)
-            .set({ customerId })
-            .where(eq(transactions.id, sale.header.id))
+      // The sale and the order finalize (link + status accepted) commit in ONE transaction via
+      // afterInsert, so there is no crash window that could leave a sale without an accepted
+      // order (or vice versa). Marks the sale paid in full (no cashier cash input).
+      const sale = await posService.createSale(
+        {
+          projectId,
+          branchId: head.branchId,
+          lines,
+          discount: { type: 'none' },
+          paymentMethod,
+          paidAmount: lines.reduce((sum, l) => sum + l.unitPrice * BigInt(l.qty), ZERO),
+        },
+        context,
+        {
+          afterInsert: async (tx, transactionId) => {
+            if (customerId) {
+              await tx
+                .update(transactions)
+                .set({ customerId })
+                .where(eq(transactions.id, transactionId))
+            }
+            await tx
+              .update(onlineOrders)
+              .set({ status: 'accepted', transactionId, claimedAt: null })
+              .where(eq(onlineOrders.id, orderId))
+          },
         }
-        await tx
-          .update(onlineOrders)
-          .set({ transactionId: sale.header.id })
-          .where(eq(onlineOrders.id, orderId))
-      })
+      )
 
       await auditRepository.log({
         action: 'update',
@@ -457,24 +464,36 @@ export class OnlineOrderService {
         metadata: { status: 'accepted', transactionId: sale.header.id },
       })
       logger.info({ projectId, orderId, transactionId: sale.header.id }, 'online order accepted')
-      return
     } catch (error) {
-      // Release the claim so it can be retried (e.g. after opening a shift or restocking). Only
-      // reverts our own un-finalized claim, never one that already produced a sale.
+      // The sale never committed (finalize runs inside it), so release the claim for retry.
       await withTenant(projectId, (tx) =>
         tx
           .update(onlineOrders)
-          .set({ status: 'pending' })
-          .where(
-            and(
-              eq(onlineOrders.id, orderId),
-              eq(onlineOrders.status, 'accepted'),
-              isNull(onlineOrders.transactionId)
-            )
-          )
+          .set({ status: 'pending', claimedAt: null })
+          .where(and(eq(onlineOrders.id, orderId), eq(onlineOrders.status, 'processing')))
       )
       throw error
     }
+  }
+
+  // Reclaim orders stuck in 'processing' (a crash between claim and the sale transaction) back
+  // to 'pending'. Safe because the sale + finalize are atomic: a stuck 'processing' provably has
+  // no sale. Run lazily before listing/accepting so no scheduled job is required.
+  private async reclaimStale(projectId: string): Promise<void> {
+    const cutoff = new Date(Date.now() - STALE_CLAIM_MS)
+    await withTenant(projectId, (tx) =>
+      tx
+        .update(onlineOrders)
+        .set({ status: 'pending', claimedAt: null })
+        .where(
+          and(
+            eq(onlineOrders.projectId, projectId),
+            eq(onlineOrders.status, 'processing'),
+            isNull(onlineOrders.transactionId),
+            lt(onlineOrders.claimedAt, cutoff)
+          )
+        )
+    )
   }
 }
 

@@ -169,6 +169,13 @@
       "when": 1788565881338,
       "tag": "0023_order_links",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788569629359,
+      "tag": "0024_online_order_processing",
+      "breakpoints": true
     }
   ]
 }

@@ -43,6 +43,9 @@ export const onlineOrders = pgTable(
     customerName: text('customer_name').notNull(),
     customerPhoneEnc: text('customer_phone_enc'),
     status: onlineOrderStatusEnum('status').default('pending').notNull(),
+    // When a staff member claimed this order for acceptance; a stale claim (crash mid-accept)
+    // is reclaimed to pending by the lazy reaper.
+    claimedAt: tz('claimed_at'),
     totalAmount: money('total_amount').default('0').notNull(),
     note: text('note'),
     // Set when accepted: the POS transaction this order became.
