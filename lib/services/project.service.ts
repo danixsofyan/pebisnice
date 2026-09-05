@@ -37,6 +37,9 @@ export class ProjectService {
         taxRateBasisPoints: projects.taxRateBasisPoints,
         taxInclusive: projects.taxInclusive,
         waNumber: projects.waNumber,
+        loyaltyEnabled: projects.loyaltyEnabled,
+        loyaltyEarnRate: projects.loyaltyEarnRate,
+        loyaltyRedeemValue: projects.loyaltyRedeemValue,
       })
       .from(projects)
       .where(and(eq(projects.id, projectId), isNull(projects.deletedAt)))
@@ -93,6 +96,10 @@ export class ProjectService {
     if (input.taxInclusive !== undefined) sanitized.taxInclusive = input.taxInclusive
     if (input.waNumber !== undefined)
       sanitized.waNumber = input.waNumber ? input.waNumber.replace(/[^\d]/g, '') : null
+    if (input.loyaltyEnabled !== undefined) sanitized.loyaltyEnabled = input.loyaltyEnabled
+    if (input.loyaltyEarnRate !== undefined) sanitized.loyaltyEarnRate = input.loyaltyEarnRate
+    if (input.loyaltyRedeemValue !== undefined)
+      sanitized.loyaltyRedeemValue = input.loyaltyRedeemValue
 
     const updated = await projectRepository.update(projectId, sanitized)
     if (!updated) throw new NotFoundError('Project tidak ditemukan')

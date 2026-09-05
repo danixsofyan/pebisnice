@@ -51,6 +51,9 @@ export const purchaseStatusEnum = pgEnum('purchase_status', ['ordered', 'receive
 // Voucher discount type: a percentage of the subtotal, or a fixed rupiah amount.
 export const promoTypeEnum = pgEnum('promo_type', ['percent', 'nominal'])
 
+// Loyalty ledger entry kind: points earned on a sale, redeemed for a discount, or a manual fix.
+export const loyaltyLedgerTypeEnum = pgEnum('loyalty_ledger_type', ['earn', 'redeem', 'adjust'])
+
 // Public (WhatsApp) order lifecycle: pending -> accepted (converted to a POS sale) or rejected.
 export const onlineOrderStatusEnum = pgEnum('online_order_status', [
   'pending',

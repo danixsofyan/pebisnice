@@ -26,6 +26,8 @@ export const createSaleSchema = z.object({
   paymentMethod: z.enum(['cash', 'transfer', 'qris', 'card', 'other']),
   paidAmount: MONEY,
   voucherCode: z.string().trim().max(64).optional(),
+  customerId: UUID.optional(),
+  redeemPoints: z.number().int().nonnegative().max(100_000_000).optional(),
 })
 
 export const voidSaleSchema = z.object({

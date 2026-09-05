@@ -20,6 +20,9 @@ const settingsSchema = z.object({
   taxRatePercent: z.number().min(0, 'Tidak boleh negatif').max(100, 'Maks 100%').optional(),
   taxInclusive: z.boolean().optional(),
   waNumber: z.string().trim().max(20).optional(),
+  loyaltyEnabled: z.boolean().optional(),
+  loyaltyEarnRate: z.number().int().min(0).max(100_000_000).optional(),
+  loyaltyRedeemValue: z.number().int().min(0).max(100_000_000).optional(),
 })
 
 export async function updateProjectSettingsAction(raw: unknown) {
@@ -48,6 +51,15 @@ export async function updateProjectSettingsAction(raw: unknown) {
             ? { taxInclusive: parsed.data.taxInclusive }
             : {}),
           ...(parsed.data.waNumber !== undefined ? { waNumber: parsed.data.waNumber || null } : {}),
+          ...(parsed.data.loyaltyEnabled !== undefined
+            ? { loyaltyEnabled: parsed.data.loyaltyEnabled }
+            : {}),
+          ...(parsed.data.loyaltyEarnRate !== undefined
+            ? { loyaltyEarnRate: parsed.data.loyaltyEarnRate }
+            : {}),
+          ...(parsed.data.loyaltyRedeemValue !== undefined
+            ? { loyaltyRedeemValue: parsed.data.loyaltyRedeemValue }
+            : {}),
         },
         { ip: meta.ip, userAgent: meta.userAgent }
       )

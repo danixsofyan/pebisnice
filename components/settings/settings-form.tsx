@@ -17,6 +17,9 @@ export function SettingsForm({
     taxRatePercent: number
     taxInclusive: boolean
     waNumber: string
+    loyaltyEnabled: boolean
+    loyaltyEarnRate: number
+    loyaltyRedeemValue: number
   }
 }) {
   const router = useRouter()
@@ -26,6 +29,9 @@ export function SettingsForm({
   const [taxRate, setTaxRate] = useState(String(initial.taxRatePercent))
   const [taxInclusive, setTaxInclusive] = useState(initial.taxInclusive)
   const [waNumber, setWaNumber] = useState(initial.waNumber)
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(initial.loyaltyEnabled)
+  const [loyaltyEarnRate, setLoyaltyEarnRate] = useState(String(initial.loyaltyEarnRate))
+  const [loyaltyRedeemValue, setLoyaltyRedeemValue] = useState(String(initial.loyaltyRedeemValue))
   const [msg, setMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -42,6 +48,9 @@ export function SettingsForm({
         taxRatePercent: Number(taxRate || 0),
         taxInclusive,
         waNumber: waNumber.trim() || undefined,
+        loyaltyEnabled,
+        loyaltyEarnRate: Math.max(0, Math.floor(Number(loyaltyEarnRate || 0))),
+        loyaltyRedeemValue: Math.max(0, Math.floor(Number(loyaltyRedeemValue || 0))),
       })
       if (!result.success) return setError(result.error)
       setMsg('Tersimpan')
@@ -106,6 +115,48 @@ export function SettingsForm({
         <p className="text-muted-foreground text-xs">
           Format internasional tanpa +, mis. 628123456789. Dipakai tombol WhatsApp di link order.
         </p>
+      </div>
+
+      <div className="border-border space-y-4 border-t pt-4">
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={loyaltyEnabled}
+            onChange={(e) => setLoyaltyEnabled(e.target.checked)}
+            className="size-4"
+          />
+          Aktifkan program loyalti (poin pelanggan)
+        </label>
+        {loyaltyEnabled ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="s-earn">Rp belanja per 1 poin</Label>
+              <Input
+                id="s-earn"
+                value={loyaltyEarnRate}
+                onChange={(e) => setLoyaltyEarnRate(e.target.value)}
+                inputMode="numeric"
+                placeholder="1000"
+              />
+              <p className="text-muted-foreground text-xs">
+                Mis. 1000 = pelanggan dapat 1 poin tiap belanja Rp1.000. 0 mematikan perolehan.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="s-redeem">Nilai 1 poin (Rp)</Label>
+              <Input
+                id="s-redeem"
+                value={loyaltyRedeemValue}
+                onChange={(e) => setLoyaltyRedeemValue(e.target.value)}
+                inputMode="numeric"
+                placeholder="100"
+              />
+              <p className="text-muted-foreground text-xs">
+                Mis. 100 = tiap poin memotong Rp100 saat ditukar. 0 mematikan penukaran.
+              </p>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-3">

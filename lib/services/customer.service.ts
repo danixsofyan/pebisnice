@@ -255,6 +255,27 @@ export class CustomerService {
     )
     return row ?? null
   }
+
+  // Lightweight list for the POS customer picker: no PII decryption, just what the cashier needs
+  // to attach a customer and see their loyalty balance.
+  async listForPos(
+    projectId: string,
+    userId: string
+  ): Promise<Array<{ id: string; name: string; loyaltyPoints: number }>> {
+    await requirePermission(projectId, userId, MANAGE)
+    return withTenant(projectId, (tx) =>
+      tx
+        .select({
+          id: customers.id,
+          name: customers.name,
+          loyaltyPoints: customers.loyaltyPoints,
+        })
+        .from(customers)
+        .where(and(eq(customers.projectId, projectId), isNull(customers.deletedAt)))
+        .orderBy(desc(customers.name))
+        .limit(500)
+    )
+  }
 }
 
 export const customerService = new CustomerService()

@@ -66,6 +66,9 @@ export default async function SettingsPage({
             taxRatePercent: settings.taxRateBasisPoints / 100,
             taxInclusive: settings.taxInclusive,
             waNumber: settings.waNumber ?? '',
+            loyaltyEnabled: settings.loyaltyEnabled,
+            loyaltyEarnRate: settings.loyaltyEarnRate,
+            loyaltyRedeemValue: settings.loyaltyRedeemValue,
           }}
         />
       ) : (

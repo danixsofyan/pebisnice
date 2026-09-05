@@ -19,6 +19,7 @@ export interface CreatePosTransactionInput {
   cart: PricedCart
   paidAmount: Money
   changeAmount: Money
+  customerId?: string | null
   actorId: string
 }
 
@@ -35,6 +36,7 @@ export class PosRepository {
         channel: 'pos',
         branchId: input.branchId,
         cashSessionId: input.cashSessionId,
+        customerId: input.customerId ?? null,
         paymentMethod: input.paymentMethod,
         orderId: input.orderCode,
         orderDate: new Date(),

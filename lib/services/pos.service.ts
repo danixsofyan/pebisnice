@@ -34,6 +34,7 @@ export interface CreateSaleRequest {
   discount: CartDiscount
   paymentMethod: PaymentMethod
   paidAmount: Money
+  customerId?: string | null
 }
 
 export interface PosContext {
@@ -118,6 +119,7 @@ export class PosService {
         cart,
         paidAmount: request.paidAmount,
         changeAmount,
+        customerId: request.customerId ?? null,
         actorId: context.userId,
       })
 

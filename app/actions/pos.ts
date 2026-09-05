@@ -4,9 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { posService } from '@/lib/services/pos.service'
 import { promoService } from '@/lib/services/promo.service'
+import { loyaltyService } from '@/lib/services/loyalty.service'
 import { cashSessionService } from '@/lib/services/cash-session.service'
 import { getSessionContext } from '@/lib/auth/session-context'
-import { fromDecimalString, toDecimalString } from '@/lib/domain/money'
+import { fromDecimalString, toDecimalString, ZERO } from '@/lib/domain/money'
 import { percentToBasisPoints } from '@/lib/domain/money'
 import type { CartDiscount } from '@/lib/domain/pos/cart'
 import type { Transaction } from '@/lib/db/tenant'
@@ -61,31 +62,81 @@ export async function createSaleAction(raw: unknown) {
         paymentMethod: 'cash' | 'transfer' | 'qris' | 'card' | 'other'
         paidAmount: string
         voucherCode?: string
+        customerId?: string
+        redeemPoints?: number
       }>(createSaleSchema, raw)
 
       const meta = await requestMeta()
 
-      // A voucher is re-validated server-side against the server-computed subtotal (never the
-      // client's numbers) and overrides any manual discount. used_count is bumped in the same
-      // transaction as the sale so a redemption can't be lost or double-counted.
+      // Everything money-related is recomputed server-side from the line prices; the client's
+      // discount numbers are never trusted. Voucher and loyalty-point redemption stack, applied
+      // sequentially so points never discount more than what's left after the voucher.
+      const subtotal = input.lines.reduce(
+        (sum, line) => sum + fromDecimalString(line.unitPrice) * BigInt(line.qty),
+        ZERO
+      )
       let discount = toDiscount(input.discount)
-      let redeem: ((tx: Transaction, transactionId: string) => Promise<void>) | undefined
+      const sideEffects: Array<(tx: Transaction, transactionId: string) => Promise<void>> = []
+
+      // Voucher: re-validated against the server subtotal; used_count is bumped in the sale's own
+      // transaction so a redemption can't be lost or double-counted.
+      let voucherDiscount = ZERO
       const voucherCode = input.voucherCode?.trim()
       if (voucherCode) {
-        const subtotal = input.lines.reduce(
-          (sum, line) => sum + fromDecimalString(line.unitPrice) * BigInt(line.qty),
-          0n
-        )
         const promo = await promoService.validate(
           context.projectId,
           context.userId,
           voucherCode,
           subtotal
         )
-        discount = { type: 'nominal', amount: promo.discountAmount }
-        redeem = (tx, transactionId) =>
+        voucherDiscount = promo.discountAmount
+        sideEffects.push((tx, transactionId) =>
           promoService.redeem(tx, context.projectId, promo.promotionId, transactionId)
+        )
       }
+
+      // Loyalty: earn always accrues (if enabled) when a customer is attached; redemption is
+      // capped at what remains after the voucher, and only the points that yield a discount are
+      // spent. The balance is decremented atomically inside the sale transaction.
+      let pointsDiscount = ZERO
+      const customerId = input.customerId
+      if (customerId) {
+        const config = await loyaltyService.getConfig(context.projectId)
+        let redeemPoints = input.redeemPoints ?? 0
+        if (redeemPoints > 0) {
+          if (!config.enabled || config.redeemValue <= 0) {
+            throw new ValidationError('Program loyalti tidak aktif')
+          }
+          const valuePerPoint = BigInt(config.redeemValue) * 100n // rupiah → minor units
+          const remaining = subtotal - voucherDiscount
+          const capPoints = Number(remaining / valuePerPoint)
+          if (redeemPoints > capPoints) redeemPoints = capPoints
+          pointsDiscount = BigInt(redeemPoints) * valuePerPoint
+        }
+        const effectivePoints = redeemPoints
+        sideEffects.push((tx, transactionId) =>
+          loyaltyService.accrue(tx, {
+            projectId: context.projectId,
+            customerId,
+            transactionId,
+            redeemPoints: effectivePoints,
+            config,
+            actorId: context.userId,
+          })
+        )
+      }
+
+      const combinedDiscount = voucherDiscount + pointsDiscount
+      if (combinedDiscount > ZERO) {
+        discount = { type: 'nominal', amount: combinedDiscount }
+      }
+
+      const afterInsert =
+        sideEffects.length > 0
+          ? async (tx: Transaction, transactionId: string) => {
+              for (const effect of sideEffects) await effect(tx, transactionId)
+            }
+          : undefined
 
       const result = await posService.createSale(
         {
@@ -99,9 +150,10 @@ export async function createSaleAction(raw: unknown) {
           discount,
           paymentMethod: input.paymentMethod,
           paidAmount: fromDecimalString(input.paidAmount),
+          customerId: customerId ?? null,
         },
         { userId: context.userId, ...meta },
-        redeem ? { afterInsert: redeem } : undefined
+        afterInsert ? { afterInsert } : undefined
       )
 
       revalidatePath('/pos')

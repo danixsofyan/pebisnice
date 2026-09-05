@@ -32,15 +32,31 @@ interface Receipt {
   changeAmount: string
 }
 
+interface CustomerOption {
+  id: string
+  name: string
+  loyaltyPoints: number
+}
+
+interface LoyaltyConfig {
+  enabled: boolean
+  earnRate: number
+  redeemValue: number
+}
+
 // Cashier screen. Numbers shown here are preview only; every saved figure is recomputed server-side by priceCart(), so browser values can't affect what's recorded.
 export function PosTerminal({
   branchId,
   branchName,
   items,
+  customers,
+  loyalty,
 }: {
   branchId: string
   branchName: string
   items: SellableItem[]
+  customers: CustomerOption[]
+  loyalty: LoyaltyConfig
 }) {
   const [keyword, setKeyword] = useState('')
   const [cart, setCart] = useState<CartEntry[]>([])
@@ -50,6 +66,8 @@ export function PosTerminal({
   const [voucher, setVoucher] = useState<{ code: string; discountAmount: string } | null>(null)
   const [voucherError, setVoucherError] = useState<string | null>(null)
   const [voucherPending, startVoucherTransition] = useTransition()
+  const [customerId, setCustomerId] = useState('')
+  const [redeemPoints, setRedeemPoints] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -71,8 +89,28 @@ export function PosTerminal({
   )
   const subtotal = (subtotalCents / 100).toFixed(2)
 
-  const discountCents = voucher ? Math.round(Number(voucher.discountAmount) * 100) : 0
-  const totalCents = Math.max(0, subtotalCents - discountCents)
+  const selectedCustomer = customers.find((c) => c.id === customerId) ?? null
+  const canRedeem =
+    loyalty.enabled &&
+    loyalty.redeemValue > 0 &&
+    selectedCustomer !== null &&
+    selectedCustomer.loyaltyPoints > 0
+
+  const voucherDiscountCents = voucher ? Math.round(Number(voucher.discountAmount) * 100) : 0
+  const valuePerPointCents = loyalty.redeemValue * 100
+  // Points are capped at the balance and at what's left after the voucher, so the preview matches
+  // what the server will apply. Only points that actually discount are counted.
+  const requestedPoints = canRedeem ? Math.max(0, Math.floor(Number(redeemPoints || 0))) : 0
+  const remainingAfterVoucher = Math.max(0, subtotalCents - voucherDiscountCents)
+  const effectivePoints = canRedeem
+    ? Math.min(
+        requestedPoints,
+        selectedCustomer!.loyaltyPoints,
+        valuePerPointCents > 0 ? Math.floor(remainingAfterVoucher / valuePerPointCents) : 0
+      )
+    : 0
+  const pointsDiscountCents = effectivePoints * valuePerPointCents
+  const totalCents = Math.max(0, subtotalCents - voucherDiscountCents - pointsDiscountCents)
   const total = (totalCents / 100).toFixed(2)
 
   function applyVoucher() {
@@ -157,6 +195,8 @@ export function PosTerminal({
         paymentMethod,
         paidAmount: Number(paidAmount || total).toFixed(2),
         voucherCode: voucher?.code,
+        customerId: customerId || undefined,
+        redeemPoints: effectivePoints > 0 ? effectivePoints : undefined,
       })
 
       if (!result.success) {
@@ -168,6 +208,8 @@ export function PosTerminal({
       setCart([])
       setPaidAmount('')
       clearVoucher()
+      setCustomerId('')
+      setRedeemPoints('')
     })
   }
 
@@ -307,6 +349,47 @@ export function PosTerminal({
           <span>{formatRupiahFromDecimal(subtotal)}</span>
         </div>
 
+        {customers.length > 0 ? (
+          <div className="space-y-2">
+            <Label htmlFor="customer">Pelanggan (opsional)</Label>
+            <select
+              id="customer"
+              value={customerId}
+              onChange={(event) => {
+                setCustomerId(event.target.value)
+                setRedeemPoints('')
+              }}
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+            >
+              <option value="">— tanpa pelanggan —</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                  {loyalty.enabled ? ` • ${c.loyaltyPoints} poin` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+
+        {canRedeem ? (
+          <div className="space-y-2">
+            <Label htmlFor="redeem-points">
+              Tukar poin (saldo {selectedCustomer!.loyaltyPoints})
+            </Label>
+            <Input
+              id="redeem-points"
+              value={redeemPoints}
+              onChange={(event) => setRedeemPoints(event.target.value)}
+              inputMode="numeric"
+              placeholder="0"
+            />
+            <p className="text-muted-foreground text-xs">
+              1 poin = {formatRupiahFromDecimal(loyalty.redeemValue.toFixed(2))}
+            </p>
+          </div>
+        ) : null}
+
         <div className="space-y-2">
           <Label htmlFor="voucher-code">Voucher</Label>
           {voucher ? (
@@ -347,6 +430,15 @@ export function PosTerminal({
             <span className="text-muted-foreground">Diskon voucher</span>
             <span className="text-emerald-500">
               −{formatRupiahFromDecimal(voucher.discountAmount)}
+            </span>
+          </div>
+        ) : null}
+
+        {effectivePoints > 0 ? (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Poin ({effectivePoints})</span>
+            <span className="text-emerald-500">
+              −{formatRupiahFromDecimal((pointsDiscountCents / 100).toFixed(2))}
             </span>
           </div>
         ) : null}

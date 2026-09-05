@@ -3,6 +3,8 @@ import { withTenant } from '@/lib/db/tenant'
 import { cashSessions } from '@/lib/db/schema'
 import { getAccessibleBranches, getSessionContext } from '@/lib/auth/session-context'
 import { posCatalogRepository } from '@/lib/repositories/pos-catalog.repository'
+import { customerService } from '@/lib/services/customer.service'
+import { loyaltyService } from '@/lib/services/loyalty.service'
 import { hasRolePermission } from '@/lib/authz/permissions'
 import { PosTerminal } from '@/components/pos/pos-terminal'
 import { CashSessionPanel } from '@/components/pos/cash-session-panel'
@@ -53,7 +55,11 @@ export default async function PosPage() {
     return <CashSessionPanel branchId={branch.id} branchName={branch.name} openSession={null} />
   }
 
-  const items = await posCatalogRepository.search(context.projectId, branch.id, '')
+  const [items, customers, loyalty] = await Promise.all([
+    posCatalogRepository.search(context.projectId, branch.id, ''),
+    customerService.listForPos(context.projectId, context.userId),
+    loyaltyService.getConfig(context.projectId),
+  ])
 
   return (
     <div className="space-y-6">
@@ -63,7 +69,13 @@ export default async function PosPage() {
         openSession={{ id: openSession.id, openingBalance: openSession.openingBalance }}
       />
 
-      <PosTerminal branchId={branch.id} branchName={branch.name} items={items} />
+      <PosTerminal
+        branchId={branch.id}
+        branchName={branch.name}
+        items={items}
+        customers={customers}
+        loyalty={loyalty}
+      />
     </div>
   )
 }

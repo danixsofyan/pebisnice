@@ -1,4 +1,4 @@
-import { index, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { index, integer, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import { actorColumns, tenantColumn } from './columns'
 import { lifecycleColumns } from './primitives'
@@ -17,6 +17,9 @@ export const customers = pgTable(
     emailEnc: text('email_enc'),
     addressEnc: text('address_enc'),
     note: text('note'),
+    // Loyalty balance; the source of truth is the running total, backed by the append-only
+    // loyalty_ledger. Bumped atomically inside the sale transaction.
+    loyaltyPoints: integer('loyalty_points').default(0).notNull(),
     ...actorColumns,
     ...lifecycleColumns,
   },
