@@ -45,6 +45,9 @@ export const subscriptions = pgTable(
     currentPeriodStart: tz('current_period_start').notNull(),
     currentPeriodEnd: tz('current_period_end').notNull(),
     canceledAt: tz('canceled_at'),
+    // When the "your subscription is ending soon" email was last sent. Compared against
+    // current_period_start so the reminder goes out at most once per billing period.
+    renewalReminderSentAt: tz('renewal_reminder_sent_at'),
     ...lifecycleColumns,
   },
   (t) => [

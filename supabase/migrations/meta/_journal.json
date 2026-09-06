@@ -225,6 +225,13 @@
       "when": 1788592303887,
       "tag": "0032_client_request_id",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1788701328118,
+      "tag": "0033_subscription_reminder",
+      "breakpoints": true
     }
   ]
 }

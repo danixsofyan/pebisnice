@@ -60,6 +60,45 @@ export function paymentConfirmedEmail(params: {
   return { to: params.to, subject, text, html }
 }
 
+export function subscriptionExpiringEmail(params: {
+  to: string
+  name: string | null
+  planName: string
+  daysLeft: number
+  endsAt: string
+}): EmailMessage {
+  const greeting = params.name ? esc(params.name) : 'Halo'
+  const plan = esc(params.planName)
+  const until = esc(params.endsAt)
+  const days = params.daysLeft
+
+  const subject = `Langganan ${params.planName} berakhir dalam ${days} hari`
+
+  const text = [
+    `${params.name ?? 'Halo'},`,
+    '',
+    `Langganan ${params.planName} Anda akan berakhir pada ${params.endsAt} (${days} hari lagi).`,
+    'Perpanjang sebelum tanggal tersebut agar akses kasir dan data tetap aktif.',
+    '',
+    'Terima kasih telah menggunakan Pebisnice.',
+  ].join('\n')
+
+  const html = `<!doctype html>
+<html lang="id"><body style="margin:0;background:#f4f4f5;font-family:system-ui,-apple-system,sans-serif;color:#18181b">
+  <div style="max-width:480px;margin:24px auto;background:#fff;border-radius:12px;padding:32px">
+    <h1 style="font-size:18px;margin:0 0 16px">Langganan segera berakhir</h1>
+    <p style="font-size:14px;line-height:1.6;color:#3f3f46">${greeting},</p>
+    <p style="font-size:14px;line-height:1.6;color:#3f3f46">
+      Langganan <strong>${plan}</strong> Anda berakhir pada <strong>${until}</strong> (${days} hari lagi).
+      Perpanjang sebelum tanggal tersebut agar akses kasir dan data tetap aktif.
+    </p>
+    <p style="font-size:12px;color:#a1a1aa">Terima kasih telah menggunakan Pebisnice.</p>
+  </div>
+</body></html>`
+
+  return { to: params.to, subject, text, html }
+}
+
 export function teamInviteEmail(params: {
   to: string
   projectName: string
