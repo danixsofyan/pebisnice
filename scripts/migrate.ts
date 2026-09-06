@@ -54,10 +54,20 @@ async function main(): Promise<void> {
   })
 
   try {
-    await client.unsafe('CREATE SCHEMA IF NOT EXISTS "drizzle"')
-    await client.unsafe(
-      'CREATE TABLE IF NOT EXISTS "drizzle"."__drizzle_migrations" (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)'
-    )
+    // Create the tracker only when it's genuinely absent. The least-privilege migration role owns
+    // the existing drizzle schema/table but lacks CREATE-on-database, so an unconditional
+    // CREATE SCHEMA would fail with "permission denied for database" even though it exists.
+    const trackerRows = await client<{ present: boolean }[]>`
+      select exists (
+        select 1 from information_schema.tables
+        where table_schema = 'drizzle' and table_name = '__drizzle_migrations'
+      ) as present`
+    if (!trackerRows[0]?.present) {
+      await client.unsafe('CREATE SCHEMA IF NOT EXISTS "drizzle"')
+      await client.unsafe(
+        'CREATE TABLE IF NOT EXISTS "drizzle"."__drizzle_migrations" (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)'
+      )
+    }
 
     const recorded = new Set(
       (await client`select hash from drizzle.__drizzle_migrations`).map((r) => r.hash as string)
