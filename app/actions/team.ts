@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { teamService } from '@/lib/services/team.service'
 import { getSessionContext } from '@/lib/auth/session-context'
+import { getRequestOrigin } from '@/lib/http/origin'
 import { readRequestMeta } from '@/lib/observability/server-context'
 import { tagRequestActor, withRequestScope } from '@/lib/observability/with-request-scope'
 import { handleActionError, ValidationError } from '@/lib/errors/app-error'
@@ -42,6 +43,7 @@ export async function addMemberAction(raw: unknown) {
       if (!parsed.success)
         throw new ValidationError('Validasi gagal', parsed.error.flatten().fieldErrors)
 
+      const origin = await getRequestOrigin()
       await teamService.addMember(
         {
           projectId: context.projectId,
@@ -49,7 +51,7 @@ export async function addMemberAction(raw: unknown) {
           role: parsed.data.role,
           branchId: parsed.data.branchId ?? null,
         },
-        { userId: context.userId, ip: meta.ip, userAgent: meta.userAgent }
+        { userId: context.userId, ip: meta.ip, userAgent: meta.userAgent, origin }
       )
       revalidatePath('/employees')
       return { success: true as const }

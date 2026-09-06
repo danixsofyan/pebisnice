@@ -1,12 +1,14 @@
 import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { branches, teamMembers, users } from '@/lib/db/schema'
+import { branches, projects, teamMembers, users } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant'
 import { auditRepository } from '@/lib/repositories/audit.repository'
 import { requireBranchAccess, requirePermission } from '@/lib/rbac'
 import type { TeamRole } from '@/lib/authz/permissions'
 import { ValidationError, NotFoundError } from '@/lib/errors/app-error'
 import { logger } from '@/lib/logging/logger'
+import { sendEmail } from '@/lib/email/mailer'
+import { teamInviteEmail } from '@/lib/email/templates'
 
 /** Roles assignable via the UI; 'owner' and legacy 'operator' are excluded. */
 export const ASSIGNABLE_ROLES: TeamRole[] = ['admin', 'manager', 'finance', 'cashier', 'production']
@@ -17,6 +19,8 @@ export interface TeamContext {
   userId: string
   ip: string
   userAgent: string
+  /** Request origin (scheme + host of the app), used to build the invite link. */
+  origin?: string
 }
 
 export interface AddMemberRequest {
@@ -110,6 +114,28 @@ export class TeamService {
       { projectId: request.projectId, email, linked: Boolean(account) },
       'team member added'
     )
+
+    // Only a brand-new invite (no existing account) needs an email — a linked account is already
+    // active. Email failure must not fail the invite, which is already committed above.
+    if (!account && context.origin) {
+      try {
+        const [proj] = await db
+          .select({ name: projects.name })
+          .from(projects)
+          .where(eq(projects.id, request.projectId))
+          .limit(1)
+        await sendEmail(
+          teamInviteEmail({
+            to: email,
+            projectName: proj?.name ?? 'Pebisnice',
+            role: request.role,
+            loginUrl: `${context.origin}/login`,
+          })
+        )
+      } catch (error) {
+        logger.error({ err: error, projectId: request.projectId, email }, 'invite email failed')
+      }
+    }
 
     return member!
   }
