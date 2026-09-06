@@ -1,8 +1,11 @@
 import crypto from 'crypto'
 import { and, eq, ne } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { subscriptionPayments } from '@/lib/db/schema'
+import { plans, subscriptionPayments, users } from '@/lib/db/schema'
 import { subscriptionService } from '@/lib/services/subscription.service'
+import { sendEmail } from '@/lib/email/mailer'
+import { paymentConfirmedEmail } from '@/lib/email/templates'
+import { formatRupiahFromDecimal } from '@/lib/formatters'
 import { buildOrderId, toMidtransAmount } from '@/lib/domain/billing/order'
 import { mapMidtransStatus } from '@/lib/domain/billing/midtrans-status'
 import { redactMidtransPayload } from '@/lib/domain/billing/midtrans-redact'
@@ -134,6 +137,20 @@ export class SubscriptionPaymentService {
           .set({ subscriptionId: activated.subscription.id })
           .where(eq(subscriptionPayments.id, payment.id))
         logger.info({ orderId, userId: payment.userId }, 'payment settled, subscription active')
+
+        // Send the confirmation only when this notification won the transition, so duplicate
+        // webhook deliveries can't re-email. Failure here must not fail the webhook (Midtrans would
+        // retry a settled payment), so it's logged and swallowed.
+        try {
+          await this.sendPaymentConfirmation(
+            payment.userId,
+            payment.planId,
+            payment.grossAmount,
+            activated.subscription.currentPeriodEnd
+          )
+        } catch (error) {
+          logger.error({ err: error, orderId }, 'payment confirmation email failed')
+        }
       }
       return { ok: true, status }
     }
@@ -146,6 +163,37 @@ export class SubscriptionPaymentService {
 
     logger.info({ orderId, status }, 'payment notification recorded')
     return { ok: true, status }
+  }
+
+  // Email the account owner that their payment settled and the subscription is active.
+  private async sendPaymentConfirmation(
+    userId: string,
+    planId: string,
+    grossAmount: string,
+    activeUntil: Date
+  ): Promise<void> {
+    const [owner] = await db
+      .select({ email: users.email, name: users.name })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+    if (!owner?.email) return
+
+    const [plan] = await db
+      .select({ name: plans.name })
+      .from(plans)
+      .where(eq(plans.id, planId))
+      .limit(1)
+
+    await sendEmail(
+      paymentConfirmedEmail({
+        to: owner.email,
+        name: owner.name ?? null,
+        planName: plan?.name ?? 'Pebisnice',
+        amountLabel: formatRupiahFromDecimal(grossAmount),
+        activeUntil: new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(activeUntil),
+      })
+    )
   }
 
   /** Any payment still awaiting confirmation for this user? */

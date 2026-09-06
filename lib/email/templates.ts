@@ -23,6 +23,43 @@ export function roleLabel(role: string): string {
   return ROLE_LABELS[role] ?? role
 }
 
+export function paymentConfirmedEmail(params: {
+  to: string
+  name: string | null
+  planName: string
+  amountLabel: string
+  activeUntil: string
+}): EmailMessage {
+  const greeting = params.name ? esc(params.name) : 'Halo'
+  const plan = esc(params.planName)
+  const amount = esc(params.amountLabel)
+  const until = esc(params.activeUntil)
+
+  const subject = `Pembayaran berhasil — langganan ${params.planName} aktif`
+
+  const text = [
+    `${params.name ?? 'Halo'},`,
+    '',
+    `Pembayaran Anda berhasil. Langganan ${params.planName} (${params.amountLabel}) kini aktif hingga ${params.activeUntil}.`,
+    '',
+    'Terima kasih telah menggunakan Pebisnice.',
+  ].join('\n')
+
+  const html = `<!doctype html>
+<html lang="id"><body style="margin:0;background:#f4f4f5;font-family:system-ui,-apple-system,sans-serif;color:#18181b">
+  <div style="max-width:480px;margin:24px auto;background:#fff;border-radius:12px;padding:32px">
+    <h1 style="font-size:18px;margin:0 0 16px">Pembayaran berhasil</h1>
+    <p style="font-size:14px;line-height:1.6;color:#3f3f46">${greeting},</p>
+    <p style="font-size:14px;line-height:1.6;color:#3f3f46">
+      Langganan <strong>${plan}</strong> (${amount}) kini <strong>aktif hingga ${until}</strong>.
+    </p>
+    <p style="font-size:12px;color:#a1a1aa">Terima kasih telah menggunakan Pebisnice.</p>
+  </div>
+</body></html>`
+
+  return { to: params.to, subject, text, html }
+}
+
 export function teamInviteEmail(params: {
   to: string
   projectName: string

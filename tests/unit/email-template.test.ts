@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { teamInviteEmail, roleLabel } from '@/lib/email/templates'
+import { teamInviteEmail, paymentConfirmedEmail, roleLabel } from '@/lib/email/templates'
 
 describe('teamInviteEmail', () => {
   it('menyusun subject, teks, dan tombol dengan nama toko, peran, dan tautan', () => {
@@ -26,6 +26,21 @@ describe('teamInviteEmail', () => {
     })
     expect(msg.html).not.toContain('<img src=x')
     expect(msg.html).toContain('&lt;img')
+  })
+
+  it('menyusun email konfirmasi pembayaran dengan plan, nominal, dan masa aktif', () => {
+    const msg = paymentConfirmedEmail({
+      to: 'owner@toko.id',
+      name: 'Budi',
+      planName: 'Bulanan',
+      amountLabel: 'Rp99.000',
+      activeUntil: '30 Oktober 2026',
+    })
+    expect(msg.subject).toContain('Bulanan')
+    expect(msg.html).toContain('Budi')
+    expect(msg.html).toContain('Bulanan')
+    expect(msg.html).toContain('Rp99.000')
+    expect(msg.html).toContain('30 Oktober 2026')
   })
 
   it('memetakan peran ke label Indonesia', () => {
