@@ -7,19 +7,22 @@ import {
 } from '@/lib/email/templates'
 
 describe('teamInviteEmail', () => {
-  it('menyusun subject, teks, dan tombol dengan nama toko, peran, dan tautan', () => {
+  it('menyusun subject, teks, kredensial sementara, dan tombol', () => {
     const msg = teamInviteEmail({
       to: 'staf@toko.id',
       projectName: 'Toko Maju',
       role: 'cashier',
       loginUrl: 'https://app.pebisnice.my.id/login',
+      tempPassword: 'Abcd-2345-Wxyz',
     })
     expect(msg.to).toBe('staf@toko.id')
     expect(msg.subject).toContain('Toko Maju')
     expect(msg.html).toContain('Toko Maju')
     expect(msg.html).toContain('Kasir')
+    expect(msg.html).toContain('staf@toko.id')
+    expect(msg.html).toContain('Abcd-2345-Wxyz')
     expect(msg.html).toContain('https://app.pebisnice.my.id/login')
-    expect(msg.text).toContain('https://app.pebisnice.my.id/login')
+    expect(msg.text).toContain('Abcd-2345-Wxyz')
   })
 
   it('meng-escape HTML pada nama toko untuk mencegah injeksi markup', () => {
@@ -28,6 +31,7 @@ describe('teamInviteEmail', () => {
       projectName: '<img src=x onerror=alert(1)>',
       role: 'admin',
       loginUrl: 'https://app.pebisnice.my.id/login',
+      tempPassword: 'Abcd-2345-Wxyz',
     })
     expect(msg.html).not.toContain('<img src=x')
     expect(msg.html).toContain('&lt;img')

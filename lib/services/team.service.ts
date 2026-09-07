@@ -9,6 +9,7 @@ import { ValidationError, NotFoundError } from '@/lib/errors/app-error'
 import { logger } from '@/lib/logging/logger'
 import { sendEmail } from '@/lib/email/mailer'
 import { teamInviteEmail } from '@/lib/email/templates'
+import { generateTempPassword, hashPassword } from '@/lib/auth/password'
 
 /** Roles assignable via the UI; 'owner' and legacy 'operator' are excluded. */
 export const ASSIGNABLE_ROLES: TeamRole[] = ['admin', 'manager', 'finance', 'cashier', 'production']
@@ -54,7 +55,9 @@ export class TeamService {
     )
   }
 
-  // Add a member by email. If the account exists it links and activates at once; otherwise a pending invite that auto-links on their first sign-in (see linkPendingInvites).
+  // Add a member by email. If the email already has an account it is linked and activated at once.
+  // Otherwise a new password-login account is created with a temporary password (emailed to them,
+  // must be changed on first login) so an invited employee can sign in without a Google account.
   async addMember(request: AddMemberRequest, context: TeamContext) {
     await requirePermission(request.projectId, context.userId, 'team:manage')
     if (request.branchId) {
@@ -81,9 +84,26 @@ export class TeamService {
       throw new ValidationError('Email ini sudah menjadi anggota')
     }
 
-    const account = (
+    const existingAccount = (
       await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1)
     )[0]
+
+    // Create a password-login account for a brand-new invitee.
+    let userId = existingAccount?.id ?? null
+    let tempPassword: string | null = null
+    if (!existingAccount) {
+      tempPassword = generateTempPassword()
+      const [created] = await db
+        .insert(users)
+        .values({
+          email,
+          name: email.split('@')[0]?.split('+')[0] ?? null,
+          passwordHash: await hashPassword(tempPassword),
+          mustChangePassword: true,
+        })
+        .returning({ id: users.id })
+      userId = created!.id
+    }
 
     const [member] = await db
       .insert(teamMembers)
@@ -92,9 +112,9 @@ export class TeamService {
         email,
         role: request.role,
         branchId: request.branchId,
-        userId: account?.id ?? null,
-        status: account ? 'active' : 'invited',
-        acceptedAt: account ? new Date() : null,
+        userId,
+        status: 'active',
+        acceptedAt: new Date(),
         createdBy: context.userId,
         updatedBy: context.userId,
       })
@@ -108,16 +128,16 @@ export class TeamService {
       projectId: request.projectId,
       ipAddress: context.ip,
       userAgent: context.userAgent,
-      metadata: { email, role: request.role },
+      metadata: { email, role: request.role, newAccount: Boolean(tempPassword) },
     })
     logger.info(
-      { projectId: request.projectId, email, linked: Boolean(account) },
+      { projectId: request.projectId, email, newAccount: Boolean(tempPassword) },
       'team member added'
     )
 
-    // Only a brand-new invite (no existing account) needs an email — a linked account is already
-    // active. Email failure must not fail the invite, which is already committed above.
-    if (!account && context.origin) {
+    // Email the temporary credentials only to a newly created account. Failure must not fail the
+    // invite, which is already committed above.
+    if (tempPassword && context.origin) {
       try {
         const [proj] = await db
           .select({ name: projects.name })
@@ -130,6 +150,7 @@ export class TeamService {
             projectName: proj?.name ?? 'Pebisnice',
             role: request.role,
             loginUrl: `${context.origin}/login`,
+            tempPassword,
           })
         )
       } catch (error) {

@@ -232,6 +232,13 @@
       "when": 1788701328118,
       "tag": "0033_subscription_reminder",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1788748753154,
+      "tag": "0034_user_password",
+      "breakpoints": true
     }
   ]
 }

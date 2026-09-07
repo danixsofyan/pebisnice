@@ -9,6 +9,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   const state = await resolveSessionState()
 
   if (state.status === 'unauthenticated') redirect('/login')
+  if (state.status === 'must-change-password') redirect('/change-password')
 
   const userId = state.status === 'ready' ? state.context.userId : state.userId
   const billing = await resolveBillingState(userId)

@@ -2,7 +2,7 @@ import { and, eq, isNull, or, sql } from 'drizzle-orm'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant'
-import { branches, projects, teamMembers } from '@/lib/db/schema'
+import { branches, projects, teamMembers, users } from '@/lib/db/schema'
 import { canRoleViewCost, type TeamRole } from '@/lib/authz/permissions'
 import { AuthError } from '@/lib/errors/app-error'
 
@@ -19,6 +19,7 @@ export interface SessionContext {
 // The three states a visitor can be in. A union, not SessionContext | null: the nullable shape couldn't tell 'not logged in' from 'no project', so callers redirected wrong or threw into a 500.
 export type SessionState =
   | { status: 'unauthenticated' }
+  | { status: 'must-change-password'; userId: string }
   | { status: 'no-project'; userId: string }
   | { status: 'ready'; context: SessionContext }
 
@@ -28,6 +29,16 @@ export async function resolveSessionState(): Promise<SessionState> {
   const user = session?.user
 
   if (!user?.id) return { status: 'unauthenticated' }
+
+  // Read fresh from the DB (not the JWT) so a disabled account loses access immediately and a
+  // forced password reset can't be skipped by keeping an old token.
+  const [account] = await db
+    .select({ isActive: users.isActive, mustChangePassword: users.mustChangePassword })
+    .from(users)
+    .where(eq(users.id, user.id))
+    .limit(1)
+  if (account && !account.isActive) return { status: 'unauthenticated' }
+  if (account?.mustChangePassword) return { status: 'must-change-password', userId: user.id }
 
   const rows = await db
     .select({
@@ -82,6 +93,9 @@ export async function getSessionContext(): Promise<SessionContext> {
 
   if (state.status === 'unauthenticated') {
     throw new AuthError()
+  }
+  if (state.status === 'must-change-password') {
+    throw new AuthError('Anda harus mengganti password terlebih dahulu.')
   }
   if (state.status === 'no-project') {
     throw new AuthError('Anda belum tergabung dalam project manapun.')

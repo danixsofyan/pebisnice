@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Loader2, Activity } from 'lucide-react'
 import { signIn } from 'next-auth/react'
 import { cn } from '@/lib/utils'
@@ -18,19 +19,43 @@ import { Input } from '@/components/ui/input'
 import { LOGIN_BACKGROUND } from '@/lib/storage'
 
 export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) {
+  const router = useRouter()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true)
     await signIn('google', { callbackUrl: '/dashboard' })
   }
 
+  const handleCredentialsLogin = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setError(null)
+    setIsLoading(true)
+    const result = await signIn('credentials', {
+      email: email.trim(),
+      password,
+      redirect: false,
+    })
+    setIsLoading(false)
+    if (!result || result.error) {
+      setError('Email atau password salah.')
+      return
+    }
+    // The dashboard layout redirects to /change-password when a first login still requires it.
+    router.push('/dashboard')
+    router.refresh()
+  }
+
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card className="border-border bg-background/50 overflow-hidden p-0 shadow-2xl backdrop-blur-md">
         <CardContent className="grid p-0 md:grid-cols-2">
-          <form className="p-6 md:p-8">
+          <form className="p-6 md:p-8" onSubmit={handleCredentialsLogin}>
             <FieldGroup>
               <div className="mb-4 flex flex-col items-center gap-4 text-center">
                 <div className="flex items-center gap-2">
@@ -46,14 +71,18 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
               </div>
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input id="email" type="email" required />
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
               </Field>
               <Field>
                 <div className="flex items-center">
                   <FieldLabel htmlFor="password">Password</FieldLabel>
-                  <a href="#" className="ml-auto text-sm underline-offset-2 hover:underline">
-                    Forgot your password?
-                  </a>
                 </div>
                 <div className="relative">
                   <Input
@@ -61,6 +90,9 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
                     type={showPassword ? 'text' : 'password'}
                     required
                     className="pr-10"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
                   />
                   <button
                     type="button"
@@ -75,8 +107,14 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
                   </button>
                 </div>
               </Field>
+              {error ? (
+                <p role="alert" className="text-destructive text-sm">
+                  {error}
+                </p>
+              ) : null}
               <Field>
-                <Button className="cursor-pointer" type="submit">
+                <Button className="cursor-pointer" type="submit" disabled={isLoading}>
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   Login
                 </Button>
               </Field>

@@ -34,6 +34,7 @@ const PROTECTED_ROUTES = [
   '/admin',
   '/products',
   '/receipt',
+  '/change-password',
 ]
 const AUTH_ROUTES = ['/login']
 const PUBLIC_API_ROUTES = ['/api/v1/webhooks', '/api/health']

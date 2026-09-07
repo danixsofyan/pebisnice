@@ -10,6 +10,10 @@ export const users = pgTable('users', {
   email: text('email').unique().notNull(),
   emailVerified: tz('emailVerified'),
   image: text('image'),
+  // Email/password login. Null for accounts that only use Google. must_change_password forces a
+  // reset on first login after an invite with a temporary password.
+  passwordHash: text('password_hash'),
+  mustChangePassword: boolean('must_change_password').default(false).notNull(),
   plan: text('plan').default('free').notNull(),
   timezone: text('timezone').default('Asia/Jakarta').notNull(),
   /** Platform admin (manages subscriptions), not a regular business user. */
