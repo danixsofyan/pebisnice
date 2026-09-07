@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AuthShell } from '@/components/auth/auth-shell'
 import { ResetPasswordForm } from '@/components/auth/reset-password-form'
 
 export default async function ResetPasswordPage({
@@ -9,8 +10,8 @@ export default async function ResetPasswordPage({
   const { token } = await searchParams
 
   return (
-    <div className="bg-muted/30 flex min-h-screen items-center justify-center p-6">
-      <div className="border-border bg-card w-full max-w-sm rounded-xl border p-6 shadow-lg">
+    <AuthShell>
+      <div className="border-border bg-background/60 rounded-xl border p-6 shadow-2xl backdrop-blur-md">
         <h1 className="text-xl font-bold">Buat password baru</h1>
         {token ? (
           <>
@@ -29,6 +30,6 @@ export default async function ResetPasswordPage({
           </p>
         )}
       </div>
-    </div>
+    </AuthShell>
   )
 }

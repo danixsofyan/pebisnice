@@ -57,7 +57,7 @@ export function ChangePasswordForm() {
         />
         <PasswordStrengthMeter password={newPassword} />
         <p className="text-muted-foreground text-xs">
-          Minimal 8 karakter, memuat huruf besar, huruf kecil, dan angka.
+          Minimal 8 karakter (ideal 12+), memuat huruf besar, huruf kecil, dan angka.
         </p>
       </div>
       <div className="space-y-1.5">
