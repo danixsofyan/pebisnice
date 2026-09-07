@@ -3,8 +3,9 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordInput } from '@/components/auth/password-input'
+import { PasswordStrengthMeter } from '@/components/auth/password-strength-meter'
 import { resetPasswordAction } from '@/app/actions/auth-password'
 
 export function ResetPasswordForm({ token }: { token: string }) {
@@ -45,25 +46,24 @@ export function ResetPasswordForm({ token }: { token: string }) {
     <form onSubmit={submit} className="space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="new">Password baru</Label>
-        <Input
+        <PasswordInput
           id="new"
-          type="password"
           value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
+          onChange={setNewPassword}
           autoComplete="new-password"
           required
         />
+        <PasswordStrengthMeter password={newPassword} />
         <p className="text-muted-foreground text-xs">
           Minimal 8 karakter, memuat huruf besar, huruf kecil, dan angka.
         </p>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="confirm">Ulangi password baru</Label>
-        <Input
+        <PasswordInput
           id="confirm"
-          type="password"
           value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
+          onChange={setConfirm}
           autoComplete="new-password"
           required
         />
