@@ -8,6 +8,8 @@ import { AuthError } from '@/lib/errors/app-error'
 
 export interface SessionContext {
   userId: string
+  /** The project owner's user id. Billing is the owner's, so employees inherit the owner's access. */
+  ownerId: string
   projectId: string
   projectName: string
   role: TeamRole
@@ -78,6 +80,7 @@ export async function resolveSessionState(): Promise<SessionState> {
     status: 'ready',
     context: {
       userId: user.id,
+      ownerId: row.ownerId,
       projectId: row.projectId,
       projectName: row.projectName,
       role,

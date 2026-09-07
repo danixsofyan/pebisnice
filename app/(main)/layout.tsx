@@ -11,8 +11,10 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   if (state.status === 'unauthenticated') redirect('/login')
   if (state.status === 'must-change-password') redirect('/change-password')
 
-  const userId = state.status === 'ready' ? state.context.userId : state.userId
-  const billing = await resolveBillingState(userId)
+  // Billing is the project owner's, not the visitor's — an invited employee has no subscription of
+  // their own and must inherit the owner's access instead of being sent to /billing/plans.
+  const billingUserId = state.status === 'ready' ? state.context.ownerId : state.userId
+  const billing = await resolveBillingState(billingUserId)
 
   if (billing.access === 'none') redirect('/billing/plans')
   if (billing.access === 'expired') redirect('/billing')
