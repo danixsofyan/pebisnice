@@ -1,4 +1,13 @@
-import { boolean, index, integer, pgTable, primaryKey, text } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  text,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core'
 import { tz } from './primitives'
 
 // Auth.js tables; shape is set by the DrizzleAdapter, so no standard lifecycle columns and no RLS.
@@ -66,4 +75,24 @@ export const verificationTokens = pgTable(
     expires: tz('expires').notNull(),
   },
   (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })]
+)
+
+// Password reset. Only the SHA-256 of the token is stored; the raw token lives only in the emailed
+// link. Single-use (used_at) and short-lived (expires_at).
+export const passwordResetTokens = pgTable(
+  'password_reset_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: tz('expires_at').notNull(),
+    usedAt: tz('used_at'),
+    createdAt: tz('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('password_reset_token_hash_idx').on(t.tokenHash),
+    index('password_reset_user_idx').on(t.userId),
+  ]
 )

@@ -99,6 +99,46 @@ export function subscriptionExpiringEmail(params: {
   return { to: params.to, subject, text, html }
 }
 
+export function passwordResetEmail(params: {
+  to: string
+  name: string | null
+  resetUrl: string
+}): EmailMessage {
+  const greeting = params.name ? esc(params.name) : 'Halo'
+  const url = esc(params.resetUrl)
+
+  const subject = 'Atur ulang password Pebisnice Anda'
+
+  const text = [
+    `${params.name ?? 'Halo'},`,
+    '',
+    'Kami menerima permintaan untuk mengatur ulang password akun Pebisnice Anda.',
+    'Buka tautan berikut untuk membuat password baru (berlaku 1 jam):',
+    params.resetUrl,
+    '',
+    'Jika Anda tidak meminta ini, abaikan email ini — password Anda tidak berubah.',
+  ].join('\n')
+
+  const html = `<!doctype html>
+<html lang="id"><body style="margin:0;background:#f4f4f5;font-family:system-ui,-apple-system,sans-serif;color:#18181b">
+  <div style="max-width:480px;margin:24px auto;background:#fff;border-radius:12px;padding:32px">
+    <h1 style="font-size:18px;margin:0 0 16px">Atur ulang password</h1>
+    <p style="font-size:14px;line-height:1.6;color:#3f3f46">${greeting},</p>
+    <p style="font-size:14px;line-height:1.6;color:#3f3f46">
+      Kami menerima permintaan untuk mengatur ulang password akun Anda. Tautan ini berlaku 1 jam.
+    </p>
+    <p style="margin:24px 0">
+      <a href="${url}" style="display:inline-block;background:#0b0b0c;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:14px">Buat password baru</a>
+    </p>
+    <p style="font-size:12px;color:#a1a1aa">
+      Jika Anda tidak meminta ini, abaikan email ini — password Anda tidak berubah.
+    </p>
+  </div>
+</body></html>`
+
+  return { to: params.to, subject, text, html }
+}
+
 export function teamInviteEmail(params: {
   to: string
   projectName: string

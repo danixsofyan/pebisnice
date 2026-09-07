@@ -3,6 +3,7 @@ import {
   teamInviteEmail,
   paymentConfirmedEmail,
   subscriptionExpiringEmail,
+  passwordResetEmail,
   roleLabel,
 } from '@/lib/email/templates'
 
@@ -65,6 +66,18 @@ describe('teamInviteEmail', () => {
     expect(msg.html).toContain('Sari')
     expect(msg.html).toContain('9 September 2026')
     expect(msg.text).toContain('9 September 2026')
+  })
+
+  it('menyusun email reset password dengan tautan', () => {
+    const msg = passwordResetEmail({
+      to: 'user@toko.id',
+      name: 'Andi',
+      resetUrl: 'https://app.pebisnice.my.id/reset-password?token=abc123',
+    })
+    expect(msg.subject).toMatch(/password/i)
+    expect(msg.html).toContain('Andi')
+    expect(msg.html).toContain('https://app.pebisnice.my.id/reset-password?token=abc123')
+    expect(msg.text).toContain('token=abc123')
   })
 
   it('memetakan peran ke label Indonesia', () => {

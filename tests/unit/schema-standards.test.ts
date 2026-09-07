@@ -25,7 +25,13 @@ function tableByName(name: string): Table {
 }
 
 // Tabel milik Auth.js; bentuknya ditentukan adapter, bukan standar kita.
-const AUTH_TABLES = ['users', 'accounts', 'sessions', 'verificationTokens']
+const AUTH_TABLES = [
+  'users',
+  'accounts',
+  'sessions',
+  'verificationTokens',
+  'passwordResetTokens',
+]
 
 // Ledger append-only: sengaja tanpa updated_at / deleted_at (db-standards.md §9).
 const IMMUTABLE_TABLES = ['auditLogs', 'inventoryMovements', 'productCostHistory', 'loyaltyLedger']
@@ -62,6 +68,7 @@ describe('kepatuhan skema terhadap db-standards.md', () => {
       'onlineOrderItems',
       'onlineOrders',
       'orderLinks',
+      'passwordResetTokens',
       'plans',
       'productCostHistory',
       'productVariants',

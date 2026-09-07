@@ -239,6 +239,13 @@
       "when": 1788748753154,
       "tag": "0034_user_password",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1788749860595,
+      "tag": "0035_password_reset_tokens",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,8 @@ import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { hashPassword, passwordPolicyError, verifyPassword } from '@/lib/auth/password'
+import { passwordResetService } from '@/lib/services/password-reset.service'
+import { getRequestOrigin } from '@/lib/http/origin'
 import { handleActionError, AuthError, ValidationError } from '@/lib/errors/app-error'
 import { withRequestScope } from '@/lib/observability/with-request-scope'
 import { logger } from '@/lib/logging/logger'
@@ -58,6 +60,44 @@ export async function changePasswordAction(raw: unknown) {
         .where(eq(users.id, userId))
 
       logger.info({ userId }, 'password changed')
+      return { success: true as const }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
+const emailSchema = z.object({ email: z.string().trim().email('Email tidak valid') })
+
+// Request a password-reset link. Always returns a generic success (never reveals whether the email
+// exists); rate limiting inside the service enforces the resend cooldown.
+export async function requestPasswordResetAction(raw: unknown) {
+  return withRequestScope('requestPasswordResetAction', async () => {
+    try {
+      const parsed = emailSchema.safeParse(raw)
+      if (!parsed.success) throw new ValidationError('Email tidak valid')
+      const origin = await getRequestOrigin()
+      const { retryAfterSec } = await passwordResetService.requestReset(parsed.data.email, origin)
+      return { success: true as const, retryAfterSec }
+    } catch (error) {
+      return handleActionError(error)
+    }
+  })
+}
+
+const resetSchema = z.object({
+  token: z.string().min(1, 'Token tidak valid'),
+  newPassword: z.string().min(1, 'Password baru wajib diisi'),
+})
+
+export async function resetPasswordAction(raw: unknown) {
+  return withRequestScope('resetPasswordAction', async () => {
+    try {
+      const parsed = resetSchema.safeParse(raw)
+      if (!parsed.success) {
+        throw new ValidationError('Validasi gagal', parsed.error.flatten().fieldErrors)
+      }
+      await passwordResetService.resetPassword(parsed.data.token, parsed.data.newPassword)
       return { success: true as const }
     } catch (error) {
       return handleActionError(error)
